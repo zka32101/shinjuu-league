@@ -23,8 +23,8 @@ dependencies:
   firebase_auth: ^5.1.0
   cloud_firestore: ^5.0.0
   firebase_analytics: ^11.0.0
-  firebase_crashlytics: ^3.5.0
-  firebase_remote_config: ^4.4.0
+  firebase_crashlytics: ^4.0.0
+  firebase_remote_config: ^5.0.0
 
   # In-App Purchases & Subscriptions
   purchases_flutter: ^8.0.0

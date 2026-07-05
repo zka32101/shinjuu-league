@@ -5,6 +5,8 @@ class User {
   final int level;
   final double eloRating;
   final double winRate;
+  final int totalWins;
+  final int totalBattles;
   final int gems;
   final int gold;
   final DateTime createdAt;
@@ -17,6 +19,8 @@ class User {
     required this.level,
     required this.eloRating,
     required this.winRate,
+    this.totalWins = 0,
+    this.totalBattles = 0,
     required this.gems,
     required this.gold,
     required this.createdAt,
@@ -30,6 +34,8 @@ class User {
     int? level,
     double? eloRating,
     double? winRate,
+    int? totalWins,
+    int? totalBattles,
     int? gems,
     int? gold,
     DateTime? createdAt,
@@ -42,6 +48,8 @@ class User {
       level: level ?? this.level,
       eloRating: eloRating ?? this.eloRating,
       winRate: winRate ?? this.winRate,
+      totalWins: totalWins ?? this.totalWins,
+      totalBattles: totalBattles ?? this.totalBattles,
       gems: gems ?? this.gems,
       gold: gold ?? this.gold,
       createdAt: createdAt ?? this.createdAt,
@@ -57,6 +65,8 @@ class User {
       level: json['level'] as int? ?? 1,
       eloRating: (json['eloRating'] as num?)?.toDouble() ?? 1000.0,
       winRate: (json['winRate'] as num?)?.toDouble() ?? 0.0,
+      totalWins: json['totalWins'] as int? ?? 0,
+      totalBattles: json['totalBattles'] as int? ?? 0,
       gems: json['gems'] as int? ?? 0,
       gold: json['gold'] as int? ?? 0,
       createdAt: json['createdAt'] != null
@@ -76,6 +86,8 @@ class User {
       'level': level,
       'eloRating': eloRating,
       'winRate': winRate,
+      'totalWins': totalWins,
+      'totalBattles': totalBattles,
       'gems': gems,
       'gold': gold,
       'createdAt': createdAt.toIso8601String(),

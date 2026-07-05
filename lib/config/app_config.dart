@@ -54,5 +54,5 @@ enum GameDifficulty {
 enum GameRegion {
   asia,
   japan,
-  asia_pacific,
+  asiaPacific,
 }

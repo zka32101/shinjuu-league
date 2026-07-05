@@ -113,13 +113,13 @@ class AnalyticsService {
     dynamic exception,
     StackTrace? stackTrace, {
     String? reason,
-    Iterable<Object>? printDetails,
+    Iterable<Object> information = const [],
   }) {
     _crashlytics.recordError(
       exception,
       stackTrace,
       reason: reason,
-      printDetails: printDetails,
+      information: information,
     );
   }
 
