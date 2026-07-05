@@ -96,7 +96,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
   late double _selfEloAtStart;
   late double _opponentAvgElo;
 
-  Future<void> startBattle(MatchResult match, String selfUserId, double selfEloAtStart) async {
+  /// 進化選択画面で呼び出す：エンジンとバトル記録を用意するが、まだ交戦は開始しない。
+  /// evolution ロック（[lockEvolution]）→ [beginCombat] の順で呼び出すことで、
+  /// 進化ステータスが初手ティックから確実に反映される（試合前進化選択の遅延排除仕様）。
+  Future<void> prepareBattle(MatchResult match, String selfUserId, double selfEloAtStart) async {
     state = state.copyWith(isLoading: true, error: null);
 
     _selfUserId = selfUserId;
@@ -144,8 +147,6 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     await _firestoreService.createBattle(battle);
     await _analyticsService.logBattleStart(selfUserId, match.mode.name);
-
-    engine.start();
   }
 
   /// 試合前進化選択：ロック後は変更不可（リアルタイム選択は廃止済み仕様）
@@ -155,6 +156,11 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     engine.setEvolution(_selfUserId, evolution);
     state = state.copyWith(selectedEvolution: evolution, isEvolutionLocked: true);
+  }
+
+  /// 進化ロック後に交戦シミュレーションを開始する
+  void beginCombat() {
+    state.engine?.start();
   }
 
   void _onCombatEvent(CombatEvent event) {

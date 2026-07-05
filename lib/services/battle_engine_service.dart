@@ -80,9 +80,10 @@ class BattleEngine {
     required this.mapId,
     required this.participants,
     this.durationSeconds = AppConfig.battleDurationSeconds,
-  });
+    Random? random,
+  }) : _random = random ?? Random();
 
-  final _random = Random();
+  final Random _random;
   Timer? _timer;
   int _elapsedSeconds = 0;
   bool _isRunning = false;

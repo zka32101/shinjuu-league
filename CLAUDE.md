@@ -42,8 +42,8 @@
 4. 計測3点セット（Analytics/Crashlytics/Remote Config） ✅ 完了（Analytics/Crashlytics実装、Remote Configは未着手）
 5. Riverpod ViewModel（User/Matching/Battle） ✅ 完了
 6. [★ PHASE 6] Aha Moment への最短動線 ✅ 完了（BattleEngine + Elo + Matchmaking）
-7. 各画面View（ロビー・ランク・フレンド等） ⏳ 次のステップ
-8. アニメーション・SE/BGM（複雑な部分はSonnet）
+7. 各画面View（ロビー・ランク・フレンド等） ✅ 完了（8画面 + go_router）
+8. アニメーション・SE/BGM（複雑な部分はSonnet） ⏳ 次のステップ
 9. 画面遷移・ナビゲーション
 10. ペイウォール（BattlePass・スキンガチャ）
 11. リプレイ生成・シェア ← Sonnet
@@ -67,10 +67,34 @@
 - [lib/data/providers/service_providers.dart](lib/data/providers/service_providers.dart) — 全体のRiverpod配線
 - [test/battle_engine_test.dart](test/battle_engine_test.dart) — Aha Moment即時発火・進化ステータス倍率・勝敗判定・Elo計算の単体テスト（5件、全通過）
 
-**既知のTODO（Step 7以降で解消）**:
+**既知のTODO（Step 8以降で解消）**:
 - 参加者のBaseStatsが固定値（`mecha_default_01`のダミー値）→ Mecha選択画面実装後にFirestoreから実データ取得
 - Remote Config未実装（Aha Moment定義のABテスト・BattlePass価格ABテストは今後）
 - windows/linux フォルダは削除済み（対象OSはiOS/Androidのみのため、Google Drive上でのsymlink作成エラー回避も兼ねる）
+
+### Step 7 実装内容（2026-07-05, Sonnet実装済み）
+
+**8画面 + go_router によるナビゲーション構築**:
+- [lib/config/app_routes.dart](lib/config/app_routes.dart) — go_router定義。Battle/MatchResult等の複雑なオブジェクトは`extra`パラメータで受け渡し
+- [lib/config/theme.dart](lib/config/theme.dart) — 東西神獣テーマのカラーパレット（AppColors）+ ライト/ダーク両対応ThemeData
+- [lib/ui/screens/splash_screen.dart](lib/ui/screens/splash_screen.dart) — 認証状態を見てonboarding/lobbyへ自動遷移
+- [lib/ui/screens/onboarding_screen.dart](lib/ui/screens/onboarding_screen.dart) — 3ページ説明 → 匿名サインイン → Userドキュメント作成
+- [lib/ui/screens/lobby_screen.dart](lib/ui/screens/lobby_screen.dart) — プロフィール表示、クイック/ランクマッチ起動
+- [lib/ui/screens/matching_screen.dart](lib/ui/screens/matching_screen.dart) — スケルトンUI + 経過秒数、マッチ成立で自動遷移
+- [lib/ui/screens/evolution_select_screen.dart](lib/ui/screens/evolution_select_screen.dart) — 3択進化選択、10秒タイムアウトで自動選択（攻撃）
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — 2レーン表示、K/D/Aチップ、Aha Momentバナー、キルフィード
+- [lib/ui/screens/result_screen.dart](lib/ui/screens/result_screen.dart) — 勝敗・Elo変動表示、UserViewModelへ結果反映
+- [lib/ui/screens/rank_screen.dart](lib/ui/screens/rank_screen.dart) — リーダーボード（自分をハイライト）
+- [lib/ui/screens/friends_screen.dart](lib/ui/screens/friends_screen.dart) — フレンド/ギルドは今後実装のプレースホルダー（Step 12はSonnet担当）
+- [lib/ui/widgets/custom_button.dart](lib/ui/widgets/custom_button.dart) / [loading_skeleton.dart](lib/ui/widgets/loading_skeleton.dart) — 共通ウィジェット（44pt+ボタン、スケルトンUI）
+
+**設計上の重要な修正**: `BattleViewModel.startBattle`を`prepareBattle`（エンジン準備のみ）+`beginCombat`（交戦開始）に分割。進化選択画面でロックしてから交戦を開始することで、進化ステータスが初手ティックから確実に反映されるようにした（試合前進化選択の仕様を正しく実装するための必須修正）。
+
+**テスト安定性の修正**: `BattleEngine`に`Random`注入をサポート（テストでシード固定）。当初のAha Moment単体テストは「最初の交戦イベント全体」を検証していたが、`winChance`が15-85%にクランプされる設計上、1vs1では相手が先に勝つ確率が無視できず不安定だった。「自分が撃破した最初のイベント」を追跡する検証に修正し、5回連続実行で安定を確認。
+
+**未実装（Step 8以降）**:
+- Lottieアニメーション・ハプティクス（現在は簡易テキストバナーのみ）
+- Mecha選択画面（現状は固定神獣のみ）
 
 ---
 

@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
@@ -24,37 +25,44 @@ BattleParticipantState _participant({
 
 void main() {
   group('BattleEngine Aha Moment detection', () {
-    test('自分の最初のキルで combatEvents が即座に発火する', () {
-      // 自分の攻撃力を極端に高くし、確実にキルが発生する状況を作る
+    test('自分がキルを取った瞬間 combatEvents が同フレームで発火し kills も反映済みになる', () {
+      // winChance は 15%〜85% にクランプされるため、1体の敵との対戦では
+      // 「最初の交戦」が必ず自分の勝利になるとは限らない（相手が先に攻撃を仕掛け、
+      // 低確率で勝つケースがあるため）。そのため複数の敵を用意し、
+      // 「自分が撃破した最初のイベント」を追跡することで Aha Moment 検知の
+      // 即時性（kills 更新と同フレームでイベントが飛ぶこと）を検証する。
       final self = _participant(
         userId: 'self',
         team: 0,
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 9999, spd: 40),
       );
-      final enemy = _participant(userId: 'enemy_1', team: 1);
+      final enemies = List.generate(4, (i) => _participant(userId: 'enemy_$i', team: 1));
 
       final engine = BattleEngine(
         battleId: 'test_battle',
         mode: BattleMode.quick,
         mapId: 'map_test',
-        participants: [self, enemy],
+        participants: [self, ...enemies],
+        random: Random(7), // 再現性のため固定シード
       );
 
-      CombatEvent? firstEvent;
+      CombatEvent? selfFirstKillEvent;
+      int? selfKillsAtEventTime;
       engine.combatEvents.listen((event) {
-        firstEvent ??= event;
+        if (event.attackerId == 'self' && selfFirstKillEvent == null) {
+          selfFirstKillEvent = event;
+          selfKillsAtEventTime = self.kills; // リスナー内で同期的に取得
+        }
       });
 
-      // Timer(実時間)を待たず tick() を直接連打し、決着が付くまで進める
-      for (var i = 0; i < 500 && firstEvent == null; i++) {
+      for (var i = 0; i < 300 && selfFirstKillEvent == null; i++) {
         engine.tick();
       }
       engine.dispose();
 
-      expect(firstEvent, isNotNull);
-      expect(firstEvent!.attackerId, 'self');
-      expect(self.kills, greaterThanOrEqualTo(1));
+      expect(selfFirstKillEvent, isNotNull);
+      expect(selfKillsAtEventTime, 1);
     });
 
     test('進化選択（攻撃）で攻撃力が1.3倍になる', () {

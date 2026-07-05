@@ -31,3 +31,7 @@ final battleViewModelProvider = StateNotifierProvider.autoDispose<BattleViewMode
     analyticsService: ref.watch(analyticsServiceProvider),
   );
 });
+
+final leaderboardProvider = FutureProvider.autoDispose<List<User>>((ref) {
+  return ref.watch(firestoreServiceProvider).getTopRankedUsers();
+});
