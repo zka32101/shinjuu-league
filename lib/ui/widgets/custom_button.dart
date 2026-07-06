@@ -77,6 +77,10 @@ class _CustomButtonState extends State<CustomButton> with SingleTickerProviderSt
           );
 
     return GestureDetector(
+      // IgnorePointer で子（ElevatedButton/OutlinedButton）へのタップ伝播を止めているため、
+      // deferToChild（デフォルト）のままだと GestureDetector 自体もヒットせずタップが
+      // 一切効かなくなる。opaque にして子のヒット結果に関係なく確実にタップを検知する。
+      behavior: HitTestBehavior.opaque,
       onTapDown: _onTapDown,
       onTapUp: (_) => _onTapEnd(),
       onTapCancel: _onTapEnd,
