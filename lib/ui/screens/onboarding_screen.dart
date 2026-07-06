@@ -7,7 +7,11 @@ import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 
 class _OnboardingPage {
-  const _OnboardingPage({required this.icon, required this.title, required this.body});
+  const _OnboardingPage({
+    required this.icon,
+    required this.title,
+    required this.body,
+  });
   final IconData icon;
   final String title;
   final String body;
@@ -103,18 +107,28 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(page.icon, size: 96, color: Theme.of(context).colorScheme.primary),
+                        Icon(
+                          page.icon,
+                          size: 96,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
                         const SizedBox(height: 32),
                         Text(
                           page.title,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 24,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           page.body,
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 16, color: Colors.grey),
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey,
+                          ),
                         ),
                       ],
                     ),

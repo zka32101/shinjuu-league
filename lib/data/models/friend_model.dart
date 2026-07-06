@@ -32,7 +32,8 @@ class FriendRequest {
     required this.createdAt,
   });
 
-  String otherUserId(String selfUserId) => fromUserId == selfUserId ? toUserId : fromUserId;
+  String otherUserId(String selfUserId) =>
+      fromUserId == selfUserId ? toUserId : fromUserId;
 
   factory FriendRequest.fromJson(Map<String, dynamic> json) {
     return FriendRequest(

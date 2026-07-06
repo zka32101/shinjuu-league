@@ -15,32 +15,45 @@ import 'package:shinjuu_league/viewmodels/matching_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
-final firestoreServiceProvider = Provider<FirestoreService>((ref) => FirestoreService());
-final analyticsServiceProvider = Provider<AnalyticsService>((ref) => AnalyticsService());
-final matchmakingServiceProvider = Provider<MatchmakingService>((ref) => MatchmakingService());
-final purchasesServiceProvider = Provider<PurchasesService>((ref) => PurchasesService());
+final firestoreServiceProvider = Provider<FirestoreService>(
+  (ref) => FirestoreService(),
+);
+final analyticsServiceProvider = Provider<AnalyticsService>(
+  (ref) => AnalyticsService(),
+);
+final matchmakingServiceProvider = Provider<MatchmakingService>(
+  (ref) => MatchmakingService(),
+);
+final purchasesServiceProvider = Provider<PurchasesService>(
+  (ref) => PurchasesService(),
+);
 final replayServiceProvider = Provider<ReplayService>((ref) {
   return ReplayService(firestoreService: ref.watch(firestoreServiceProvider));
 });
 
-final userViewModelProvider = StateNotifierProvider<UserViewModel, AsyncValue<User?>>((ref) {
-  return UserViewModel(
-    firestoreService: ref.watch(firestoreServiceProvider),
-    authService: ref.watch(authServiceProvider),
-  );
-});
+final userViewModelProvider =
+    StateNotifierProvider<UserViewModel, AsyncValue<User?>>((ref) {
+      return UserViewModel(
+        firestoreService: ref.watch(firestoreServiceProvider),
+        authService: ref.watch(authServiceProvider),
+      );
+    });
 
 /// マッチング〜バトルはセッション単位のため autoDispose（画面離脱で状態破棄）
-final matchingViewModelProvider = StateNotifierProvider.autoDispose<MatchingViewModel, MatchingState>((ref) {
-  return MatchingViewModel(matchmakingService: ref.watch(matchmakingServiceProvider));
-});
+final matchingViewModelProvider =
+    StateNotifierProvider.autoDispose<MatchingViewModel, MatchingState>((ref) {
+      return MatchingViewModel(
+        matchmakingService: ref.watch(matchmakingServiceProvider),
+      );
+    });
 
-final battleViewModelProvider = StateNotifierProvider.autoDispose<BattleViewModel, BattleState>((ref) {
-  return BattleViewModel(
-    firestoreService: ref.watch(firestoreServiceProvider),
-    analyticsService: ref.watch(analyticsServiceProvider),
-  );
-});
+final battleViewModelProvider =
+    StateNotifierProvider.autoDispose<BattleViewModel, BattleState>((ref) {
+      return BattleViewModel(
+        firestoreService: ref.watch(firestoreServiceProvider),
+        analyticsService: ref.watch(analyticsServiceProvider),
+      );
+    });
 
 final leaderboardProvider = FutureProvider.autoDispose<List<User>>((ref) {
   return ref.watch(firestoreServiceProvider).getTopRankedUsers();
@@ -50,14 +63,23 @@ final leaderboardProvider = FutureProvider.autoDispose<List<User>>((ref) {
 final battlePassProvider = FutureProvider.autoDispose<BattlePass?>((ref) async {
   final user = ref.watch(userViewModelProvider).value;
   if (user == null) return null;
-  return ref.watch(firestoreServiceProvider).getBattlePass(user.uid, AppConfig.currentSeasonId);
+  return ref
+      .watch(firestoreServiceProvider)
+      .getBattlePass(user.uid, AppConfig.currentSeasonId);
 });
 
-final friendViewModelProvider = StateNotifierProvider.autoDispose<FriendViewModel, FriendState>((ref) {
-  final userId = ref.watch(userViewModelProvider).value?.uid ?? '';
-  return FriendViewModel(selfUserId: userId, firestoreService: ref.watch(firestoreServiceProvider));
-});
+final friendViewModelProvider =
+    StateNotifierProvider.autoDispose<FriendViewModel, FriendState>((ref) {
+      final userId = ref.watch(userViewModelProvider).value?.uid ?? '';
+      return FriendViewModel(
+        selfUserId: userId,
+        firestoreService: ref.watch(firestoreServiceProvider),
+      );
+    });
 
-final guildViewModelProvider = StateNotifierProvider.autoDispose<GuildViewModel, GuildState>((ref) {
-  return GuildViewModel(firestoreService: ref.watch(firestoreServiceProvider));
-});
+final guildViewModelProvider =
+    StateNotifierProvider.autoDispose<GuildViewModel, GuildState>((ref) {
+      return GuildViewModel(
+        firestoreService: ref.watch(firestoreServiceProvider),
+      );
+    });

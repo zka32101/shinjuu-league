@@ -36,7 +36,9 @@ class BattleScreen extends ConsumerWidget {
         }
       }
 
-      if (next.isFinished && !(previous?.isFinished ?? false) && next.battle != null) {
+      if (next.isFinished &&
+          !(previous?.isFinished ?? false) &&
+          next.battle != null) {
         context.pushReplacement(AppRoutes.result, extra: next.battle);
       }
     });
@@ -48,13 +50,17 @@ class BattleScreen extends ConsumerWidget {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final selfParticipant = engine.participants.firstWhere((p) => p.userId == selfId);
+    final selfParticipant = engine.participants.firstWhere(
+      (p) => p.userId == selfId,
+    );
     final remaining = AppConfig.battleDurationSeconds - state.elapsedSeconds;
 
     return Scaffold(
       appBar: AppBar(
         automaticallyImplyLeading: false,
-        title: Text('残り ${remaining.clamp(0, AppConfig.battleDurationSeconds)}秒'),
+        title: Text(
+          '残り ${remaining.clamp(0, AppConfig.battleDurationSeconds)}秒',
+        ),
       ),
       body: Column(
         children: [
@@ -84,13 +90,20 @@ class BattleScreen extends ConsumerWidget {
                   children: [
                     _StatChip(label: 'キル', value: '${selfParticipant.kills}'),
                     _StatChip(label: 'デス', value: '${selfParticipant.deaths}'),
-                    _StatChip(label: 'アシスト', value: '${selfParticipant.assists}'),
+                    _StatChip(
+                      label: 'アシスト',
+                      value: '${selfParticipant.assists}',
+                    ),
                     _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
                   ],
                 ),
               ),
               // 自分のキル数が増えるたびにパーティクルバーストを再生（Lottie素材追加までの代替演出）
-              ParticleBurst(trigger: selfParticipant.kills, color: Colors.amber, size: 160),
+              ParticleBurst(
+                trigger: selfParticipant.kills,
+                color: Colors.amber,
+                size: 160,
+              ),
             ],
           ),
           Expanded(
@@ -105,7 +118,9 @@ class BattleScreen extends ConsumerWidget {
           Container(
             height: 140,
             padding: const EdgeInsets.all(8),
-            color: Theme.of(context).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            color: Theme.of(
+              context,
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: ListView.builder(
               reverse: true,
               itemCount: state.killFeed.length,
@@ -116,7 +131,9 @@ class BattleScreen extends ConsumerWidget {
                   '${event.attackerId} が ${event.victimId} を撃破',
                   style: TextStyle(
                     fontSize: 12,
-                    fontWeight: isSelfKill ? FontWeight.bold : FontWeight.normal,
+                    fontWeight: isSelfKill
+                        ? FontWeight.bold
+                        : FontWeight.normal,
                   ),
                 );
               },
@@ -137,7 +154,10 @@ class _StatChip extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+        ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );
@@ -151,18 +171,29 @@ class _LaneView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final teamA = engine.participants.where((p) => p.team == 0 && p.lane == lane).toList();
-    final teamB = engine.participants.where((p) => p.team == 1 && p.lane == lane).toList();
+    final teamA = engine.participants
+        .where((p) => p.team == 0 && p.lane == lane)
+        .toList();
+    final teamB = engine.participants
+        .where((p) => p.team == 1 && p.lane == lane)
+        .toList();
 
     return Padding(
       padding: const EdgeInsets.all(8),
       child: Column(
         children: [
-          Text('レーン ${lane + 1}', style: const TextStyle(fontWeight: FontWeight.bold)),
+          Text(
+            'レーン ${lane + 1}',
+            style: const TextStyle(fontWeight: FontWeight.bold),
+          ),
           const SizedBox(height: 8),
-          ...teamA.map((p) => _ParticipantRow(participant: p, color: Colors.blue)),
+          ...teamA.map(
+            (p) => _ParticipantRow(participant: p, color: Colors.blue),
+          ),
           const Divider(),
-          ...teamB.map((p) => _ParticipantRow(participant: p, color: Colors.red)),
+          ...teamB.map(
+            (p) => _ParticipantRow(participant: p, color: Colors.red),
+          ),
         ],
       ),
     );
@@ -188,15 +219,22 @@ class _ParticipantRow extends StatelessWidget {
           const SizedBox(width: 6),
           Expanded(
             child: Text(
-              participant.isSelf ? '自分' : (participant.isBot ? 'Bot' : participant.userId),
+              participant.isSelf
+                  ? '自分'
+                  : (participant.isBot ? 'Bot' : participant.userId),
               style: TextStyle(
                 fontSize: 12,
-                fontWeight: participant.isSelf ? FontWeight.bold : FontWeight.normal,
+                fontWeight: participant.isSelf
+                    ? FontWeight.bold
+                    : FontWeight.normal,
               ),
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          Text('${participant.kills}/${participant.deaths}', style: const TextStyle(fontSize: 11)),
+          Text(
+            '${participant.kills}/${participant.deaths}',
+            style: const TextStyle(fontSize: 11),
+          ),
         ],
       ),
     );

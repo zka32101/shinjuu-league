@@ -22,13 +22,18 @@ class AppTheme {
   static ThemeData _base(Brightness brightness) {
     return ThemeData(
       brightness: brightness,
-      colorScheme: ColorScheme.fromSeed(seedColor: AppColors.seed, brightness: brightness),
+      colorScheme: ColorScheme.fromSeed(
+        seedColor: AppColors.seed,
+        brightness: brightness,
+      ),
       useMaterial3: true,
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           minimumSize: const Size.fromHeight(48),
           padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+          ),
         ),
       ),
     );

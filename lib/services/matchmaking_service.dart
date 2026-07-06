@@ -13,7 +13,7 @@ const _maps = ['map_east_west', 'map_twin_valley'];
 /// ロール自動割当：チーム内で lane を交互に割り当て、初心者でも即戦力になれるようにする。
 class MatchmakingService {
   MatchmakingService({FirebaseFirestore? firestore})
-      : _db = firestore ?? FirebaseFirestore.instance;
+    : _db = firestore ?? FirebaseFirestore.instance;
 
   final FirebaseFirestore _db;
   final _uuid = const Uuid();
@@ -49,13 +49,24 @@ class MatchmakingService {
     );
   }
 
-  Future<List<User>> _searchQueueForOpponents(User currentUser, BattleMode mode) async {
+  Future<List<User>> _searchQueueForOpponents(
+    User currentUser,
+    BattleMode mode,
+  ) async {
     try {
       final snapshot = await _db
           .collection('matchmaking_queue')
           .where('mode', isEqualTo: mode.name)
-          .where('eloRating', isGreaterThanOrEqualTo: currentUser.eloRating - AppConfig.eloRangeDifference)
-          .where('eloRating', isLessThanOrEqualTo: currentUser.eloRating + AppConfig.eloRangeDifference)
+          .where(
+            'eloRating',
+            isGreaterThanOrEqualTo:
+                currentUser.eloRating - AppConfig.eloRangeDifference,
+          )
+          .where(
+            'eloRating',
+            isLessThanOrEqualTo:
+                currentUser.eloRating + AppConfig.eloRangeDifference,
+          )
           .limit(AppConfig.maxPlayersPerTeam)
           .get();
 
@@ -78,26 +89,30 @@ class MatchmakingService {
 
     for (final user in humanUsers) {
       if (participants.length >= AppConfig.maxPlayersPerTeam) break;
-      participants.add(MatchParticipant(
-        userId: user.uid,
-        mechaId: _defaultMechaId,
-        eloRating: user.eloRating,
-        isBot: false,
-        team: team,
-        lane: participants.length % AppConfig.teamsCount,
-      ));
+      participants.add(
+        MatchParticipant(
+          userId: user.uid,
+          mechaId: _defaultMechaId,
+          eloRating: user.eloRating,
+          isBot: false,
+          team: team,
+          lane: participants.length % AppConfig.teamsCount,
+        ),
+      );
     }
 
     while (participants.length < AppConfig.maxPlayersPerTeam) {
       final variance = (_random.nextDouble() * 100) - 50; // ±50
-      participants.add(MatchParticipant(
-        userId: 'bot_${_uuid.v4().substring(0, 8)}',
-        mechaId: _defaultMechaId,
-        eloRating: eloTarget + variance,
-        isBot: true,
-        team: team,
-        lane: participants.length % AppConfig.teamsCount,
-      ));
+      participants.add(
+        MatchParticipant(
+          userId: 'bot_${_uuid.v4().substring(0, 8)}',
+          mechaId: _defaultMechaId,
+          eloRating: eloTarget + variance,
+          isBot: true,
+          team: team,
+          lane: participants.length % AppConfig.teamsCount,
+        ),
+      );
     }
 
     return participants;

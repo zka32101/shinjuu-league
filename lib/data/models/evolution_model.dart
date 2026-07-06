@@ -93,7 +93,11 @@ class Evolution {
       type: type,
       statBoost: json['statBoost'] != null
           ? StatBoost.fromJson(json['statBoost'] as Map<String, dynamic>)
-          : StatBoost(hpMultiplier: 1.0, atkMultiplier: 1.0, spdMultiplier: 1.0),
+          : StatBoost(
+              hpMultiplier: 1.0,
+              atkMultiplier: 1.0,
+              spdMultiplier: 1.0,
+            ),
       description: json['description'] as String? ?? '',
     );
   }

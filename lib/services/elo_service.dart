@@ -19,7 +19,10 @@ class EloService {
     required bool isWin,
     double kFactor = AppConfig.eloKFactor,
   }) {
-    final expected = expectedScore(rating: currentRating, opponentRating: opponentAvgRating);
+    final expected = expectedScore(
+      rating: currentRating,
+      opponentRating: opponentAvgRating,
+    );
     final actual = isWin ? 1.0 : 0.0;
     final change = kFactor * (actual - expected);
     return double.parse(change.toStringAsFixed(2));

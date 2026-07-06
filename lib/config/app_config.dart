@@ -47,19 +47,11 @@ class AppConfig {
   static const String soundsPath = 'assets/sounds/';
 
   // Firebase settings
-  static const bool useFirebaseEmulator = false; // Set to true for local testing
+  static const bool useFirebaseEmulator =
+      false; // Set to true for local testing
 }
 
 // Game constants
-enum GameDifficulty {
-  tutorial,
-  casual,
-  normal,
-  ranked,
-}
+enum GameDifficulty { tutorial, casual, normal, ranked }
 
-enum GameRegion {
-  asia,
-  japan,
-  asiaPacific,
-}
+enum GameRegion { asia, japan, asiaPacific }

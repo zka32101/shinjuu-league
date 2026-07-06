@@ -97,11 +97,31 @@ class Battle {
   });
 
   int get kills => playerStats
-      .firstWhere((p) => p.userId == userId, orElse: () => PlayerStats(userId: userId, mechaId: '', kills: 0, deaths: 0, assists: 0, score: 0))
+      .firstWhere(
+        (p) => p.userId == userId,
+        orElse: () => PlayerStats(
+          userId: userId,
+          mechaId: '',
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          score: 0,
+        ),
+      )
       .kills;
 
   int get deaths => playerStats
-      .firstWhere((p) => p.userId == userId, orElse: () => PlayerStats(userId: userId, mechaId: '', kills: 0, deaths: 0, assists: 0, score: 0))
+      .firstWhere(
+        (p) => p.userId == userId,
+        orElse: () => PlayerStats(
+          userId: userId,
+          mechaId: '',
+          kills: 0,
+          deaths: 0,
+          assists: 0,
+          score: 0,
+        ),
+      )
       .deaths;
 
   bool get isAhaMoment => kills >= 1 && result == BattleResult.pending;
@@ -110,14 +130,17 @@ class Battle {
     return Battle(
       battleId: json['battleId'] as String,
       userId: json['userId'] as String,
-      opponentIds: List<String>.from(json['opponentIds'] as List<dynamic>? ?? []),
+      opponentIds: List<String>.from(
+        json['opponentIds'] as List<dynamic>? ?? [],
+      ),
       mapId: json['mapId'] as String? ?? 'map_01',
       mode: BattleMode.values.firstWhere(
         (e) => e.name == (json['mode'] as String? ?? 'quick'),
         orElse: () => BattleMode.quick,
       ),
       durationSeconds: json['durationSeconds'] as int? ?? 300,
-      playerStats: (json['playerStats'] as List<dynamic>?)
+      playerStats:
+          (json['playerStats'] as List<dynamic>?)
               ?.map((e) => PlayerStats.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
@@ -130,7 +153,9 @@ class Battle {
       startedAt: json['startedAt'] != null
           ? DateTime.parse(json['startedAt'] as String)
           : DateTime.now(),
-      endedAt: json['endedAt'] != null ? DateTime.parse(json['endedAt'] as String) : null,
+      endedAt: json['endedAt'] != null
+          ? DateTime.parse(json['endedAt'] as String)
+          : null,
     );
   }
 

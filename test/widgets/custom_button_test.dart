@@ -24,9 +24,7 @@ void main() {
     testWidgets('onPressed が null の場合はタップしても何も起きない', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(
-          home: Scaffold(
-            body: CustomButton(label: '無効', onPressed: null),
-          ),
+          home: Scaffold(body: CustomButton(label: '無効', onPressed: null)),
         ),
       );
 

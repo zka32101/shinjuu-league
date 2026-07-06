@@ -79,7 +79,9 @@ class User {
       totalBattles: json['totalBattles'] as int? ?? 0,
       gems: json['gems'] as int? ?? 0,
       gold: json['gold'] as int? ?? 0,
-      ownedSkinIds: List<String>.from(json['ownedSkinIds'] as List<dynamic>? ?? []),
+      ownedSkinIds: List<String>.from(
+        json['ownedSkinIds'] as List<dynamic>? ?? [],
+      ),
       hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
       guildId: json['guildId'] as String?,
       createdAt: json['createdAt'] != null

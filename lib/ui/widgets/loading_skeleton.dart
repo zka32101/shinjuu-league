@@ -2,7 +2,12 @@ import 'package:flutter/material.dart';
 
 /// マッチング中などの待機UIで使うシンプルなスケルトンプレースホルダー
 class LoadingSkeleton extends StatefulWidget {
-  const LoadingSkeleton({super.key, this.width, required this.height, this.borderRadius = 8});
+  const LoadingSkeleton({
+    super.key,
+    this.width,
+    required this.height,
+    this.borderRadius = 8,
+  });
 
   final double? width;
   final double height;
@@ -12,7 +17,8 @@ class LoadingSkeleton extends StatefulWidget {
   State<LoadingSkeleton> createState() => _LoadingSkeletonState();
 }
 
-class _LoadingSkeletonState extends State<LoadingSkeleton> with SingleTickerProviderStateMixin {
+class _LoadingSkeletonState extends State<LoadingSkeleton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1200),

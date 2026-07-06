@@ -11,9 +11,7 @@ import 'firebase_options.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
@@ -22,11 +20,7 @@ void main() async {
     return true;
   };
 
-  runApp(
-    const ProviderScope(
-      child: ShinJuuLeagueApp(),
-    ),
-  );
+  runApp(const ProviderScope(child: ShinJuuLeagueApp()));
 }
 
 class ShinJuuLeagueApp extends ConsumerWidget {

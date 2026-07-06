@@ -17,7 +17,11 @@ class ErrorRetryView extends StatelessWidget {
           children: [
             const Icon(Icons.wifi_off, size: 48, color: Colors.grey),
             const SizedBox(height: 12),
-            Text(message, textAlign: TextAlign.center, style: const TextStyle(color: Colors.grey)),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: const TextStyle(color: Colors.grey),
+            ),
             if (onRetry != null) ...[
               const SizedBox(height: 16),
               OutlinedButton.icon(

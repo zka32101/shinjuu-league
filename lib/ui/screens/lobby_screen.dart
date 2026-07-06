@@ -63,26 +63,46 @@ class LobbyScreen extends ConsumerWidget {
                         children: [
                           CircleAvatar(
                             radius: 28,
-                            child: Text(user.name.isNotEmpty ? user.name.substring(0, 1) : '?'),
+                            child: Text(
+                              user.name.isNotEmpty
+                                  ? user.name.substring(0, 1)
+                                  : '?',
+                            ),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(user.name, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+                                Text(
+                                  user.name,
+                                  style: const TextStyle(
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
                                 const SizedBox(height: 4),
-                                Text('Lv.${user.level} ・ Elo ${user.eloRating.toStringAsFixed(0)}'),
-                                Text('勝率 ${(user.winRate * 100).toStringAsFixed(1)}% (${user.totalBattles}戦)'),
+                                Text(
+                                  'Lv.${user.level} ・ Elo ${user.eloRating.toStringAsFixed(0)}',
+                                ),
+                                Text(
+                                  '勝率 ${(user.winRate * 100).toStringAsFixed(1)}% (${user.totalBattles}戦)',
+                                ),
                               ],
                             ),
                           ),
                           Column(
                             crossAxisAlignment: CrossAxisAlignment.end,
                             children: [
-                              _CurrencyChip(icon: Icons.diamond, label: '${user.gems}'),
+                              _CurrencyChip(
+                                icon: Icons.diamond,
+                                label: '${user.gems}',
+                              ),
                               const SizedBox(height: 4),
-                              _CurrencyChip(icon: Icons.monetization_on, label: '${user.gold}'),
+                              _CurrencyChip(
+                                icon: Icons.monetization_on,
+                                label: '${user.gold}',
+                              ),
                             ],
                           ),
                         ],
@@ -101,14 +121,20 @@ class LobbyScreen extends ConsumerWidget {
                   CustomButton(
                     label: 'クイックマッチ',
                     icon: Icons.flash_on,
-                    onPressed: () => context.push(AppRoutes.matching, extra: BattleMode.quick),
+                    onPressed: () => context.push(
+                      AppRoutes.matching,
+                      extra: BattleMode.quick,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   CustomButton(
                     label: 'ランクマッチ',
                     icon: Icons.military_tech,
                     isPrimary: false,
-                    onPressed: () => context.push(AppRoutes.matching, extra: BattleMode.ranked),
+                    onPressed: () => context.push(
+                      AppRoutes.matching,
+                      extra: BattleMode.ranked,
+                    ),
                   ),
                 ],
               ),

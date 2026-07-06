@@ -29,11 +29,17 @@ class SplashScreen extends ConsumerWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Text('神獣リーグ', style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold)),
+            const Text(
+              '神獣リーグ',
+              style: TextStyle(fontSize: 32, fontWeight: FontWeight.bold),
+            ),
             const SizedBox(height: 20),
             const CircularProgressIndicator(),
             const SizedBox(height: 20),
-            Text('v${AppConfig.version}', style: const TextStyle(color: Colors.grey)),
+            Text(
+              'v${AppConfig.version}',
+              style: const TextStyle(color: Colors.grey),
+            ),
           ],
         ),
       ),

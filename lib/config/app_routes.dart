@@ -29,15 +29,25 @@ abstract class AppRoutes {
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
-CustomTransitionPage<T> _buildPage<T>(BuildContext context, GoRouterState state, Widget child) {
+CustomTransitionPage<T> _buildPage<T>(
+  BuildContext context,
+  GoRouterState state,
+  Widget child,
+) {
   return CustomTransitionPage<T>(
     key: state.pageKey,
     child: child,
     transitionDuration: const Duration(milliseconds: 250),
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
       final fade = CurvedAnimation(parent: animation, curve: Curves.easeOut);
-      final slide = Tween<Offset>(begin: const Offset(0, 0.03), end: Offset.zero).animate(fade);
-      return FadeTransition(opacity: fade, child: SlideTransition(position: slide, child: child));
+      final slide = Tween<Offset>(
+        begin: const Offset(0, 0.03),
+        end: Offset.zero,
+      ).animate(fade);
+      return FadeTransition(
+        opacity: fade,
+        child: SlideTransition(position: slide, child: child),
+      );
     },
   );
 }
@@ -45,47 +55,71 @@ CustomTransitionPage<T> _buildPage<T>(BuildContext context, GoRouterState state,
 final appRouter = GoRouter(
   initialLocation: AppRoutes.splash,
   routes: [
-    GoRoute(path: AppRoutes.splash, builder: (context, state) => const SplashScreen()),
+    GoRoute(
+      path: AppRoutes.splash,
+      builder: (context, state) => const SplashScreen(),
+    ),
     GoRoute(
       path: AppRoutes.onboarding,
-      pageBuilder: (context, state) => _buildPage(context, state, const OnboardingScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const OnboardingScreen()),
     ),
     GoRoute(
       path: AppRoutes.lobby,
-      pageBuilder: (context, state) => _buildPage(context, state, const LobbyScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const LobbyScreen()),
     ),
     GoRoute(
       path: AppRoutes.matching,
-      pageBuilder: (context, state) => _buildPage(context, state, MatchingScreen(mode: state.extra as BattleMode)),
+      pageBuilder: (context, state) => _buildPage(
+        context,
+        state,
+        MatchingScreen(mode: state.extra as BattleMode),
+      ),
     ),
     GoRoute(
       path: AppRoutes.evolution,
-      pageBuilder: (context, state) =>
-          _buildPage(context, state, EvolutionSelectScreen(match: state.extra as MatchResult)),
+      pageBuilder: (context, state) => _buildPage(
+        context,
+        state,
+        EvolutionSelectScreen(match: state.extra as MatchResult),
+      ),
     ),
     GoRoute(
       path: AppRoutes.battle,
-      pageBuilder: (context, state) => _buildPage(context, state, BattleScreen(match: state.extra as MatchResult)),
+      pageBuilder: (context, state) => _buildPage(
+        context,
+        state,
+        BattleScreen(match: state.extra as MatchResult),
+      ),
     ),
     GoRoute(
       path: AppRoutes.result,
-      pageBuilder: (context, state) => _buildPage(context, state, ResultScreen(battle: state.extra as Battle)),
+      pageBuilder: (context, state) => _buildPage(
+        context,
+        state,
+        ResultScreen(battle: state.extra as Battle),
+      ),
     ),
     GoRoute(
       path: AppRoutes.rank,
-      pageBuilder: (context, state) => _buildPage(context, state, const RankScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const RankScreen()),
     ),
     GoRoute(
       path: AppRoutes.friends,
-      pageBuilder: (context, state) => _buildPage(context, state, const FriendsScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const FriendsScreen()),
     ),
     GoRoute(
       path: AppRoutes.shop,
-      pageBuilder: (context, state) => _buildPage(context, state, const ShopScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const ShopScreen()),
     ),
     GoRoute(
       path: AppRoutes.battlePass,
-      pageBuilder: (context, state) => _buildPage(context, state, const BattlePassScreen()),
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const BattlePassScreen()),
     ),
   ],
 );

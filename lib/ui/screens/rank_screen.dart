@@ -31,13 +31,26 @@ class RankScreen extends ConsumerWidget {
               final user = users[i];
               final isMe = currentUser != null && user.uid == currentUser.uid;
               return ListTile(
-                tileColor: isMe ? Theme.of(context).colorScheme.primaryContainer.withValues(alpha: 0.3) : null,
+                tileColor: isMe
+                    ? Theme.of(
+                        context,
+                      ).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                    : null,
                 leading: CircleAvatar(
-                  backgroundColor: i < 3 ? AppColors.gold : Theme.of(context).colorScheme.surfaceContainerHighest,
+                  backgroundColor: i < 3
+                      ? AppColors.gold
+                      : Theme.of(context).colorScheme.surfaceContainerHighest,
                   child: Text('${i + 1}'),
                 ),
-                title: Text(user.name, style: TextStyle(fontWeight: isMe ? FontWeight.bold : FontWeight.normal)),
-                subtitle: Text('勝率 ${(user.winRate * 100).toStringAsFixed(1)}%'),
+                title: Text(
+                  user.name,
+                  style: TextStyle(
+                    fontWeight: isMe ? FontWeight.bold : FontWeight.normal,
+                  ),
+                ),
+                subtitle: Text(
+                  '勝率 ${(user.winRate * 100).toStringAsFixed(1)}%',
+                ),
                 trailing: Text(
                   'Elo ${user.eloRating.toStringAsFixed(0)}',
                   style: const TextStyle(fontWeight: FontWeight.bold),

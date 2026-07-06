@@ -30,8 +30,22 @@ void main() {
         result: BattleResult.win,
         eloChange: 12,
         playerStats: [
-          PlayerStats(userId: 'self', mechaId: 'm1', kills: 2, deaths: 1, assists: 0, score: 5),
-          PlayerStats(userId: 'ally_1', mechaId: 'm1', kills: 10, deaths: 0, assists: 2, score: 32),
+          PlayerStats(
+            userId: 'self',
+            mechaId: 'm1',
+            kills: 2,
+            deaths: 1,
+            assists: 0,
+            score: 5,
+          ),
+          PlayerStats(
+            userId: 'ally_1',
+            mechaId: 'm1',
+            kills: 10,
+            deaths: 0,
+            assists: 2,
+            score: 32,
+          ),
         ],
       );
 
@@ -47,7 +61,16 @@ void main() {
       final battle = _testBattle(
         result: BattleResult.win,
         eloChange: 10,
-        playerStats: [PlayerStats(userId: 'self', mechaId: 'm1', kills: 3, deaths: 0, assists: 0, score: 9)],
+        playerStats: [
+          PlayerStats(
+            userId: 'self',
+            mechaId: 'm1',
+            kills: 3,
+            deaths: 0,
+            assists: 0,
+            score: 9,
+          ),
+        ],
       );
 
       final replay = ReplayService().buildReplay(battle);
@@ -59,7 +82,16 @@ void main() {
       final battle = _testBattle(
         result: BattleResult.loss,
         eloChange: -8,
-        playerStats: [PlayerStats(userId: 'self', mechaId: 'm1', kills: 0, deaths: 2, assists: 0, score: -2)],
+        playerStats: [
+          PlayerStats(
+            userId: 'self',
+            mechaId: 'm1',
+            kills: 0,
+            deaths: 2,
+            assists: 0,
+            score: -2,
+          ),
+        ],
       );
 
       final replay = ReplayService().buildReplay(battle);
@@ -73,7 +105,16 @@ void main() {
       final battle = _testBattle(
         result: BattleResult.win,
         eloChange: 15.5,
-        playerStats: [PlayerStats(userId: 'self', mechaId: 'm1', kills: 4, deaths: 1, assists: 0, score: 11)],
+        playerStats: [
+          PlayerStats(
+            userId: 'self',
+            mechaId: 'm1',
+            kills: 4,
+            deaths: 1,
+            assists: 0,
+            score: 11,
+          ),
+        ],
       );
       final replayService = ReplayService();
       final replay = replayService.buildReplay(battle);
@@ -90,7 +131,16 @@ void main() {
       final battle = _testBattle(
         result: BattleResult.loss,
         eloChange: -14.2,
-        playerStats: [PlayerStats(userId: 'self', mechaId: 'm1', kills: 1, deaths: 5, assists: 0, score: -2)],
+        playerStats: [
+          PlayerStats(
+            userId: 'self',
+            mechaId: 'm1',
+            kills: 1,
+            deaths: 5,
+            assists: 0,
+            score: -2,
+          ),
+        ],
       );
       final replayService = ReplayService();
       final replay = replayService.buildReplay(battle);

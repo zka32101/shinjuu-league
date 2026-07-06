@@ -35,10 +35,7 @@ class AnalyticsService {
   Future<void> logBattleWinStreak(String userId, int streakCount) async {
     await _analytics.logEvent(
       name: 'battle_win_streak',
-      parameters: {
-        'user_id': userId,
-        'streak_count': streakCount,
-      },
+      parameters: {'user_id': userId, 'streak_count': streakCount},
     );
   }
 
@@ -46,22 +43,19 @@ class AnalyticsService {
   Future<void> logBattlePassPurchased(String userId, double price) async {
     await _analytics.logEvent(
       name: 'battlepass_purchased',
-      parameters: {
-        'user_id': userId,
-        'price': price,
-      },
+      parameters: {'user_id': userId, 'price': price},
     );
   }
 
   /// Skin/cosmetic purchased
-  Future<void> logSkinPurchased(String userId, String skinId, double price) async {
+  Future<void> logSkinPurchased(
+    String userId,
+    String skinId,
+    double price,
+  ) async {
     await _analytics.logEvent(
       name: 'skin_purchased',
-      parameters: {
-        'user_id': userId,
-        'skin_id': skinId,
-        'price': price,
-      },
+      parameters: {'user_id': userId, 'skin_id': skinId, 'price': price},
     );
   }
 
@@ -79,10 +73,7 @@ class AnalyticsService {
   Future<void> logBattleStart(String userId, String battleMode) async {
     await _analytics.logEvent(
       name: 'battle_start',
-      parameters: {
-        'user_id': userId,
-        'mode': battleMode,
-      },
+      parameters: {'user_id': userId, 'mode': battleMode},
     );
   }
 
@@ -136,10 +127,10 @@ class AnalyticsService {
   // ============ Custom Events ============
 
   /// Log custom event with parameters
-  Future<void> logCustomEvent(String eventName, {Map<String, Object>? parameters}) async {
-    await _analytics.logEvent(
-      name: eventName,
-      parameters: parameters,
-    );
+  Future<void> logCustomEvent(
+    String eventName, {
+    Map<String, Object>? parameters,
+  }) async {
+    await _analytics.logEvent(name: eventName, parameters: parameters);
   }
 }

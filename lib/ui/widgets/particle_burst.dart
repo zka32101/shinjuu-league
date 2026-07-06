@@ -22,7 +22,8 @@ class ParticleBurst extends StatefulWidget {
   State<ParticleBurst> createState() => _ParticleBurstState();
 }
 
-class _ParticleBurstState extends State<ParticleBurst> with SingleTickerProviderStateMixin {
+class _ParticleBurstState extends State<ParticleBurst>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 700),
@@ -74,7 +75,11 @@ class _ParticleBurstState extends State<ParticleBurst> with SingleTickerProvider
 }
 
 class _BurstPainter extends CustomPainter {
-  _BurstPainter({required this.progress, required this.directions, required this.color});
+  _BurstPainter({
+    required this.progress,
+    required this.directions,
+    required this.color,
+  });
 
   final double progress;
   final List<Offset> directions;
@@ -86,7 +91,8 @@ class _BurstPainter extends CustomPainter {
 
     final center = size.center(Offset.zero);
     final maxRadius = size.width / 2;
-    final paint = Paint()..color = color.withValues(alpha: (1 - progress).clamp(0.0, 1.0));
+    final paint = Paint()
+      ..color = color.withValues(alpha: (1 - progress).clamp(0.0, 1.0));
 
     for (final dir in directions) {
       final distance = maxRadius * progress;
@@ -97,5 +103,6 @@ class _BurstPainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(covariant _BurstPainter oldDelegate) => oldDelegate.progress != progress;
+  bool shouldRepaint(covariant _BurstPainter oldDelegate) =>
+      oldDelegate.progress != progress;
 }

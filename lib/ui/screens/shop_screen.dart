@@ -37,9 +37,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     if (package == null) {
       if (!mounted) return;
       setState(() => _isPurchasing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('現在準備中です。今しばらくお待ちください。')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('現在準備中です。今しばらくお待ちください。')));
       return;
     }
 
@@ -54,12 +54,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
       final userViewModel = ref.read(userViewModelProvider.notifier);
       await userViewModel.updateOwnedSkins(updatedSkins);
-      await ref.read(analyticsServiceProvider).logSkinPurchased(userId, skinId, AppConfig.skinPrice);
+      await ref
+          .read(analyticsServiceProvider)
+          .logSkinPurchased(userId, skinId, AppConfig.skinPrice);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('「$skinName」を獲得しました！')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('「$skinName」を獲得しました！')));
     } else if (outcome.isFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
+      );
     }
   }
 
@@ -104,12 +110,13 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   const SizedBox(height: 16),
                   Expanded(
                     child: GridView.builder(
-                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                        crossAxisCount: 2,
-                        mainAxisSpacing: 12,
-                        crossAxisSpacing: 12,
-                        childAspectRatio: 0.9,
-                      ),
+                      gridDelegate:
+                          const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            mainAxisSpacing: 12,
+                            crossAxisSpacing: 12,
+                            childAspectRatio: 0.9,
+                          ),
                       itemCount: _skinPool.length,
                       itemBuilder: (context, i) {
                         final (skinId, skinName) = _skinPool[i];
@@ -123,13 +130,18 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                                 Icon(
                                   owned ? Icons.pets : Icons.help_outline,
                                   size: 48,
-                                  color: owned ? Theme.of(context).colorScheme.primary : Colors.grey,
+                                  color: owned
+                                      ? Theme.of(context).colorScheme.primary
+                                      : Colors.grey,
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
                                   owned ? skinName : '？？？',
                                   textAlign: TextAlign.center,
-                                  style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
                               ],
                             ),

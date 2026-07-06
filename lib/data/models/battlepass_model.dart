@@ -96,7 +96,8 @@ class BattlePass {
       userId: json['userId'] as String,
       progress: json['progress'] as int? ?? 0,
       level: json['level'] as int? ?? 1,
-      claimedRewards: (json['claimedRewards'] as List<dynamic>?)
+      claimedRewards:
+          (json['claimedRewards'] as List<dynamic>?)
               ?.map((e) => BattlePassReward.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],

@@ -26,15 +26,17 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
     final purchasesService = ref.read(purchasesServiceProvider);
     final offerings = await purchasesService.getOfferings();
     final package = offerings?.current?.availablePackages
-        .where((p) => p.storeProduct.identifier == AppConfig.battlePassProductId)
+        .where(
+          (p) => p.storeProduct.identifier == AppConfig.battlePassProductId,
+        )
         .firstOrNull;
 
     if (package == null) {
       if (!mounted) return;
       setState(() => _isPurchasing = false);
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('現在準備中です。今しばらくお待ちください。')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('現在準備中です。今しばらくお待ちください。')));
       return;
     }
 
@@ -56,13 +58,19 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
         endDate: now.add(const Duration(days: 90)),
       );
       await ref.read(firestoreServiceProvider).saveBattlePass(battlePass);
-      await ref.read(analyticsServiceProvider).logBattlePassPurchased(userId, AppConfig.battlePassPrice);
+      await ref
+          .read(analyticsServiceProvider)
+          .logBattlePassPurchased(userId, AppConfig.battlePassPrice);
       ref.invalidate(battlePassProvider);
 
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('プレミアムパスを購入しました！')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('プレミアムパスを購入しました！')));
     } else if (outcome.isFailure) {
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')));
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
+      );
     }
   }
 
@@ -101,11 +109,19 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
                         children: [
                           Row(
                             children: [
-                              const Icon(Icons.workspace_premium, color: AppColors.gold),
+                              const Icon(
+                                Icons.workspace_premium,
+                                color: AppColors.gold,
+                              ),
                               const SizedBox(width: 8),
                               Text(
-                                isPremium ? 'プレミアムパス加入中' : 'シーズン${AppConfig.currentSeasonId}',
-                                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                                isPremium
+                                    ? 'プレミアムパス加入中'
+                                    : 'シーズン${AppConfig.currentSeasonId}',
+                                style: const TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
                               ),
                             ],
                           ),
@@ -128,13 +144,21 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
                         return Card(
                           child: ListTile(
                             leading: Icon(
-                              unlocked ? Icons.check_circle : Icons.lock_outline,
+                              unlocked
+                                  ? Icons.check_circle
+                                  : Icons.lock_outline,
                               color: unlocked ? AppColors.win : Colors.grey,
                             ),
                             title: Text('Tier $tier 報酬'),
-                            subtitle: Text(tier % 3 == 0 ? 'スキン（プレミアム限定）' : 'ジェム・コスメティック'),
+                            subtitle: Text(
+                              tier % 3 == 0 ? 'スキン（プレミアム限定）' : 'ジェム・コスメティック',
+                            ),
                             trailing: tier % 3 == 0 && !isPremium
-                                ? const Icon(Icons.workspace_premium, color: AppColors.gold, size: 18)
+                                ? const Icon(
+                                    Icons.workspace_premium,
+                                    color: AppColors.gold,
+                                    size: 18,
+                                  )
                                 : null,
                           ),
                         );

@@ -27,7 +27,10 @@ void main() {
       final service = MatchmakingService(firestore: FakeFirebaseFirestore());
       final currentUser = _testUser(uid: 'self');
 
-      final match = await service.findMatch(currentUser: currentUser, mode: BattleMode.quick);
+      final match = await service.findMatch(
+        currentUser: currentUser,
+        mode: BattleMode.quick,
+      );
 
       expect(match.teamA.length, AppConfig.maxPlayersPerTeam);
       expect(match.teamB.length, AppConfig.maxPlayersPerTeam);
@@ -40,7 +43,10 @@ void main() {
       final service = MatchmakingService(firestore: FakeFirebaseFirestore());
       final currentUser = _testUser(uid: 'self');
 
-      final match = await service.findMatch(currentUser: currentUser, mode: BattleMode.quick);
+      final match = await service.findMatch(
+        currentUser: currentUser,
+        mode: BattleMode.quick,
+      );
 
       for (var i = 0; i < match.teamA.length; i++) {
         expect(match.teamA[i].lane, i % AppConfig.teamsCount);
@@ -51,7 +57,10 @@ void main() {
       final service = MatchmakingService(firestore: FakeFirebaseFirestore());
       final currentUser = _testUser(uid: 'self', eloRating: 1200);
 
-      final match = await service.findMatch(currentUser: currentUser, mode: BattleMode.ranked);
+      final match = await service.findMatch(
+        currentUser: currentUser,
+        mode: BattleMode.ranked,
+      );
       final bots = [...match.teamA, ...match.teamB].where((p) => p.isBot);
 
       for (final bot in bots) {

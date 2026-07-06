@@ -46,7 +46,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       }
 
       // リプレイ自動生成 → SNSシェアまでノーストレスにするため試合終了直後に生成
-      final replay = await ref.read(replayServiceProvider).generateAndSave(widget.battle);
+      final replay = await ref
+          .read(replayServiceProvider)
+          .generateAndSave(widget.battle);
       if (!mounted) return;
       setState(() {
         _replay = replay;
@@ -58,7 +60,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
   void _shareReplay() {
     final replay = _replay;
     if (replay == null) return;
-    final text = ref.read(replayServiceProvider).buildShareText(widget.battle, replay);
+    final text = ref
+        .read(replayServiceProvider)
+        .buildShareText(widget.battle, replay);
     Share.share(text);
   }
 
@@ -76,7 +80,10 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
     final isSelfMvp = mvp != null && mvp.userId == battle.userId;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('リザルト'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('リザルト'),
+        automaticallyImplyLeading: false,
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -85,12 +92,21 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
               Stack(
                 alignment: Alignment.center,
                 children: [
-                  if (_isWin) ParticleBurst(trigger: _burstTrigger, color: AppColors.gold, size: 200),
+                  if (_isWin)
+                    ParticleBurst(
+                      trigger: _burstTrigger,
+                      color: AppColors.gold,
+                      size: 200,
+                    ),
                   Column(
                     children: [
                       Text(
                         battle.result.displayName,
-                        style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: resultColor),
+                        style: TextStyle(
+                          fontSize: 40,
+                          fontWeight: FontWeight.bold,
+                          color: resultColor,
+                        ),
                       ),
                       const SizedBox(height: 8),
                       Text(
@@ -99,14 +115,26 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                             : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
                         style: TextStyle(
                           fontSize: 18,
-                          color: battle.eloChange >= 0 ? AppColors.win : AppColors.loss,
+                          color: battle.eloChange >= 0
+                              ? AppColors.win
+                              : AppColors.loss,
                         ),
                       ),
                       if (isSelfMvp) ...[
                         const SizedBox(height: 8),
                         Chip(
-                          avatar: const Icon(Icons.star, color: Colors.white, size: 18),
-                          label: const Text('MVP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          avatar: const Icon(
+                            Icons.star,
+                            color: Colors.white,
+                            size: 18,
+                          ),
+                          label: const Text(
+                            'MVP',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
                           backgroundColor: AppColors.gold,
                         ),
                       ],
@@ -139,7 +167,9 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                         )
                       : const Icon(Icons.share),
                   title: const Text('戦績をシェア'),
-                  subtitle: Text(_isGeneratingReplay ? 'リプレイ生成中…' : 'SNSでシェアする'),
+                  subtitle: Text(
+                    _isGeneratingReplay ? 'リプレイ生成中…' : 'SNSでシェアする',
+                  ),
                   enabled: !_isGeneratingReplay,
                   onTap: _isGeneratingReplay ? null : _shareReplay,
                 ),
@@ -166,7 +196,10 @@ class _StatColumn extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
+        ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
     );

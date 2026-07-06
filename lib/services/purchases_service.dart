@@ -9,7 +9,8 @@ class PurchaseOutcome {
 
   factory PurchaseOutcome.success(CustomerInfo info) =>
       PurchaseOutcome._(PurchaseStatus.success, customerInfo: info);
-  factory PurchaseOutcome.cancelled() => const PurchaseOutcome._(PurchaseStatus.cancelled);
+  factory PurchaseOutcome.cancelled() =>
+      const PurchaseOutcome._(PurchaseStatus.cancelled);
   factory PurchaseOutcome.failure(String message) =>
       PurchaseOutcome._(PurchaseStatus.failure, errorMessage: message);
 
@@ -38,7 +39,9 @@ class PurchasesService {
     if (AppConfig.revenueCatApiKey.isEmpty) return;
 
     try {
-      await Purchases.configure(PurchasesConfiguration(AppConfig.revenueCatApiKey));
+      await Purchases.configure(
+        PurchasesConfiguration(AppConfig.revenueCatApiKey),
+      );
       _configured = true;
     } catch (_) {
       // 設定失敗時は課金機能を無効化した状態で継続

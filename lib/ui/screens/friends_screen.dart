@@ -15,7 +15,12 @@ class FriendsScreen extends StatelessWidget {
       child: Scaffold(
         appBar: AppBar(
           title: const Text('フレンド・ギルド'),
-          bottom: const TabBar(tabs: [Tab(text: 'フレンド'), Tab(text: 'ギルド')]),
+          bottom: const TabBar(
+            tabs: [
+              Tab(text: 'フレンド'),
+              Tab(text: 'ギルド'),
+            ],
+          ),
         ),
         body: const TabBarView(children: [_FriendsTab(), _GuildTab()]),
       ),
@@ -41,19 +46,27 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
 
   Future<void> _sendRequest(String selfName, String toUserId) async {
     try {
-      await ref.read(friendViewModelProvider.notifier).sendFriendRequest(selfName, toUserId);
+      await ref
+          .read(friendViewModelProvider.notifier)
+          .sendFriendRequest(selfName, toUserId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('申請に失敗しました: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('申請に失敗しました: $e')));
     }
   }
 
   Future<void> _respond(String requestId, bool accept) async {
     try {
-      await ref.read(friendViewModelProvider.notifier).respondToRequest(requestId, accept);
+      await ref
+          .read(friendViewModelProvider.notifier)
+          .respondToRequest(requestId, accept);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('処理に失敗しました: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('処理に失敗しました: $e')));
     }
   }
 
@@ -62,7 +75,9 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
     final currentUser = ref.watch(userViewModelProvider).value;
     final friendState = ref.watch(friendViewModelProvider);
 
-    if (currentUser == null) return const Center(child: CircularProgressIndicator());
+    if (currentUser == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -77,15 +92,18 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
                   prefixIcon: Icon(Icons.search),
                   border: OutlineInputBorder(),
                 ),
-                onSubmitted: (query) => ref.read(friendViewModelProvider.notifier).searchUsers(query),
+                onSubmitted: (query) => ref
+                    .read(friendViewModelProvider.notifier)
+                    .searchUsers(query),
               ),
             ),
           ],
         ),
-        if (friendState.isSearching) const Padding(
-          padding: EdgeInsets.symmetric(vertical: 16),
-          child: Center(child: CircularProgressIndicator()),
-        ),
+        if (friendState.isSearching)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 16),
+            child: Center(child: CircularProgressIndicator()),
+          ),
         if (friendState.searchResults.isNotEmpty) ...[
           const SizedBox(height: 8),
           const Text('検索結果', style: TextStyle(fontWeight: FontWeight.bold)),
@@ -128,7 +146,9 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
         if (friendState.friends.isEmpty)
           const Padding(
             padding: EdgeInsets.symmetric(vertical: 24),
-            child: Center(child: Text('まだフレンドがいません', style: TextStyle(color: Colors.grey))),
+            child: Center(
+              child: Text('まだフレンドがいません', style: TextStyle(color: Colors.grey)),
+            ),
           )
         else
           ...friendState.friends.map(
@@ -175,37 +195,59 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
     try {
       await ref
           .read(guildViewModelProvider.notifier)
-          .createGuild(name: _nameController.text.trim(), ownerId: user.uid, maxMembers: 30);
+          .createGuild(
+            name: _nameController.text.trim(),
+            ownerId: user.uid,
+            maxMembers: 30,
+          );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ギルド作成に失敗しました: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('ギルド作成に失敗しました: $e')));
     }
   }
 
   Future<void> _leaveGuild(String guildId, String userId) async {
     try {
-      await ref.read(guildViewModelProvider.notifier).leaveGuild(guildId, userId);
+      await ref
+          .read(guildViewModelProvider.notifier)
+          .leaveGuild(guildId, userId);
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('脱退に失敗しました: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('脱退に失敗しました: $e')));
     }
   }
 
-  Future<void> _postMessage(String authorId, String authorName, String message) async {
+  Future<void> _postMessage(
+    String authorId,
+    String authorName,
+    String message,
+  ) async {
     try {
       await ref
           .read(guildViewModelProvider.notifier)
-          .postMessage(authorId: authorId, authorName: authorName, message: message);
+          .postMessage(
+            authorId: authorId,
+            authorName: authorName,
+            message: message,
+          );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
     }
   }
 
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(userViewModelProvider).value;
-    if (currentUser == null) return const Center(child: CircularProgressIndicator());
+    if (currentUser == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
 
     _ensureWatching(currentUser);
     final guildState = ref.watch(guildViewModelProvider);
@@ -222,7 +264,10 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
             const SizedBox(height: 24),
             TextField(
               controller: _nameController,
-              decoration: const InputDecoration(labelText: 'ギルド名', border: OutlineInputBorder()),
+              decoration: const InputDecoration(
+                labelText: 'ギルド名',
+                border: OutlineInputBorder(),
+              ),
             ),
             const SizedBox(height: 12),
             CustomButton(
@@ -248,7 +293,9 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
           child: ListTile(
             leading: const Icon(Icons.groups_2),
             title: Text(guild.name),
-            subtitle: Text('メンバー ${guild.memberIds.length}/${guild.maxMembers}'),
+            subtitle: Text(
+              'メンバー ${guild.memberIds.length}/${guild.maxMembers}',
+            ),
             trailing: TextButton(
               onPressed: () => _leaveGuild(guild.guildId, currentUser.uid),
               child: const Text('脱退'),
@@ -273,13 +320,20 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
               Expanded(
                 child: TextField(
                   controller: _postController,
-                  decoration: const InputDecoration(hintText: '掲示板に投稿', border: OutlineInputBorder()),
+                  decoration: const InputDecoration(
+                    hintText: '掲示板に投稿',
+                    border: OutlineInputBorder(),
+                  ),
                 ),
               ),
               IconButton(
                 icon: const Icon(Icons.send),
                 onPressed: () {
-                  _postMessage(currentUser.uid, currentUser.name, _postController.text);
+                  _postMessage(
+                    currentUser.uid,
+                    currentUser.name,
+                    _postController.text,
+                  );
                   _postController.clear();
                 },
               ),
@@ -302,7 +356,10 @@ class _GuildPostTile extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(post.authorName, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12)),
+          Text(
+            post.authorName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 12),
+          ),
           Text(post.message),
         ],
       ),

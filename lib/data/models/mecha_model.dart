@@ -3,11 +3,7 @@ class BaseStats {
   final int atk;
   final int spd;
 
-  BaseStats({
-    required this.hp,
-    required this.atk,
-    required this.spd,
-  });
+  BaseStats({required this.hp, required this.atk, required this.spd});
 
   factory BaseStats.fromJson(Map<String, dynamic> json) {
     return BaseStats(
@@ -17,11 +13,7 @@ class BaseStats {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'hp': hp,
-    'atk': atk,
-    'spd': spd,
-  };
+  Map<String, dynamic> toJson() => {'hp': hp, 'atk': atk, 'spd': spd};
 }
 
 class Skin {
@@ -107,7 +99,8 @@ class Mecha {
           ? BaseStats.fromJson(json['baseStats'] as Map<String, dynamic>)
           : BaseStats(hp: 100, atk: 50, spd: 40),
       iconUrl: json['iconUrl'] as String,
-      skins: (json['skins'] as List<dynamic>?)
+      skins:
+          (json['skins'] as List<dynamic>?)
               ?.map((e) => Skin.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],

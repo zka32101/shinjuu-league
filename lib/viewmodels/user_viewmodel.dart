@@ -6,12 +6,10 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
 class UserViewModel extends StateNotifier<AsyncValue<User?>> {
-  UserViewModel({
-    FirestoreService? firestoreService,
-    AuthService? authService,
-  }) : _firestoreService = firestoreService ?? FirestoreService(),
-       _authService = authService ?? AuthService(),
-       super(const AsyncValue.loading()) {
+  UserViewModel({FirestoreService? firestoreService, AuthService? authService})
+    : _firestoreService = firestoreService ?? FirestoreService(),
+      _authService = authService ?? AuthService(),
+      super(const AsyncValue.loading()) {
     _init();
   }
 
@@ -26,10 +24,12 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
       return;
     }
 
-    _userSub = _firestoreService.watchUser(uid).listen(
-      (user) => state = AsyncValue.data(user),
-      onError: (Object e, StackTrace st) => state = AsyncValue.error(e, st),
-    );
+    _userSub = _firestoreService
+        .watchUser(uid)
+        .listen(
+          (user) => state = AsyncValue.data(user),
+          onError: (Object e, StackTrace st) => state = AsyncValue.error(e, st),
+        );
   }
 
   /// 試合終了後にELO・勝率・戦績を反映（サーバー側検証済みの eloChange を前提）

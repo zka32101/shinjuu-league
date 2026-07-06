@@ -90,9 +90,7 @@ class FirestoreService {
   Future<List<Mecha>> getAllMechas() async {
     try {
       final snapshot = await _db.collection('mechas').get();
-      return snapshot.docs
-          .map((doc) => Mecha.fromJson(doc.data()))
-          .toList();
+      return snapshot.docs.map((doc) => Mecha.fromJson(doc.data())).toList();
     } catch (e) {
       throw 'Failed to fetch mechas: $e';
     }
@@ -121,7 +119,10 @@ class FirestoreService {
 
   Future<void> updateBattle(Battle battle) async {
     try {
-      await _db.collection('battles').doc(battle.battleId).update(battle.toJson());
+      await _db
+          .collection('battles')
+          .doc(battle.battleId)
+          .update(battle.toJson());
     } catch (e) {
       throw 'Failed to update battle: $e';
     }
@@ -165,20 +166,22 @@ class FirestoreService {
           .limit(limit)
           .get();
 
-      return snapshot.docs
-          .map((doc) => User.fromJson(doc.data()))
-          .toList();
+      return snapshot.docs.map((doc) => User.fromJson(doc.data())).toList();
     } catch (e) {
       throw 'Failed to fetch leaderboard: $e';
     }
   }
 
   // ============ BattlePass Methods ============
-  String _battlePassDocId(String userId, String seasonId) => '${userId}_$seasonId';
+  String _battlePassDocId(String userId, String seasonId) =>
+      '${userId}_$seasonId';
 
   Future<BattlePass?> getBattlePass(String userId, String seasonId) async {
     try {
-      final doc = await _db.collection('battlepasses').doc(_battlePassDocId(userId, seasonId)).get();
+      final doc = await _db
+          .collection('battlepasses')
+          .doc(_battlePassDocId(userId, seasonId))
+          .get();
       if (doc.exists) {
         return BattlePass.fromJson(doc.data() as Map<String, dynamic>);
       }
@@ -215,7 +218,10 @@ class FirestoreService {
         status: FriendRequestStatus.pending,
         createdAt: DateTime.now(),
       );
-      await _db.collection('friend_requests').doc(requestId).set(request.toJson());
+      await _db
+          .collection('friend_requests')
+          .doc(requestId)
+          .set(request.toJson());
     } catch (e) {
       throw 'Failed to send friend request: $e';
     }
@@ -224,7 +230,9 @@ class FirestoreService {
   Future<void> respondToFriendRequest(String requestId, bool accept) async {
     try {
       await _db.collection('friend_requests').doc(requestId).update({
-        'status': accept ? FriendRequestStatus.accepted.name : FriendRequestStatus.rejected.name,
+        'status': accept
+            ? FriendRequestStatus.accepted.name
+            : FriendRequestStatus.rejected.name,
       });
     } catch (e) {
       throw 'Failed to respond to friend request: $e';
@@ -237,7 +245,11 @@ class FirestoreService {
         .where('toUserId', isEqualTo: userId)
         .where('status', isEqualTo: FriendRequestStatus.pending.name)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FriendRequest.fromJson(doc.data())).toList())
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FriendRequest.fromJson(doc.data()))
+              .toList(),
+        )
         .handleError((e) {
           throw 'Failed to watch friend requests: $e';
         });
@@ -248,19 +260,30 @@ class FirestoreService {
         .collection('friend_requests')
         .where(
           Filter.and(
-            Filter.or(Filter('fromUserId', isEqualTo: userId), Filter('toUserId', isEqualTo: userId)),
+            Filter.or(
+              Filter('fromUserId', isEqualTo: userId),
+              Filter('toUserId', isEqualTo: userId),
+            ),
             Filter('status', isEqualTo: FriendRequestStatus.accepted.name),
           ),
         )
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => FriendRequest.fromJson(doc.data())).toList())
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => FriendRequest.fromJson(doc.data()))
+              .toList(),
+        )
         .handleError((e) {
           throw 'Failed to watch friendships: $e';
         });
   }
 
   // ============ Guild Methods ============
-  Future<String> createGuild({required String name, required String ownerId, required int maxMembers}) async {
+  Future<String> createGuild({
+    required String name,
+    required String ownerId,
+    required int maxMembers,
+  }) async {
     try {
       final guildId = _db.collection('guilds').doc().id;
       final guild = Guild(
@@ -316,7 +339,12 @@ class FirestoreService {
 
   Future<void> postToGuildBoard(String guildId, GuildPost post) async {
     try {
-      await _db.collection('guilds').doc(guildId).collection('posts').doc(post.postId).set(post.toJson());
+      await _db
+          .collection('guilds')
+          .doc(guildId)
+          .collection('posts')
+          .doc(post.postId)
+          .set(post.toJson());
     } catch (e) {
       throw 'Failed to post to guild board: $e';
     }
@@ -330,7 +358,11 @@ class FirestoreService {
         .orderBy('createdAt', descending: true)
         .limit(50)
         .snapshots()
-        .map((snapshot) => snapshot.docs.map((doc) => GuildPost.fromJson(doc.data())).toList())
+        .map(
+          (snapshot) => snapshot.docs
+              .map((doc) => GuildPost.fromJson(doc.data()))
+              .toList(),
+        )
         .handleError((e) {
           throw 'Failed to watch guild posts: $e';
         });

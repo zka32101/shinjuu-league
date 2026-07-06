@@ -5,16 +5,27 @@ import 'package:shinjuu_league/data/models/guild_model.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
 class GuildState {
-  const GuildState({required this.guild, required this.posts, required this.isLoading, required this.error});
+  const GuildState({
+    required this.guild,
+    required this.posts,
+    required this.isLoading,
+    required this.error,
+  });
 
-  factory GuildState.initial() => const GuildState(guild: null, posts: [], isLoading: false, error: null);
+  factory GuildState.initial() =>
+      const GuildState(guild: null, posts: [], isLoading: false, error: null);
 
   final Guild? guild;
   final List<GuildPost> posts;
   final bool isLoading;
   final String? error;
 
-  GuildState copyWith({Guild? guild, List<GuildPost>? posts, bool? isLoading, String? error}) {
+  GuildState copyWith({
+    Guild? guild,
+    List<GuildPost>? posts,
+    bool? isLoading,
+    String? error,
+  }) {
     return GuildState(
       guild: guild ?? this.guild,
       posts: posts ?? this.posts,
@@ -46,10 +57,18 @@ class GuildViewModel extends StateNotifier<GuildState> {
     });
   }
 
-  Future<String> createGuild({required String name, required String ownerId, required int maxMembers}) async {
+  Future<String> createGuild({
+    required String name,
+    required String ownerId,
+    required int maxMembers,
+  }) async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final guildId = await _firestoreService.createGuild(name: name, ownerId: ownerId, maxMembers: maxMembers);
+      final guildId = await _firestoreService.createGuild(
+        name: name,
+        ownerId: ownerId,
+        maxMembers: maxMembers,
+      );
       await _firestoreService.updateUserGuildId(ownerId, guildId);
       state = state.copyWith(isLoading: false);
       watchGuild(guildId);
@@ -68,7 +87,11 @@ class GuildViewModel extends StateNotifier<GuildState> {
     state = GuildState.initial();
   }
 
-  Future<void> postMessage({required String authorId, required String authorName, required String message}) async {
+  Future<void> postMessage({
+    required String authorId,
+    required String authorName,
+    required String message,
+  }) async {
     final guild = state.guild;
     if (guild == null || message.trim().isEmpty) return;
 

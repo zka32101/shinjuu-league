@@ -14,7 +14,8 @@ class EvolutionSelectScreen extends ConsumerStatefulWidget {
   final MatchResult match;
 
   @override
-  ConsumerState<EvolutionSelectScreen> createState() => _EvolutionSelectScreenState();
+  ConsumerState<EvolutionSelectScreen> createState() =>
+      _EvolutionSelectScreenState();
 }
 
 class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
@@ -64,7 +65,10 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('試合前進化選択'), automaticallyImplyLeading: false),
+      appBar: AppBar(
+        title: const Text('試合前進化選択'),
+        automaticallyImplyLeading: false,
+      ),
       body: SafeArea(
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -72,17 +76,35 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
             children: [
               Text(
                 '残り $_remainingSeconds 秒',
-                style: TextStyle(fontSize: 16, color: _remainingSeconds <= 3 ? Colors.red : Colors.grey),
+                style: TextStyle(
+                  fontSize: 16,
+                  color: _remainingSeconds <= 3 ? Colors.red : Colors.grey,
+                ),
               ),
               const SizedBox(height: 16),
               Expanded(
                 child: Row(
                   children: [
-                    Expanded(child: _EvolutionCard(evolution: Evolution.attack(), onTap: () => _select(Evolution.attack()))),
+                    Expanded(
+                      child: _EvolutionCard(
+                        evolution: Evolution.attack(),
+                        onTap: () => _select(Evolution.attack()),
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _EvolutionCard(evolution: Evolution.defense(), onTap: () => _select(Evolution.defense()))),
+                    Expanded(
+                      child: _EvolutionCard(
+                        evolution: Evolution.defense(),
+                        onTap: () => _select(Evolution.defense()),
+                      ),
+                    ),
                     const SizedBox(width: 12),
-                    Expanded(child: _EvolutionCard(evolution: Evolution.mobility(), onTap: () => _select(Evolution.mobility()))),
+                    Expanded(
+                      child: _EvolutionCard(
+                        evolution: Evolution.mobility(),
+                        onTap: () => _select(Evolution.mobility()),
+                      ),
+                    ),
                   ],
                 ),
               ),
@@ -116,11 +138,18 @@ class _EvolutionCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(_icon, size: 48, color: Theme.of(context).colorScheme.primary),
+              Icon(
+                _icon,
+                size: 48,
+                color: Theme.of(context).colorScheme.primary,
+              ),
               const SizedBox(height: 16),
               Text(
                 evolution.type.displayName,
-                style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 8),
               Text(

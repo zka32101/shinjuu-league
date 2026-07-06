@@ -17,7 +17,11 @@ class AuthService {
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
   // Sign up with email and password
-  Future<User?> signUpWithEmail(String email, String password, String name) async {
+  Future<User?> signUpWithEmail(
+    String email,
+    String password,
+    String name,
+  ) async {
     try {
       final credential = await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,

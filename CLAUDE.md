@@ -44,14 +44,14 @@
 6. [★ PHASE 6] Aha Moment への最短動線 ✅ 完了（BattleEngine + Elo + Matchmaking）
 7. 各画面View（ロビー・ランク・フレンド等） ✅ 完了（8画面 + go_router）
 8. アニメーション・SE/BGM（複雑な部分はSonnet） ✅ 完了（ハプティクス・ネイティブパーティクル演出・SE骨組み）
-9. 画面遷移・ナビゲーション
-10. ペイウォール（BattlePass・スキンガチャ）
-11. リプレイ生成・シェア ← Sonnet
-12. フレンド・ギルド ← Sonnet
-13. エラーハンドリング（スケルトンUI・ネットワーク）
-14. テスト（unit/widget/integration） 🔄 Battle Engine単体テストのみ実装済み
-15. CI/CD設定（GitHub Actions）
-16. リリース準備（審査対応・段階公開）
+9. 画面遷移・ナビゲーション ✅ 完了（全ルートにフェード+スライド遷移）
+10. ペイウォール（BattlePass・スキンガチャ） ✅ 完了（RevenueCat配線、未設定時は安全にフォールバック）
+11. リプレイ生成・シェア ✅ 完了（Wordle方式のテキストシェア）
+12. フレンド・ギルド ✅ 完了（Firestoreバックエンド + UI）
+13. エラーハンドリング（スケルトンUI・ネットワーク） ✅ 完了（Crashlyticsグローバル捕捉・再試行UI）
+14. テスト（unit/widget/integration） ✅ 完了（19件、Widgetテストで重大バグ発見・修正）
+15. CI/CD設定（GitHub Actions） ✅ 完了
+16. リリース準備（審査対応・段階公開） ⏳ 未着手（機能未完成のため時期尚早）
 ```
 
 ### Step 6 実装内容（2026-07-05, Sonnet実装済み）
@@ -110,6 +110,26 @@
 **未実装（Step 9以降）**:
 - 実際のLottieアニメーションファイル・実音声ファイルの調達/制作（デザイン/サウンド制作の別工程が必要）
 - BGM再生（現状SEのみ配線、BGMループ再生は未実装）
+
+### Step 9-15 実装内容（2026-07-06, Sonnet実装済み）
+
+**Step 9（画面遷移）**: [lib/config/app_routes.dart](lib/config/app_routes.dart) 全ルートを`CustomTransitionPage`化し、フェード+わずかな上スライドで統一。
+
+**Step 10（ペイウォール）**: [lib/services/purchases_service.dart](lib/services/purchases_service.dart) — RevenueCat実配線。App Store Connect/Google Play Console側の商品登録・APIキー発行は未実施のため、`AppConfig.revenueCatApiKey`が空の間は課金機能全体を安全に無効化（「現在準備中です」表示、クラッシュしない）。[battlepass_screen.dart](lib/ui/screens/battlepass_screen.dart)（¥500）・[shop_screen.dart](lib/ui/screens/shop_screen.dart)（スキンガチャ¥300、性能差なしを明示）を実装。報酬/スキンカタログは表示用プレースホルダー（実データはFirestore運用投入待ち）。
+
+**Step 11（リプレイ・シェア）**: [lib/services/replay_service.dart](lib/services/replay_service.dart) — 差別化軸「Wordle方式」に準拠し、動画エンコードではなくテキスト要約シェア（`share_plus`）。試合終了直後に自動生成しノーストレスでシェア可能。
+
+**Step 12（フレンド・ギルド）**: FirestoreService拡張（friend_requests/guildsコレクション）+ [friend_viewmodel.dart](lib/viewmodels/friend_viewmodel.dart) / [guild_viewmodel.dart](lib/viewmodels/guild_viewmodel.dart)。ユーザー検索→申請→承認、ギルド作成→簡易掲示板まで実動作。`User.guildId`はcopyWithでnull化できないため`updateUserGuildId()`で直接更新する設計。
+
+**Step 13（エラーハンドリング）**: `firebase_crashlytics`がStep3から依存関係にあったが**一度もグローバルエラー捕捉に配線されていなかった**バグを発見・修正（`main.dart`に`FlutterError.onError`/`PlatformDispatcher.onError`追加）。[error_retry_view.dart](lib/ui/widgets/error_retry_view.dart)を全画面のエラー表示に統一、`ref.invalidate()`で再試行可能に。
+
+**Step 14（テスト拡充）**: `fake_cloud_firestore`導入。MatchmakingService/ReplayServiceの単体テスト、CustomButton/ErrorRetryViewのWidgetテストを追加（計19件）。**この過程で2件の実バグを発見・修正**:
+1. **重大**: `CustomButton`の`GestureDetector`が`IgnorePointer`配下の子に依存する`deferToChild`（デフォルト）挙動のため、**アプリ全体であらゆるボタンタップが機能しない**状態だった（Step 8のバウンス演出追加時に混入、`dart analyze`+ロジックテストのみでは検出不可）。`HitTestBehavior.opaque`で修正。
+2. `ReplayService`のコンストラクタが`FirestoreService()`（Firebase必須シングルトン）を即座に生成しており、純粋関数のテストがFirebase初期化なしでは実行不可だった。遅延初期化に変更。
+
+**Step 15（CI/CD）**: [.github/workflows/ci.yml](.github/workflows/ci.yml) — push/PR時に`dart format`チェック→`flutter analyze`→`flutter test`を実行。導入前に全コードへ`dart format`を適用済み。
+
+**Step 16（リリース準備）は意図的に未着手**: Mecha選択画面・実アセット（Lottie/SE/BGM）・実RevenueCat商品登録など、ユーザー向けに完成していない機能が複数残っているため時期尚早と判断。
 
 ---
 

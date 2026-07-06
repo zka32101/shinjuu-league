@@ -48,9 +48,12 @@ class BattleParticipantState {
     this.evolution,
   });
 
-  double get effectiveAtk => baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
-  double get effectiveHp => baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
-  double get effectiveSpd => baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
+  double get effectiveAtk =>
+      baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
+  double get effectiveHp =>
+      baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
+  double get effectiveSpd =>
+      baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
 
   int get score => kills * 3 + assists - deaths;
 
@@ -100,7 +103,9 @@ class BattleEngine {
   int get remainingSeconds => durationSeconds - _elapsedSeconds;
 
   void setEvolution(String userId, Evolution evolution) {
-    final participant = participants.where((p) => p.userId == userId).firstOrNull;
+    final participant = participants
+        .where((p) => p.userId == userId)
+        .firstOrNull;
     participant?.evolution = evolution;
   }
 
@@ -144,8 +149,12 @@ class BattleEngine {
 
   void _resolveEngagements() {
     for (var lane = 0; lane < AppConfig.teamsCount; lane++) {
-      final teamAAlive = participants.where((p) => p.team == 0 && p.lane == lane && p.isAlive).toList();
-      final teamBAlive = participants.where((p) => p.team == 1 && p.lane == lane && p.isAlive).toList();
+      final teamAAlive = participants
+          .where((p) => p.team == 0 && p.lane == lane && p.isAlive)
+          .toList();
+      final teamBAlive = participants
+          .where((p) => p.team == 1 && p.lane == lane && p.isAlive)
+          .toList();
 
       if (teamAAlive.isEmpty || teamBAlive.isEmpty) continue;
 
@@ -154,7 +163,10 @@ class BattleEngine {
         if (_random.nextDouble() > _engagementChancePerTick) continue;
         final aliveDefenders = teamBAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
-        _resolveDuel(attacker, aliveDefenders[_random.nextInt(aliveDefenders.length)]);
+        _resolveDuel(
+          attacker,
+          aliveDefenders[_random.nextInt(aliveDefenders.length)],
+        );
       }
 
       for (final attacker in teamBAlive) {
@@ -162,17 +174,27 @@ class BattleEngine {
         if (_random.nextDouble() > _engagementChancePerTick) continue;
         final aliveDefenders = teamAAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
-        _resolveDuel(attacker, aliveDefenders[_random.nextInt(aliveDefenders.length)]);
+        _resolveDuel(
+          attacker,
+          aliveDefenders[_random.nextInt(aliveDefenders.length)],
+        );
       }
     }
   }
 
-  void _resolveDuel(BattleParticipantState attacker, BattleParticipantState defender) {
+  void _resolveDuel(
+    BattleParticipantState attacker,
+    BattleParticipantState defender,
+  ) {
     if (!attacker.isAlive || !defender.isAlive) return;
 
     final attackPower = attacker.effectiveAtk;
-    final defensePower = defender.effectiveHp * 0.5 + defender.effectiveSpd * 0.3;
-    final winChance = (attackPower / (attackPower + defensePower)).clamp(0.15, 0.85);
+    final defensePower =
+        defender.effectiveHp * 0.5 + defender.effectiveSpd * 0.3;
+    final winChance = (attackPower / (attackPower + defensePower)).clamp(
+      0.15,
+      0.85,
+    );
 
     final BattleParticipantState winner;
     final BattleParticipantState loser;
@@ -189,20 +211,27 @@ class BattleEngine {
     loser.isAlive = false;
     loser.respawnAtSecond = _elapsedSeconds + _respawnDelaySeconds;
 
-    _combatController.add(CombatEvent(
-      attackerId: winner.userId,
-      victimId: loser.userId,
-      tickSecond: _elapsedSeconds,
-    ));
+    _combatController.add(
+      CombatEvent(
+        attackerId: winner.userId,
+        victimId: loser.userId,
+        tickSecond: _elapsedSeconds,
+      ),
+    );
   }
 
-  List<PlayerStats> buildPlayerStats() => participants.map((p) => p.toPlayerStats()).toList();
+  List<PlayerStats> buildPlayerStats() =>
+      participants.map((p) => p.toPlayerStats()).toList();
 
   /// チーム合計スコアで勝敗判定。同点は引き分けなしのランダム決着（MOBAは必ず勝敗をつける）。
   BattleResult resultForUser(String userId) {
     final participant = participants.firstWhere((p) => p.userId == userId);
-    final ownScore = participants.where((p) => p.team == participant.team).fold<int>(0, (s, p) => s + p.score);
-    final enemyScore = participants.where((p) => p.team != participant.team).fold<int>(0, (s, p) => s + p.score);
+    final ownScore = participants
+        .where((p) => p.team == participant.team)
+        .fold<int>(0, (s, p) => s + p.score);
+    final enemyScore = participants
+        .where((p) => p.team != participant.team)
+        .fold<int>(0, (s, p) => s + p.score);
 
     if (ownScore == enemyScore) {
       return _random.nextBool() ? BattleResult.win : BattleResult.loss;

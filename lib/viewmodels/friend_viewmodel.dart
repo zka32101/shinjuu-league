@@ -45,9 +45,11 @@ class FriendState {
 }
 
 class FriendViewModel extends StateNotifier<FriendState> {
-  FriendViewModel({required this.selfUserId, FirestoreService? firestoreService})
-    : _firestoreService = firestoreService ?? FirestoreService(),
-      super(FriendState.initial()) {
+  FriendViewModel({
+    required this.selfUserId,
+    FirestoreService? firestoreService,
+  }) : _firestoreService = firestoreService ?? FirestoreService(),
+       super(FriendState.initial()) {
     _init();
   }
 
@@ -57,13 +59,21 @@ class FriendViewModel extends StateNotifier<FriendState> {
   StreamSubscription<List<FriendRequest>>? _friendshipsSub;
 
   void _init() {
-    _incomingSub = _firestoreService.watchIncomingRequests(selfUserId).listen((requests) {
+    _incomingSub = _firestoreService.watchIncomingRequests(selfUserId).listen((
+      requests,
+    ) {
       state = state.copyWith(incomingRequests: requests);
     });
 
-    _friendshipsSub = _firestoreService.watchFriendships(selfUserId).listen((friendships) async {
-      final friendUserIds = friendships.map((f) => f.otherUserId(selfUserId)).toList();
-      final friends = await Future.wait(friendUserIds.map((id) => _firestoreService.getUserById(id)));
+    _friendshipsSub = _firestoreService.watchFriendships(selfUserId).listen((
+      friendships,
+    ) async {
+      final friendUserIds = friendships
+          .map((f) => f.otherUserId(selfUserId))
+          .toList();
+      final friends = await Future.wait(
+        friendUserIds.map((id) => _firestoreService.getUserById(id)),
+      );
       state = state.copyWith(friends: friends.whereType<User>().toList());
     });
   }
@@ -72,7 +82,10 @@ class FriendViewModel extends StateNotifier<FriendState> {
     state = state.copyWith(isSearching: true, error: null);
     try {
       final results = await _firestoreService.searchUsersByName(query);
-      state = state.copyWith(isSearching: false, searchResults: results.where((u) => u.uid != selfUserId).toList());
+      state = state.copyWith(
+        isSearching: false,
+        searchResults: results.where((u) => u.uid != selfUserId).toList(),
+      );
     } catch (e) {
       state = state.copyWith(isSearching: false, error: '$e');
     }

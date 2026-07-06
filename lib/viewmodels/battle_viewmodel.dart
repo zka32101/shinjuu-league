@@ -81,10 +81,12 @@ class BattleState {
 /// Vision 直結: Aha Moment（初回1キル達成）検知はキルイベント発生と同フレームで確定させる。
 /// バトル終了を待たず `ahaMomentReached` を即時 true にし、Analytics へも即送信する。
 class BattleViewModel extends StateNotifier<BattleState> {
-  BattleViewModel({FirestoreService? firestoreService, AnalyticsService? analyticsService})
-    : _firestoreService = firestoreService ?? FirestoreService(),
-      _analyticsService = analyticsService ?? AnalyticsService(),
-      super(BattleState.initial());
+  BattleViewModel({
+    FirestoreService? firestoreService,
+    AnalyticsService? analyticsService,
+  }) : _firestoreService = firestoreService ?? FirestoreService(),
+       _analyticsService = analyticsService ?? AnalyticsService(),
+       super(BattleState.initial());
 
   final FirestoreService _firestoreService;
   final AnalyticsService _analyticsService;
@@ -99,12 +101,18 @@ class BattleViewModel extends StateNotifier<BattleState> {
   /// 進化選択画面で呼び出す：エンジンとバトル記録を用意するが、まだ交戦は開始しない。
   /// evolution ロック（[lockEvolution]）→ [beginCombat] の順で呼び出すことで、
   /// 進化ステータスが初手ティックから確実に反映される（試合前進化選択の遅延排除仕様）。
-  Future<void> prepareBattle(MatchResult match, String selfUserId, double selfEloAtStart) async {
+  Future<void> prepareBattle(
+    MatchResult match,
+    String selfUserId,
+    double selfEloAtStart,
+  ) async {
     state = state.copyWith(isLoading: true, error: null);
 
     _selfUserId = selfUserId;
     _selfEloAtStart = selfEloAtStart;
-    _opponentAvgElo = EloService.averageRating(match.teamB.map((p) => p.eloRating).toList());
+    _opponentAvgElo = EloService.averageRating(
+      match.teamB.map((p) => p.eloRating).toList(),
+    );
 
     final participants = match.allParticipants
         .map(
@@ -155,7 +163,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
     if (engine == null || state.isEvolutionLocked) return;
 
     engine.setEvolution(_selfUserId, evolution);
-    state = state.copyWith(selectedEvolution: evolution, isEvolutionLocked: true);
+    state = state.copyWith(
+      selectedEvolution: evolution,
+      isEvolutionLocked: true,
+    );
   }
 
   /// 進化ロック後に交戦シミュレーションを開始する

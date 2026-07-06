@@ -37,7 +37,10 @@ void main() {
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 9999, spd: 40),
       );
-      final enemies = List.generate(4, (i) => _participant(userId: 'enemy_$i', team: 1));
+      final enemies = List.generate(
+        4,
+        (i) => _participant(userId: 'enemy_$i', team: 1),
+      );
 
       final engine = BattleEngine(
         battleId: 'test_battle',

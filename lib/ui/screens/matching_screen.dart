@@ -25,7 +25,9 @@ class _MatchingScreenState extends ConsumerState<MatchingScreen> {
   void _startMatching() {
     final currentUser = ref.read(userViewModelProvider).value;
     if (currentUser == null) return;
-    ref.read(matchingViewModelProvider.notifier).startMatching(currentUser, widget.mode);
+    ref
+        .read(matchingViewModelProvider.notifier)
+        .startMatching(currentUser, widget.mode);
   }
 
   @override
@@ -51,17 +53,29 @@ class _MatchingScreenState extends ConsumerState<MatchingScreen> {
                 const SizedBox(height: 24),
                 CustomButton(label: 'ロビーへ戻る', onPressed: () => context.pop()),
               ] else ...[
-                const LoadingSkeleton(width: 120, height: 120, borderRadius: 60),
+                const LoadingSkeleton(
+                  width: 120,
+                  height: 120,
+                  borderRadius: 60,
+                ),
                 const SizedBox(height: 24),
-                Text('対戦相手を探しています…', style: Theme.of(context).textTheme.titleMedium),
+                Text(
+                  '対戦相手を探しています…',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
                 const SizedBox(height: 8),
-                Text('${state.elapsedSeconds}秒経過', style: const TextStyle(color: Colors.grey)),
+                Text(
+                  '${state.elapsedSeconds}秒経過',
+                  style: const TextStyle(color: Colors.grey),
+                ),
                 const SizedBox(height: 32),
                 CustomButton(
                   label: 'キャンセル',
                   isPrimary: false,
                   onPressed: () {
-                    ref.read(matchingViewModelProvider.notifier).cancelMatching();
+                    ref
+                        .read(matchingViewModelProvider.notifier)
+                        .cancelMatching();
                     context.pop();
                   },
                 ),

@@ -7,19 +7,24 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 /// 動画/サムネイル生成（videoUrl/thumbnailUrl）は将来的な拡張ポイントとして
 /// Replayモデル側にフィールドのみ用意してある。
 class ReplayService {
-  ReplayService({FirestoreService? firestoreService}) : _firestoreServiceOverride = firestoreService;
+  ReplayService({FirestoreService? firestoreService})
+    : _firestoreServiceOverride = firestoreService;
 
   // FirestoreService() はシングルトン初期化時に FirebaseFirestore.instance に触れるため、
   // buildReplay/buildShareText のような純粋関数のみを使うテストで Firebase 初期化が
   // 不要になるよう、実際に Firestore へアクセスするまで生成を遅延する。
   final FirestoreService? _firestoreServiceOverride;
-  FirestoreService get _firestoreService => _firestoreServiceOverride ?? FirestoreService();
+  FirestoreService get _firestoreService =>
+      _firestoreServiceOverride ?? FirestoreService();
 
   Replay buildReplay(Battle battle) {
     final mvp = battle.playerStats.isEmpty
         ? null
         : battle.playerStats.reduce((a, b) => a.score >= b.score ? a : b);
-    final totalScore = battle.playerStats.fold<int>(0, (sum, p) => sum + p.score);
+    final totalScore = battle.playerStats.fold<int>(
+      0,
+      (sum, p) => sum + p.score,
+    );
 
     return Replay(
       replayId: 'replay_${battle.battleId}',

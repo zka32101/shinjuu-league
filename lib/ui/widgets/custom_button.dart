@@ -25,7 +25,8 @@ class CustomButton extends StatefulWidget {
   State<CustomButton> createState() => _CustomButtonState();
 }
 
-class _CustomButtonState extends State<CustomButton> with SingleTickerProviderStateMixin {
+class _CustomButtonState extends State<CustomButton>
+    with SingleTickerProviderStateMixin {
   late final AnimationController _controller = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 100),
@@ -65,14 +66,26 @@ class _CustomButtonState extends State<CustomButton> with SingleTickerProviderSt
         ? const SizedBox(
             width: 20,
             height: 20,
-            child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Colors.white,
+            ),
           )
         : Row(
             mainAxisSize: MainAxisSize.min,
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              if (widget.icon != null) ...[Icon(widget.icon, size: 20), const SizedBox(width: 8)],
-              Text(widget.label, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600)),
+              if (widget.icon != null) ...[
+                Icon(widget.icon, size: 20),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                widget.label,
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           );
 
@@ -96,8 +109,14 @@ class _CustomButtonState extends State<CustomButton> with SingleTickerProviderSt
           width: double.infinity,
           child: IgnorePointer(
             child: widget.isPrimary
-                ? ElevatedButton(onPressed: _isEnabled ? () {} : null, child: child)
-                : OutlinedButton(onPressed: _isEnabled ? () {} : null, child: child),
+                ? ElevatedButton(
+                    onPressed: _isEnabled ? () {} : null,
+                    child: child,
+                  )
+                : OutlinedButton(
+                    onPressed: _isEnabled ? () {} : null,
+                    child: child,
+                  ),
           ),
         ),
       ),
