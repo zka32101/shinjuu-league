@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
 /// 表示用のスキンプール（本物のMecha/スキンカタログはFirestore側の運用データ投入待ち）
 const _skinPool = [
@@ -70,7 +71,10 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       appBar: AppBar(title: const Text('スキンショップ')),
       body: userAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('読み込みエラー: $e')),
+        error: (e, _) => ErrorRetryView(
+          message: 'ユーザー情報の読み込みに失敗しました\n$e',
+          onRetry: () => ref.invalidate(userViewModelProvider),
+        ),
         data: (user) {
           if (user == null) return const Center(child: Text('ユーザー情報が見つかりません'));
 

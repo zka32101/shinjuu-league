@@ -39,6 +39,24 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
     super.dispose();
   }
 
+  Future<void> _sendRequest(String selfName, String toUserId) async {
+    try {
+      await ref.read(friendViewModelProvider.notifier).sendFriendRequest(selfName, toUserId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('申請に失敗しました: $e')));
+    }
+  }
+
+  Future<void> _respond(String requestId, bool accept) async {
+    try {
+      await ref.read(friendViewModelProvider.notifier).respondToRequest(requestId, accept);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('処理に失敗しました: $e')));
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentUser = ref.watch(userViewModelProvider).value;
@@ -76,9 +94,7 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
               leading: const Icon(Icons.person),
               title: Text(user.name),
               trailing: TextButton(
-                onPressed: () => ref
-                    .read(friendViewModelProvider.notifier)
-                    .sendFriendRequest(currentUser.name, user.uid),
+                onPressed: () => _sendRequest(currentUser.name, user.uid),
                 child: const Text('申請'),
               ),
             ),
@@ -96,11 +112,11 @@ class _FriendsTabState extends ConsumerState<_FriendsTab> {
                 children: [
                   IconButton(
                     icon: const Icon(Icons.check, color: Colors.green),
-                    onPressed: () => ref.read(friendViewModelProvider.notifier).respondToRequest(req.requestId, true),
+                    onPressed: () => _respond(req.requestId, true),
                   ),
                   IconButton(
                     icon: const Icon(Icons.close, color: Colors.red),
-                    onPressed: () => ref.read(friendViewModelProvider.notifier).respondToRequest(req.requestId, false),
+                    onPressed: () => _respond(req.requestId, false),
                   ),
                 ],
               ),
@@ -156,9 +172,34 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
 
   Future<void> _createGuild(User user) async {
     if (_nameController.text.trim().isEmpty) return;
-    await ref
-        .read(guildViewModelProvider.notifier)
-        .createGuild(name: _nameController.text.trim(), ownerId: user.uid, maxMembers: 30);
+    try {
+      await ref
+          .read(guildViewModelProvider.notifier)
+          .createGuild(name: _nameController.text.trim(), ownerId: user.uid, maxMembers: 30);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('ギルド作成に失敗しました: $e')));
+    }
+  }
+
+  Future<void> _leaveGuild(String guildId, String userId) async {
+    try {
+      await ref.read(guildViewModelProvider.notifier).leaveGuild(guildId, userId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('脱退に失敗しました: $e')));
+    }
+  }
+
+  Future<void> _postMessage(String authorId, String authorName, String message) async {
+    try {
+      await ref
+          .read(guildViewModelProvider.notifier)
+          .postMessage(authorId: authorId, authorName: authorName, message: message);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('投稿に失敗しました: $e')));
+    }
   }
 
   @override
@@ -209,9 +250,7 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
             title: Text(guild.name),
             subtitle: Text('メンバー ${guild.memberIds.length}/${guild.maxMembers}'),
             trailing: TextButton(
-              onPressed: () => ref
-                  .read(guildViewModelProvider.notifier)
-                  .leaveGuild(guild.guildId, currentUser.uid),
+              onPressed: () => _leaveGuild(guild.guildId, currentUser.uid),
               child: const Text('脱退'),
             ),
           ),
@@ -240,11 +279,7 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
               IconButton(
                 icon: const Icon(Icons.send),
                 onPressed: () {
-                  ref.read(guildViewModelProvider.notifier).postMessage(
-                    authorId: currentUser.uid,
-                    authorName: currentUser.name,
-                    message: _postController.text,
-                  );
+                  _postMessage(currentUser.uid, currentUser.name, _postController.text);
                   _postController.clear();
                 },
               ),

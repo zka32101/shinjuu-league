@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
 class RankScreen extends ConsumerWidget {
   const RankScreen({super.key});
@@ -15,7 +16,10 @@ class RankScreen extends ConsumerWidget {
       appBar: AppBar(title: const Text('ランキング')),
       body: leaderboardAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('読み込みエラー: $e')),
+        error: (e, _) => ErrorRetryView(
+          message: 'ランキングの読み込みに失敗しました\n$e',
+          onRetry: () => ref.invalidate(leaderboardProvider),
+        ),
         data: (users) {
           if (users.isEmpty) {
             return const Center(child: Text('まだランキングデータがありません'));

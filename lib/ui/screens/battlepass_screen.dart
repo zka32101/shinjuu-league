@@ -5,6 +5,7 @@ import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
 /// 表示用の報酬トラック（本物のシーズン報酬データはFirestore側の運用データ投入待ち）
 const _rewardTiers = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
@@ -74,7 +75,10 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
       appBar: AppBar(title: const Text('バトルパス')),
       body: userAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('読み込みエラー: $e')),
+        error: (e, _) => ErrorRetryView(
+          message: 'ユーザー情報の読み込みに失敗しました\n$e',
+          onRetry: () => ref.invalidate(userViewModelProvider),
+        ),
         data: (user) {
           if (user == null) return const Center(child: Text('ユーザー情報が見つかりません'));
 
