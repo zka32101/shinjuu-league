@@ -9,6 +9,8 @@ import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
+import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
+import 'package:shinjuu_league/viewmodels/guild_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/matching_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
 
@@ -49,4 +51,13 @@ final battlePassProvider = FutureProvider.autoDispose<BattlePass?>((ref) async {
   final user = ref.watch(userViewModelProvider).value;
   if (user == null) return null;
   return ref.watch(firestoreServiceProvider).getBattlePass(user.uid, AppConfig.currentSeasonId);
+});
+
+final friendViewModelProvider = StateNotifierProvider.autoDispose<FriendViewModel, FriendState>((ref) {
+  final userId = ref.watch(userViewModelProvider).value?.uid ?? '';
+  return FriendViewModel(selfUserId: userId, firestoreService: ref.watch(firestoreServiceProvider));
+});
+
+final guildViewModelProvider = StateNotifierProvider.autoDispose<GuildViewModel, GuildState>((ref) {
+  return GuildViewModel(firestoreService: ref.watch(firestoreServiceProvider));
 });

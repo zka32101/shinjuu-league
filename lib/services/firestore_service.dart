@@ -2,6 +2,8 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
+import 'package:shinjuu_league/data/models/friend_model.dart';
+import 'package:shinjuu_league/data/models/guild_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/models/replay_model.dart';
 
@@ -59,6 +61,29 @@ class FirestoreService {
         .handleError((e) {
           throw 'Failed to watch user: $e';
         });
+  }
+
+  Future<List<User>> searchUsersByName(String query) async {
+    if (query.isEmpty) return [];
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .where('name', isGreaterThanOrEqualTo: query)
+          .where('name', isLessThan: '$query')
+          .limit(20)
+          .get();
+      return snapshot.docs.map((doc) => User.fromJson(doc.data())).toList();
+    } catch (e) {
+      throw 'Failed to search users: $e';
+    }
+  }
+
+  Future<void> updateUserGuildId(String userId, String? guildId) async {
+    try {
+      await _db.collection('users').doc(userId).update({'guildId': guildId});
+    } catch (e) {
+      throw 'Failed to update guild membership: $e';
+    }
   }
 
   // ============ Mecha Methods ============
@@ -172,6 +197,143 @@ class FirestoreService {
     } catch (e) {
       throw 'Failed to save battle pass: $e';
     }
+  }
+
+  // ============ Friend Methods ============
+  Future<void> sendFriendRequest({
+    required String fromUserId,
+    required String fromUserName,
+    required String toUserId,
+  }) async {
+    try {
+      final requestId = '${fromUserId}_$toUserId';
+      final request = FriendRequest(
+        requestId: requestId,
+        fromUserId: fromUserId,
+        fromUserName: fromUserName,
+        toUserId: toUserId,
+        status: FriendRequestStatus.pending,
+        createdAt: DateTime.now(),
+      );
+      await _db.collection('friend_requests').doc(requestId).set(request.toJson());
+    } catch (e) {
+      throw 'Failed to send friend request: $e';
+    }
+  }
+
+  Future<void> respondToFriendRequest(String requestId, bool accept) async {
+    try {
+      await _db.collection('friend_requests').doc(requestId).update({
+        'status': accept ? FriendRequestStatus.accepted.name : FriendRequestStatus.rejected.name,
+      });
+    } catch (e) {
+      throw 'Failed to respond to friend request: $e';
+    }
+  }
+
+  Stream<List<FriendRequest>> watchIncomingRequests(String userId) {
+    return _db
+        .collection('friend_requests')
+        .where('toUserId', isEqualTo: userId)
+        .where('status', isEqualTo: FriendRequestStatus.pending.name)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => FriendRequest.fromJson(doc.data())).toList())
+        .handleError((e) {
+          throw 'Failed to watch friend requests: $e';
+        });
+  }
+
+  Stream<List<FriendRequest>> watchFriendships(String userId) {
+    return _db
+        .collection('friend_requests')
+        .where(
+          Filter.and(
+            Filter.or(Filter('fromUserId', isEqualTo: userId), Filter('toUserId', isEqualTo: userId)),
+            Filter('status', isEqualTo: FriendRequestStatus.accepted.name),
+          ),
+        )
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => FriendRequest.fromJson(doc.data())).toList())
+        .handleError((e) {
+          throw 'Failed to watch friendships: $e';
+        });
+  }
+
+  // ============ Guild Methods ============
+  Future<String> createGuild({required String name, required String ownerId, required int maxMembers}) async {
+    try {
+      final guildId = _db.collection('guilds').doc().id;
+      final guild = Guild(
+        guildId: guildId,
+        name: name,
+        ownerId: ownerId,
+        memberIds: [ownerId],
+        maxMembers: maxMembers,
+        createdAt: DateTime.now(),
+      );
+      await _db.collection('guilds').doc(guildId).set(guild.toJson());
+      return guildId;
+    } catch (e) {
+      throw 'Failed to create guild: $e';
+    }
+  }
+
+  Stream<Guild?> watchGuild(String guildId) {
+    return _db
+        .collection('guilds')
+        .doc(guildId)
+        .snapshots()
+        .map((snapshot) {
+          if (snapshot.exists) {
+            return Guild.fromJson(snapshot.data() as Map<String, dynamic>);
+          }
+          return null;
+        })
+        .handleError((e) {
+          throw 'Failed to watch guild: $e';
+        });
+  }
+
+  Future<void> joinGuild(String guildId, String userId) async {
+    try {
+      await _db.collection('guilds').doc(guildId).update({
+        'memberIds': FieldValue.arrayUnion([userId]),
+      });
+    } catch (e) {
+      throw 'Failed to join guild: $e';
+    }
+  }
+
+  Future<void> leaveGuild(String guildId, String userId) async {
+    try {
+      await _db.collection('guilds').doc(guildId).update({
+        'memberIds': FieldValue.arrayRemove([userId]),
+      });
+    } catch (e) {
+      throw 'Failed to leave guild: $e';
+    }
+  }
+
+  Future<void> postToGuildBoard(String guildId, GuildPost post) async {
+    try {
+      await _db.collection('guilds').doc(guildId).collection('posts').doc(post.postId).set(post.toJson());
+    } catch (e) {
+      throw 'Failed to post to guild board: $e';
+    }
+  }
+
+  Stream<List<GuildPost>> watchGuildPosts(String guildId) {
+    return _db
+        .collection('guilds')
+        .doc(guildId)
+        .collection('posts')
+        .orderBy('createdAt', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => GuildPost.fromJson(doc.data())).toList())
+        .handleError((e) {
+          throw 'Failed to watch guild posts: $e';
+        });
   }
 
   // ============ Replay Methods ============

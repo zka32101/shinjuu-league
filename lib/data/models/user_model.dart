@@ -11,6 +11,7 @@ class User {
   final int gold;
   final List<String> ownedSkinIds;
   final bool hasBattlePassPremium;
+  final String? guildId;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -27,6 +28,7 @@ class User {
     required this.gold,
     this.ownedSkinIds = const [],
     this.hasBattlePassPremium = false,
+    this.guildId,
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -79,6 +81,7 @@ class User {
       gold: json['gold'] as int? ?? 0,
       ownedSkinIds: List<String>.from(json['ownedSkinIds'] as List<dynamic>? ?? []),
       hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
+      guildId: json['guildId'] as String?,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -102,6 +105,7 @@ class User {
       'gold': gold,
       'ownedSkinIds': ownedSkinIds,
       'hasBattlePassPremium': hasBattlePassPremium,
+      'guildId': guildId,
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };
