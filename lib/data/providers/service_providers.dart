@@ -7,6 +7,7 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
+import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/matching_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
@@ -16,6 +17,9 @@ final firestoreServiceProvider = Provider<FirestoreService>((ref) => FirestoreSe
 final analyticsServiceProvider = Provider<AnalyticsService>((ref) => AnalyticsService());
 final matchmakingServiceProvider = Provider<MatchmakingService>((ref) => MatchmakingService());
 final purchasesServiceProvider = Provider<PurchasesService>((ref) => PurchasesService());
+final replayServiceProvider = Provider<ReplayService>((ref) {
+  return ReplayService(firestoreService: ref.watch(firestoreServiceProvider));
+});
 
 final userViewModelProvider = StateNotifierProvider<UserViewModel, AsyncValue<User?>>((ref) {
   return UserViewModel(

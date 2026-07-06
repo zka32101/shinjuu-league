@@ -3,6 +3,7 @@ import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
+import 'package:shinjuu_league/data/models/replay_model.dart';
 
 class FirestoreService {
   static final FirestoreService _instance = FirestoreService._internal();
@@ -170,6 +171,27 @@ class FirestoreService {
           .set(battlePass.toJson());
     } catch (e) {
       throw 'Failed to save battle pass: $e';
+    }
+  }
+
+  // ============ Replay Methods ============
+  Future<void> createReplay(Replay replay) async {
+    try {
+      await _db.collection('replays').doc(replay.replayId).set(replay.toJson());
+    } catch (e) {
+      throw 'Failed to create replay: $e';
+    }
+  }
+
+  Future<Replay?> getReplayById(String replayId) async {
+    try {
+      final doc = await _db.collection('replays').doc(replayId).get();
+      if (doc.exists) {
+        return Replay.fromJson(doc.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to fetch replay: $e';
     }
   }
 

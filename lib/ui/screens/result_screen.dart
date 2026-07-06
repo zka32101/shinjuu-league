@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:share_plus/share_plus.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
+import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/services/haptic_service.dart';
@@ -21,13 +23,15 @@ class ResultScreen extends ConsumerStatefulWidget {
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _applied = false;
   int _burstTrigger = 0;
+  Replay? _replay;
+  bool _isGeneratingReplay = true;
 
   bool get _isWin => widget.battle.result == BattleResult.win;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_applied) return;
       _applied = true;
       ref.read(userViewModelProvider.notifier).applyBattleResult(widget.battle);
@@ -40,7 +44,22 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         HapticService.onLoss();
         AudioService().playLossSe();
       }
+
+      // リプレイ自動生成 → SNSシェアまでノーストレスにするため試合終了直後に生成
+      final replay = await ref.read(replayServiceProvider).generateAndSave(widget.battle);
+      if (!mounted) return;
+      setState(() {
+        _replay = replay;
+        _isGeneratingReplay = false;
+      });
     });
+  }
+
+  void _shareReplay() {
+    final replay = _replay;
+    if (replay == null) return;
+    final text = ref.read(replayServiceProvider).buildShareText(widget.battle, replay);
+    Share.share(text);
   }
 
   @override
@@ -110,12 +129,19 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                 ),
               ),
               const SizedBox(height: 16),
-              const Card(
+              Card(
                 child: ListTile(
-                  leading: Icon(Icons.videocam_outlined),
-                  title: Text('リプレイシェア'),
-                  subtitle: Text('近日公開予定'),
-                  enabled: false,
+                  leading: _isGeneratingReplay
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.share),
+                  title: const Text('戦績をシェア'),
+                  subtitle: Text(_isGeneratingReplay ? 'リプレイ生成中…' : 'SNSでシェアする'),
+                  enabled: !_isGeneratingReplay,
+                  onTap: _isGeneratingReplay ? null : _shareReplay,
                 ),
               ),
               const Spacer(),
