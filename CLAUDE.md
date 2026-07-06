@@ -43,7 +43,7 @@
 5. Riverpod ViewModel（User/Matching/Battle） ✅ 完了
 6. [★ PHASE 6] Aha Moment への最短動線 ✅ 完了（BattleEngine + Elo + Matchmaking）
 7. 各画面View（ロビー・ランク・フレンド等） ✅ 完了（8画面 + go_router）
-8. アニメーション・SE/BGM（複雑な部分はSonnet） ⏳ 次のステップ
+8. アニメーション・SE/BGM（複雑な部分はSonnet） ✅ 完了（ハプティクス・ネイティブパーティクル演出・SE骨組み）
 9. 画面遷移・ナビゲーション
 10. ペイウォール（BattlePass・スキンガチャ）
 11. リプレイ生成・シェア ← Sonnet
@@ -93,8 +93,23 @@
 **テスト安定性の修正**: `BattleEngine`に`Random`注入をサポート（テストでシード固定）。当初のAha Moment単体テストは「最初の交戦イベント全体」を検証していたが、`winChance`が15-85%にクランプされる設計上、1vs1では相手が先に勝つ確率が無視できず不安定だった。「自分が撃破した最初のイベント」を追跡する検証に修正し、5回連続実行で安定を確認。
 
 **未実装（Step 8以降）**:
-- Lottieアニメーション・ハプティクス（現在は簡易テキストバナーのみ）
 - Mecha選択画面（現状は固定神獣のみ）
+
+### Step 8 実装内容（2026-07-05, Sonnet実装済み）
+
+**方針**: Lottieの実アセット（.json）・SE/BGMの実音声ファイル（.mp3）はまだ用意できていない（デザイン/音源制作は別工程）。そのため、実アセットが届くまでの代替として **ネイティブFlutterアニメーション** で演出を作り込み、SE再生は **配線だけ先に実装**（アセット未配置時は無音でスキップする安全設計）とした。実アセット追加時は各Serviceのファイルパスを差し替えるだけで済む。
+
+- [lib/services/haptic_service.dart](lib/services/haptic_service.dart) — キル＝軽(lightImpact) / Aha Moment＝mediumImpact / 勝利＝3段パターン / 敗北＝vibrate / ボタン＝selectionClick
+- [lib/services/audio_service.dart](lib/services/audio_service.dart) — audioplayers経由のSE再生。`assets/sounds/*.mp3`参照だが**実ファイルは未同梱**、再生失敗は握りつぶしクラッシュしない設計
+- [lib/ui/widgets/particle_burst.dart](lib/ui/widgets/particle_burst.dart) — CustomPainterによる放射状パーティクルバースト。`trigger`値の変化で再生（キル演出・勝利のスター爆発に共用）
+- [lib/ui/widgets/custom_button.dart](lib/ui/widgets/custom_button.dart) — タップ時に6%スケールダウンするバウンス演出 + ハプティクス + SE再生を追加（既存呼び出し側の変更は不要、API互換）
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — 自キルで`ParticleBurst`再生+ハプティクス+SE、Aha Moment達成時にバナーがAnimatedSwitcherでフェードイン+ハプティクス+SE
+- [lib/ui/screens/result_screen.dart](lib/ui/screens/result_screen.dart) — 勝利時：ゴールドのスター爆発+3段ハプティクス+勝利SE、MVP判定（`playerStats`最高スコア）してChip表示。敗北時：vibrate+敗北SE
+- `assets/sounds/`・`assets/animations/`フォルダを作成しpubspec.yamlに登録済み（中身は`.gitkeep`のみ）
+
+**未実装（Step 9以降）**:
+- 実際のLottieアニメーションファイル・実音声ファイルの調達/制作（デザイン/サウンド制作の別工程が必要）
+- BGM再生（現状SEのみ配線、BGMループ再生は未実装）
 
 ---
 

@@ -5,7 +5,10 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
+import 'package:shinjuu_league/services/haptic_service.dart';
+import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 
 class BattleScreen extends ConsumerWidget {
   const BattleScreen({super.key, required this.match});
@@ -13,15 +16,33 @@ class BattleScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final selfId = match.teamA.isNotEmpty ? match.teamA.first.userId : null;
+
     ref.listen(battleViewModelProvider, (previous, next) {
-      if (next.isFinished && (previous == null || !previous.isFinished) && next.battle != null) {
+      // Aha Moment: 初回1キル達成の瞬間にハプティクス+SEを鳴らす
+      final prevAha = previous?.ahaMomentReached ?? false;
+      if (!prevAha && next.ahaMomentReached) {
+        HapticService.onAhaMoment();
+        AudioService().playAhaMomentSe();
+      }
+
+      // 自分がキルを取った瞬間（Aha Moment以降の追加キルも含む）に軽いハプティクス
+      final prevKillCount = previous?.killFeed.length ?? 0;
+      if (next.killFeed.length > prevKillCount) {
+        final newEvents = next.killFeed.sublist(prevKillCount);
+        if (selfId != null && newEvents.any((e) => e.attackerId == selfId)) {
+          HapticService.onKill();
+          AudioService().playKillSe();
+        }
+      }
+
+      if (next.isFinished && !(previous?.isFinished ?? false) && next.battle != null) {
         context.pushReplacement(AppRoutes.result, extra: next.battle);
       }
     });
 
     final state = ref.watch(battleViewModelProvider);
     final engine = state.engine;
-    final selfId = match.teamA.isNotEmpty ? match.teamA.first.userId : null;
 
     if (engine == null || selfId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
@@ -37,28 +58,40 @@ class BattleScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
-          if (state.ahaMomentReached)
-            Container(
-              width: double.infinity,
-              color: Colors.amber,
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: const Text(
-                '🎉 初キル達成！',
-                textAlign: TextAlign.center,
-                style: TextStyle(fontWeight: FontWeight.bold),
+          AnimatedSwitcher(
+            duration: const Duration(milliseconds: 300),
+            child: state.ahaMomentReached
+                ? Container(
+                    key: const ValueKey('aha-banner'),
+                    width: double.infinity,
+                    color: Colors.amber,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: const Text(
+                      '🎉 初キル達成！',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  )
+                : const SizedBox.shrink(key: ValueKey('no-banner')),
+          ),
+          Stack(
+            alignment: Alignment.center,
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(16),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                  children: [
+                    _StatChip(label: 'キル', value: '${selfParticipant.kills}'),
+                    _StatChip(label: 'デス', value: '${selfParticipant.deaths}'),
+                    _StatChip(label: 'アシスト', value: '${selfParticipant.assists}'),
+                    _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
+                  ],
+                ),
               ),
-            ),
-          Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: [
-                _StatChip(label: 'キル', value: '${selfParticipant.kills}'),
-                _StatChip(label: 'デス', value: '${selfParticipant.deaths}'),
-                _StatChip(label: 'アシスト', value: '${selfParticipant.assists}'),
-                _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
-              ],
-            ),
+              // 自分のキル数が増えるたびにパーティクルバーストを再生（Lottie素材追加までの代替演出）
+              ParticleBurst(trigger: selfParticipant.kills, color: Colors.amber, size: 160),
+            ],
           ),
           Expanded(
             child: Row(

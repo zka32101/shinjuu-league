@@ -5,7 +5,10 @@ import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/audio_service.dart';
+import 'package:shinjuu_league/services/haptic_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 
 class ResultScreen extends ConsumerStatefulWidget {
   const ResultScreen({super.key, required this.battle});
@@ -17,6 +20,9 @@ class ResultScreen extends ConsumerStatefulWidget {
 
 class _ResultScreenState extends ConsumerState<ResultScreen> {
   bool _applied = false;
+  int _burstTrigger = 0;
+
+  bool get _isWin => widget.battle.result == BattleResult.win;
 
   @override
   void initState() {
@@ -25,14 +31,30 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
       if (_applied) return;
       _applied = true;
       ref.read(userViewModelProvider.notifier).applyBattleResult(widget.battle);
+
+      if (_isWin) {
+        HapticService.onWin();
+        AudioService().playWinSe();
+        setState(() => _burstTrigger = 1); // スター爆発を1回再生
+      } else {
+        HapticService.onLoss();
+        AudioService().playLossSe();
+      }
     });
   }
 
   @override
   Widget build(BuildContext context) {
     final battle = widget.battle;
-    final isWin = battle.result == BattleResult.win;
-    final resultColor = isWin ? AppColors.win : AppColors.loss;
+    final resultColor = _isWin ? AppColors.win : AppColors.loss;
+    final selfStats = battle.playerStats.firstWhere(
+      (p) => p.userId == battle.userId,
+      orElse: () => battle.playerStats.first,
+    );
+    final mvp = battle.playerStats.isEmpty
+        ? null
+        : battle.playerStats.reduce((a, b) => a.score >= b.score ? a : b);
+    final isSelfMvp = mvp != null && mvp.userId == battle.userId;
 
     return Scaffold(
       appBar: AppBar(title: const Text('リザルト'), automaticallyImplyLeading: false),
@@ -41,19 +63,39 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Text(
-                battle.result.displayName,
-                style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: resultColor),
+              Stack(
+                alignment: Alignment.center,
+                children: [
+                  if (_isWin) ParticleBurst(trigger: _burstTrigger, color: AppColors.gold, size: 200),
+                  Column(
+                    children: [
+                      Text(
+                        battle.result.displayName,
+                        style: TextStyle(fontSize: 40, fontWeight: FontWeight.bold, color: resultColor),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        battle.eloChange >= 0
+                            ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
+                            : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: battle.eloChange >= 0 ? AppColors.win : AppColors.loss,
+                        ),
+                      ),
+                      if (isSelfMvp) ...[
+                        const SizedBox(height: 8),
+                        Chip(
+                          avatar: const Icon(Icons.star, color: Colors.white, size: 18),
+                          label: const Text('MVP', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                          backgroundColor: AppColors.gold,
+                        ),
+                      ],
+                    ],
+                  ),
+                ],
               ),
-              const SizedBox(height: 8),
-              Text(
-                battle.eloChange >= 0 ? 'Elo +${battle.eloChange.toStringAsFixed(1)}' : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
-                style: TextStyle(
-                  fontSize: 18,
-                  color: battle.eloChange >= 0 ? AppColors.win : AppColors.loss,
-                ),
-              ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 24),
               Card(
                 child: Padding(
                   padding: const EdgeInsets.all(16),
@@ -62,10 +104,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                     children: [
                       _StatColumn(label: 'キル', value: '${battle.kills}'),
                       _StatColumn(label: 'デス', value: '${battle.deaths}'),
-                      _StatColumn(
-                        label: 'スコア',
-                        value: '${battle.playerStats.firstWhere((p) => p.userId == battle.userId, orElse: () => battle.playerStats.first).score}',
-                      ),
+                      _StatColumn(label: 'スコア', value: '${selfStats.score}'),
                     ],
                   ),
                 ),
