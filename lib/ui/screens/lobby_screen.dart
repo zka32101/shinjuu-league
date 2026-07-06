@@ -18,6 +18,16 @@ class LobbyScreen extends ConsumerWidget {
         title: const Text('ロビー'),
         actions: [
           IconButton(
+            icon: const Icon(Icons.workspace_premium),
+            tooltip: 'バトルパス',
+            onPressed: () => context.push(AppRoutes.battlePass),
+          ),
+          IconButton(
+            icon: const Icon(Icons.storefront),
+            tooltip: 'ショップ',
+            onPressed: () => context.push(AppRoutes.shop),
+          ),
+          IconButton(
             icon: const Icon(Icons.leaderboard),
             tooltip: 'ランク',
             onPressed: () => context.push(AppRoutes.rank),

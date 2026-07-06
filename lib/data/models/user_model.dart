@@ -9,6 +9,8 @@ class User {
   final int totalBattles;
   final int gems;
   final int gold;
+  final List<String> ownedSkinIds;
+  final bool hasBattlePassPremium;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -23,6 +25,8 @@ class User {
     this.totalBattles = 0,
     required this.gems,
     required this.gold,
+    this.ownedSkinIds = const [],
+    this.hasBattlePassPremium = false,
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -38,6 +42,8 @@ class User {
     int? totalBattles,
     int? gems,
     int? gold,
+    List<String>? ownedSkinIds,
+    bool? hasBattlePassPremium,
     DateTime? createdAt,
     DateTime? lastBattleAt,
   }) {
@@ -52,6 +58,8 @@ class User {
       totalBattles: totalBattles ?? this.totalBattles,
       gems: gems ?? this.gems,
       gold: gold ?? this.gold,
+      ownedSkinIds: ownedSkinIds ?? this.ownedSkinIds,
+      hasBattlePassPremium: hasBattlePassPremium ?? this.hasBattlePassPremium,
       createdAt: createdAt ?? this.createdAt,
       lastBattleAt: lastBattleAt ?? this.lastBattleAt,
     );
@@ -69,6 +77,8 @@ class User {
       totalBattles: json['totalBattles'] as int? ?? 0,
       gems: json['gems'] as int? ?? 0,
       gold: json['gold'] as int? ?? 0,
+      ownedSkinIds: List<String>.from(json['ownedSkinIds'] as List<dynamic>? ?? []),
+      hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -90,6 +100,8 @@ class User {
       'totalBattles': totalBattles,
       'gems': gems,
       'gold': gold,
+      'ownedSkinIds': ownedSkinIds,
+      'hasBattlePassPremium': hasBattlePassPremium,
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };

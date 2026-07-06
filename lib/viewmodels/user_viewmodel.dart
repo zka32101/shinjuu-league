@@ -54,6 +54,15 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     await _firestoreService.updateUser(updated);
   }
 
+  /// スキンガチャ購入後に所持スキンを反映
+  Future<void> updateOwnedSkins(List<String> ownedSkinIds) async {
+    final current = state.value;
+    if (current == null) return;
+
+    final updated = current.copyWith(ownedSkinIds: ownedSkinIds);
+    await _firestoreService.updateUser(updated);
+  }
+
   @override
   void dispose() {
     _userSub?.cancel();

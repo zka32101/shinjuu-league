@@ -24,6 +24,13 @@ class AppConfig {
   static const double battlePassPrice = 500.0;
   static const double skinPrice = 300.0;
 
+  // RevenueCat（App Store Connect / Google Play Console 側の商品登録は未実施。
+  // 実際のAPIキーはストア審査前に配布キー管理システムから投入する）
+  static const String revenueCatApiKey = '';
+  static const String battlePassProductId = 'battlepass_season';
+  static const String skinGachaProductId = 'skin_gacha_single';
+  static const String currentSeasonId = 'season_1';
+
   // KPI Targets
   static const double day7RetentionTarget = 0.40;
   static const double day30RetentionTarget = 0.20;

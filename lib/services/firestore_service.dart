@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
+import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 
 class FirestoreService {
@@ -143,6 +144,32 @@ class FirestoreService {
           .toList();
     } catch (e) {
       throw 'Failed to fetch leaderboard: $e';
+    }
+  }
+
+  // ============ BattlePass Methods ============
+  String _battlePassDocId(String userId, String seasonId) => '${userId}_$seasonId';
+
+  Future<BattlePass?> getBattlePass(String userId, String seasonId) async {
+    try {
+      final doc = await _db.collection('battlepasses').doc(_battlePassDocId(userId, seasonId)).get();
+      if (doc.exists) {
+        return BattlePass.fromJson(doc.data() as Map<String, dynamic>);
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to fetch battle pass: $e';
+    }
+  }
+
+  Future<void> saveBattlePass(BattlePass battlePass) async {
+    try {
+      await _db
+          .collection('battlepasses')
+          .doc(_battlePassDocId(battlePass.userId, battlePass.seasonId))
+          .set(battlePass.toJson());
+    } catch (e) {
+      throw 'Failed to save battle pass: $e';
     }
   }
 
