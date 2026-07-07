@@ -49,9 +49,11 @@
 11. リプレイ生成・シェア ✅ 完了（Wordle方式のテキストシェア）
 12. フレンド・ギルド ✅ 完了（Firestoreバックエンド + UI）
 13. エラーハンドリング（スケルトンUI・ネットワーク） ✅ 完了（Crashlyticsグローバル捕捉・再試行UI）
-14. テスト（unit/widget/integration） ✅ 完了（19件、Widgetテストで重大バグ発見・修正）
+14. テスト（unit/widget/integration） ✅ 完了（26件、Widgetテストで重大バグ発見・修正）
 15. CI/CD設定（GitHub Actions） ✅ 完了
 16. リリース準備（審査対応・段階公開） ⏳ 未着手（機能未完成のため時期尚早）
+
+【Step 16後の追加実装】Mecha選択画面 ✅ 完了（バトル参加者の実ステータス反映）
 ```
 
 ### Step 6 実装内容（2026-07-05, Sonnet実装済み）
@@ -129,7 +131,20 @@
 
 **Step 15（CI/CD）**: [.github/workflows/ci.yml](.github/workflows/ci.yml) — push/PR時に`dart format`チェック→`flutter analyze`→`flutter test`を実行。導入前に全コードへ`dart format`を適用済み。
 
-**Step 16（リリース準備）は意図的に未着手**: Mecha選択画面・実アセット（Lottie/SE/BGM）・実RevenueCat商品登録など、ユーザー向けに完成していない機能が複数残っているため時期尚早と判断。
+**Step 16（リリース準備）は意図的に未着手**: 実アセット（Lottie/SE/BGM）・実RevenueCat商品登録など、ユーザー向けに完成していない機能が複数残っているため時期尚早と判断。
+
+### Mecha選択画面 実装内容（2026-07-06, Sonnet実装済み）
+
+Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を解消。実Firebaseプロジェクトが未接続のため、Firestoreへ実データを投入する代わりに**コード内静的カタログ**を正とする設計にした（将来Firestore化する際は参照元を差し替えるだけで済む）。
+
+- [lib/data/mecha_catalog.dart](lib/data/mecha_catalog.dart) — 神獣6体（東西×3体、COMMON〜LEGEND）の静的マスタデータ。`mechaById()`は未知IDに対して安全にフォールバック
+- [lib/ui/screens/mecha_select_screen.dart](lib/ui/screens/mecha_select_screen.dart) — グリッドで神獣を選択、レアリティ別カラー表示、ステータスプレビュー
+- `User.selectedMechaId`を追加し、`UserViewModel.selectMecha()`で永続化
+- [lib/services/matchmaking_service.dart](lib/services/matchmaking_service.dart) — 自分は選択中の神獣、Botはカタログからランダムに割当（対戦の多様性向上）
+- [lib/viewmodels/battle_viewmodel.dart](lib/viewmodels/battle_viewmodel.dart) — 参加者ごとに`mechaById(mp.mechaId).baseStats`で実ステータスを反映（固定ダミー値のTODOを解消）
+- [test/mecha_catalog_test.dart](test/mecha_catalog_test.dart) — カタログのデータ整合性を機械検証（ID重複・不正なrarity/origin・空文字・非正値ステータス）。手動データは目視確認せず必ずスクリプトで検証する方針に準拠
+
+**副次的に発見・修正したバグ**: `User.copyWith()`が`guildId`を明示的に引き継いでおらず、`applyBattleResult`や`updateOwnedSkins`など**あらゆるcopyWith呼び出しでギルド所属情報が意図せずnullにリセットされる**潜在バグがあった（Step 12実装時から存在）。`guildId: guildId`（`this.guildId`を保持）を追加して修正。
 
 ---
 

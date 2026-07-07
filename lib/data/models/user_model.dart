@@ -1,3 +1,5 @@
+import 'package:shinjuu_league/data/mecha_catalog.dart';
+
 class User {
   final String uid;
   final String name;
@@ -12,6 +14,7 @@ class User {
   final List<String> ownedSkinIds;
   final bool hasBattlePassPremium;
   final String? guildId;
+  final String selectedMechaId;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -29,6 +32,7 @@ class User {
     this.ownedSkinIds = const [],
     this.hasBattlePassPremium = false,
     this.guildId,
+    this.selectedMechaId = defaultMechaId,
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -46,6 +50,7 @@ class User {
     int? gold,
     List<String>? ownedSkinIds,
     bool? hasBattlePassPremium,
+    String? selectedMechaId,
     DateTime? createdAt,
     DateTime? lastBattleAt,
   }) {
@@ -62,6 +67,8 @@ class User {
       gold: gold ?? this.gold,
       ownedSkinIds: ownedSkinIds ?? this.ownedSkinIds,
       hasBattlePassPremium: hasBattlePassPremium ?? this.hasBattlePassPremium,
+      guildId: guildId,
+      selectedMechaId: selectedMechaId ?? this.selectedMechaId,
       createdAt: createdAt ?? this.createdAt,
       lastBattleAt: lastBattleAt ?? this.lastBattleAt,
     );
@@ -84,6 +91,7 @@ class User {
       ),
       hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
       guildId: json['guildId'] as String?,
+      selectedMechaId: json['selectedMechaId'] as String? ?? defaultMechaId,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -108,6 +116,7 @@ class User {
       'ownedSkinIds': ownedSkinIds,
       'hasBattlePassPremium': hasBattlePassPremium,
       'guildId': guildId,
+      'selectedMechaId': selectedMechaId,
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };

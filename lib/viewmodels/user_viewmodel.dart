@@ -63,6 +63,15 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     await _firestoreService.updateUser(updated);
   }
 
+  /// 神獣選択画面での選択を反映
+  Future<void> selectMecha(String mechaId) async {
+    final current = state.value;
+    if (current == null) return;
+
+    final updated = current.copyWith(selectedMechaId: mechaId);
+    await _firestoreService.updateUser(updated);
+  }
+
   @override
   void dispose() {
     _userSub?.cancel();

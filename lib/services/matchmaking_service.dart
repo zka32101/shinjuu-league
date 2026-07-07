@@ -2,11 +2,11 @@ import 'dart:math';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:uuid/uuid.dart';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 
-const _defaultMechaId = 'mecha_default_01';
 const _maps = ['map_east_west', 'map_twin_valley'];
 
 /// マッチング < 30秒を保証するため、実プレイヤーが揃わない場合はBotで即座に埋める。
@@ -92,7 +92,7 @@ class MatchmakingService {
       participants.add(
         MatchParticipant(
           userId: user.uid,
-          mechaId: _defaultMechaId,
+          mechaId: user.selectedMechaId,
           eloRating: user.eloRating,
           isBot: false,
           team: team,
@@ -106,7 +106,7 @@ class MatchmakingService {
       participants.add(
         MatchParticipant(
           userId: 'bot_${_uuid.v4().substring(0, 8)}',
-          mechaId: _defaultMechaId,
+          mechaId: mechaCatalog[_random.nextInt(mechaCatalog.length)].mechaId,
           eloRating: eloTarget + variance,
           isBot: true,
           team: team,

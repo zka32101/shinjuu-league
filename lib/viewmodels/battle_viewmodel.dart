@@ -1,17 +1,14 @@
 import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
-import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
-
-// TODO(Step 7): Mecha選択画面実装後、参加者ごとの実ステータスを Firestore から取得する
-final _defaultBaseStats = BaseStats(hp: 100, atk: 50, spd: 40);
 
 class BattleState {
   const BattleState({
@@ -123,7 +120,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
             isSelf: mp.userId == selfUserId,
             team: mp.team,
             lane: mp.lane,
-            baseStats: _defaultBaseStats,
+            baseStats: mechaById(mp.mechaId).baseStats,
           ),
         )
         .toList();

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
+import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
@@ -110,11 +111,13 @@ class LobbyScreen extends ConsumerWidget {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  const Card(
+                  Card(
                     child: ListTile(
-                      leading: Icon(Icons.pets),
-                      title: Text('選択中の神獣'),
-                      subtitle: Text('デフォルト神獣（選択画面は今後実装）'),
+                      leading: const Icon(Icons.pets),
+                      title: Text(mechaById(user.selectedMechaId).name),
+                      subtitle: const Text('タップして神獣を変更'),
+                      trailing: const Icon(Icons.chevron_right),
+                      onTap: () => context.push(AppRoutes.mechaSelect),
                     ),
                   ),
                   const Spacer(),
