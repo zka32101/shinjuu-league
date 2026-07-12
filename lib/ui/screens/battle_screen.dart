@@ -1,3 +1,4 @@
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,18 +6,27 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
-import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/haptic_service.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 
-class BattleScreen extends ConsumerWidget {
+class BattleScreen extends ConsumerStatefulWidget {
   const BattleScreen({super.key, required this.match});
   final MatchResult match;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final selfId = match.teamA.isNotEmpty ? match.teamA.first.userId : null;
+  ConsumerState<BattleScreen> createState() => _BattleScreenState();
+}
+
+class _BattleScreenState extends ConsumerState<BattleScreen> {
+  final _game = BattlefieldGame();
+
+  @override
+  Widget build(BuildContext context) {
+    final selfId = widget.match.teamA.isNotEmpty
+        ? widget.match.teamA.first.userId
+        : null;
 
     ref.listen(battleViewModelProvider, (previous, next) {
       // Aha Moment: 初回1キル達成の瞬間にハプティクス+SEを鳴らす
@@ -30,6 +40,9 @@ class BattleScreen extends ConsumerWidget {
       final prevKillCount = previous?.killFeed.length ?? 0;
       if (next.killFeed.length > prevKillCount) {
         final newEvents = next.killFeed.sublist(prevKillCount);
+        for (final event in newEvents) {
+          _game.onKillEvent(event.attackerId);
+        }
         if (selfId != null && newEvents.any((e) => e.attackerId == selfId)) {
           HapticService.onKill();
           AudioService().playKillSe();
@@ -49,6 +62,8 @@ class BattleScreen extends ConsumerWidget {
     if (engine == null || selfId == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
+
+    _game.sync(engine.participants);
 
     final selfParticipant = engine.participants.firstWhere(
       (p) => p.userId == selfId,
@@ -106,15 +121,7 @@ class BattleScreen extends ConsumerWidget {
               ),
             ],
           ),
-          Expanded(
-            child: Row(
-              children: [
-                Expanded(child: _LaneView(lane: 0, engine: engine)),
-                const VerticalDivider(width: 1),
-                Expanded(child: _LaneView(lane: 1, engine: engine)),
-              ],
-            ),
-          ),
+          Expanded(child: GameWidget(game: _game)),
           Container(
             height: 140,
             padding: const EdgeInsets.all(8),
@@ -160,83 +167,6 @@ class _StatChip extends StatelessWidget {
         ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
-    );
-  }
-}
-
-class _LaneView extends StatelessWidget {
-  const _LaneView({required this.lane, required this.engine});
-  final int lane;
-  final BattleEngine engine;
-
-  @override
-  Widget build(BuildContext context) {
-    final teamA = engine.participants
-        .where((p) => p.team == 0 && p.lane == lane)
-        .toList();
-    final teamB = engine.participants
-        .where((p) => p.team == 1 && p.lane == lane)
-        .toList();
-
-    return Padding(
-      padding: const EdgeInsets.all(8),
-      child: Column(
-        children: [
-          Text(
-            'レーン ${lane + 1}',
-            style: const TextStyle(fontWeight: FontWeight.bold),
-          ),
-          const SizedBox(height: 8),
-          ...teamA.map(
-            (p) => _ParticipantRow(participant: p, color: Colors.blue),
-          ),
-          const Divider(),
-          ...teamB.map(
-            (p) => _ParticipantRow(participant: p, color: Colors.red),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _ParticipantRow extends StatelessWidget {
-  const _ParticipantRow({required this.participant, required this.color});
-  final BattleParticipantState participant;
-  final Color color;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        children: [
-          Icon(
-            participant.isAlive ? Icons.circle : Icons.circle_outlined,
-            size: 12,
-            color: participant.isAlive ? color : Colors.grey,
-          ),
-          const SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              participant.isSelf
-                  ? '自分'
-                  : (participant.isBot ? 'Bot' : participant.userId),
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: participant.isSelf
-                    ? FontWeight.bold
-                    : FontWeight.normal,
-              ),
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          Text(
-            '${participant.kills}/${participant.deaths}',
-            style: const TextStyle(fontSize: 11),
-          ),
-        ],
-      ),
     );
   }
 }

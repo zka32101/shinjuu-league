@@ -146,6 +146,19 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 
 **副次的に発見・修正したバグ**: `User.copyWith()`が`guildId`を明示的に引き継いでおらず、`applyBattleResult`や`updateOwnedSkins`など**あらゆるcopyWith呼び出しでギルド所属情報が意図せずnullにリセットされる**潜在バグがあった（Step 12実装時から存在）。`guildId: guildId`（`this.guildId`を保持）を追加して修正。
 
+### バトル画面2.5D化（2026-07-13, Sonnet実装済み）
+
+ユーザー要望「2.5Dへリアルに」に応え、バトル画面のレーン表示（テキストのキル/デス数リスト）をFlameゲームエンジンによる等角投影バトルフィールドへ置き換え。実キャラクター素材は未着手のため、円+属性アイコン（東=🔥/西=❄）+影で「浮いた」質感を出すプレースホルダー方針（ユーザー選択：Flame導入 + 図形/アイコンで質感表現）。
+
+- [lib/game/isometric_projection.dart](lib/game/isometric_projection.dart) — グリッド座標→スクリーン座標の等角投影変換（`screenX=(gridX-gridY)*tileWidth/2`, `screenY=(gridX+gridY)*tileHeight/2`）
+- [lib/game/mecha_token.dart](lib/game/mecha_token.dart) — 参加者1人分のトークン。生死状態を`update()`内でopacity/scaleを補間して滑らかに反映、キル時は白リングフラッシュ演出
+- [lib/game/lane_floor.dart](lib/game/lane_floor.dart) — レーン地面を菱形パネルとして描画
+- [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart) — `FlameGame`本体。**シミュレーションロジックは一切持たず**、`BattleEngine`から渡された参加者状態を描画するだけのレンダラーに徹する設計（`sync(participants)`で位置確定・生死反映、`onKillEvent()`でキルフラッシュ発火）
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — `ConsumerWidget`→`ConsumerStatefulWidget`化（`BattlefieldGame`インスタンスをbuild間で保持する必要があるため）。テキストベースの`_LaneView`/`_ParticipantRow`は`GameWidget`に置き換えて削除
+- テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。Flameのゲームループ全体はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証（既知の制約）
+
+**技術的判断**: Flameの`GameWidget`はウィジェット再構築のたびに再生成すると状態が失われるため、`BattleScreen`をStatefulにして`BattlefieldGame`インスタンスを保持。カメラは`onGameResize`でウィジェットサイズに応じて動的にズーム調整し、画面サイズが変わっても両レーンが収まるようにしている。
+
 ---
 
 ## Project Structure
