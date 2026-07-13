@@ -155,10 +155,17 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 - [lib/game/lane_floor.dart](lib/game/lane_floor.dart) — レーン地面を菱形パネルとして描画
 - [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart) — `FlameGame`本体。**シミュレーションロジックは一切持たず**、`BattleEngine`から渡された参加者状態を描画するだけのレンダラーに徹する設計（`sync(participants)`で位置確定・生死反映、`onKillEvent()`でキルフラッシュ発火）
 
-**迫力強化の追加実装（2026-07-13同日）**: ユーザーから「迫力ふやす」と指示があり、キル演出を強化。
+**迫力強化の追加実装（2026-07-13同日、1回目）**: ユーザーから「迫力ふやす」と指示があり、キル演出を強化。
 - `MechaToken`: キルフラッシュを金色の二重リング+自己スケールパンチに強化、被弾側に赤フラッシュ演出を追加、死亡時に「沈み込む」オフセットを追加（単純なopacity低下から、より物理的な手応えのある表現へ）
 - `BattlefieldGame.onKillEvent(attackerId, victimId)`: 引数をvictimId込みに変更し、被弾側トークンへの赤フラッシュ発火 + カメラシェイク（`update()`内でランダムジッターを減衰させながら適用）を追加
 - トークンサイズを36→42に拡大、外周グロー（ぼかしストローク）を追加して存在感を強化
+
+**迫力強化の追加実装（2026-07-13同日、2回目）**: ユーザーから再度「より迫力だす」と指示があり、さらに演出をエスカレーション。
+- [lib/game/kill_burst.dart](lib/game/kill_burst.dart) — 撃破位置から10本の破片が放射状に飛び散る演出。寿命(0.45秒)が尽きると`removeFromParent()`で自動消滅
+- [lib/game/impact_line.dart](lib/game/impact_line.dart) — 攻撃側→被弾側を結ぶ稲妻状の衝撃線。0.18秒で自動消滅
+- `MechaToken.triggerHitFlash(knockbackDirection:)` — 被弾方向にノックバック（弾き飛ばされる動き）を追加。ゼロベクトル・null安全
+- `BattlefieldGame.onKillEvent()` — カメラシェイクの振幅を8→14に強化、`render()`をオーバーライドして白フラッシュ（画面全体を覆う半透明矩形）を追加。攻撃側・被弾側トークンの位置からKillBurst/ImpactLineを動的に生成
+- テスト12件追加（計44件）。KillBurst/ImpactLineは寿命切れ時の`removeFromParent()`が未マウント状態でも例外を投げないことを確認
 - [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — `ConsumerWidget`→`ConsumerStatefulWidget`化（`BattlefieldGame`インスタンスをbuild間で保持する必要があるため）。テキストベースの`_LaneView`/`_ParticipantRow`は`GameWidget`に置き換えて削除
 - テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。Flameのゲームループ全体はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証（既知の制約）
 

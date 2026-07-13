@@ -35,6 +35,8 @@ class MechaToken extends PositionComponent {
   double _killFlash = 0.0; // 撃破した瞬間の金色リング拡散
   double _killPunch = 0.0; // 撃破した瞬間の自己スケールパンチ
   double _hitFlash = 0.0; // 被弾した瞬間の赤フラッシュ
+  double _knockback = 0.0; // 被弾した瞬間のノックバック量（0..1で減衰）
+  Vector2 _knockbackDir = Vector2.zero();
 
   Color get _teamColor =>
       team == 0 ? const Color(0xFF3B82F6) : const Color(0xFFEF4444);
@@ -53,9 +55,13 @@ class MechaToken extends PositionComponent {
     _killPunch = 1.0;
   }
 
-  /// 被弾（撃破された）瞬間：赤フラッシュで衝撃を強調
-  void triggerHitFlash() {
+  /// 被弾（撃破された）瞬間：赤フラッシュ + ノックバックで衝撃を強調
+  void triggerHitFlash({Vector2? knockbackDirection}) {
     _hitFlash = 1.0;
+    _knockback = 1.0;
+    if (knockbackDirection != null && knockbackDirection.length2 > 0) {
+      _knockbackDir = knockbackDirection.normalized();
+    }
   }
 
   @override
@@ -75,6 +81,9 @@ class MechaToken extends PositionComponent {
     if (_hitFlash > 0) {
       _hitFlash = (_hitFlash - dt * 5.0).clamp(0.0, 1.0);
     }
+    if (_knockback > 0) {
+      _knockback = (_knockback - dt * 4.0).clamp(0.0, 1.0);
+    }
   }
 
   @override
@@ -82,7 +91,12 @@ class MechaToken extends PositionComponent {
     // パンチ演出：撃破直後は一瞬だけ大きく膨らんでから収束する
     final punchScale = 1.0 + _killPunch * 0.35;
     final radius = (size.x / 2) * _scale * punchScale;
-    final center = Offset(size.x / 2, size.y / 2 + _sinkOffset);
+    // ノックバック：攻撃方向の反対に一瞬弾き飛ばされてから戻る
+    final knockbackAmount = _knockback * _knockback * 14;
+    final center = Offset(
+      size.x / 2 + _knockbackDir.x * knockbackAmount,
+      size.y / 2 + _sinkOffset + _knockbackDir.y * knockbackAmount * 0.5,
+    );
 
     final shadowPaint = Paint()
       ..color = Colors.black.withValues(alpha: 0.3 * _opacity)

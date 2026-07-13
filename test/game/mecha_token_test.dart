@@ -77,5 +77,25 @@ void main() {
       expect(() => token.render(canvas), returnsNormally);
       recorder.endRecording().dispose();
     });
+
+    test('ノックバック方向を指定した triggerHitFlash() も例外を投げない', () {
+      final token = _buildToken();
+      token.triggerHitFlash(knockbackDirection: Vector2(1, 0.5));
+      for (var i = 0; i < 15; i++) {
+        expect(() => token.update(1 / 60), returnsNormally);
+      }
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      expect(() => token.render(canvas), returnsNormally);
+      recorder.endRecording().dispose();
+    });
+
+    test('ノックバック方向がゼロベクトルでも例外を投げない', () {
+      final token = _buildToken();
+      expect(
+        () => token.triggerHitFlash(knockbackDirection: Vector2.zero()),
+        returnsNormally,
+      );
+    });
   });
 }

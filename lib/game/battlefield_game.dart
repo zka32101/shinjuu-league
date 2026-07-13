@@ -3,10 +3,12 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart' show Icons;
+import 'package:flutter/material.dart' show Colors, Icons;
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/game/impact_line.dart';
 import 'package:shinjuu_league/game/isometric_projection.dart';
+import 'package:shinjuu_league/game/kill_burst.dart';
 import 'package:shinjuu_league/game/lane_floor.dart';
 import 'package:shinjuu_league/game/mecha_token.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
@@ -20,6 +22,7 @@ class BattlefieldGame extends FlameGame {
   final Map<String, MechaToken> _tokens = {};
   final _random = Random();
   double _shakeMagnitude = 0.0;
+  double _flashAlpha = 0.0;
 
   @override
   Color backgroundColor() => const Color(0xFF14171F);
@@ -52,12 +55,26 @@ class BattlefieldGame extends FlameGame {
   void update(double dt) {
     super.update(dt);
     if (_shakeMagnitude > 0) {
-      _shakeMagnitude = (_shakeMagnitude - dt * 10).clamp(0.0, 1.0);
-      final offsetX = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 8;
-      final offsetY = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 8;
+      _shakeMagnitude = (_shakeMagnitude - dt * 6).clamp(0.0, 1.0);
+      final offsetX = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 14;
+      final offsetY = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 14;
       camera.viewfinder.position = Vector2(offsetX, offsetY);
     } else {
       camera.viewfinder.position = Vector2.zero();
+    }
+    if (_flashAlpha > 0) {
+      _flashAlpha = (_flashAlpha - dt * 4).clamp(0.0, 1.0);
+    }
+  }
+
+  @override
+  void render(Canvas canvas) {
+    super.render(canvas);
+    if (_flashAlpha > 0) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, 0, size.x, size.y),
+        Paint()..color = Colors.white.withValues(alpha: _flashAlpha * 0.35),
+      );
     }
   }
 
@@ -95,8 +112,26 @@ class BattlefieldGame extends FlameGame {
   }
 
   void onKillEvent(String attackerId, String victimId) {
-    _tokens[attackerId]?.triggerKillFlash();
-    _tokens[victimId]?.triggerHitFlash();
+    final attacker = _tokens[attackerId];
+    final victim = _tokens[victimId];
+
+    attacker?.triggerKillFlash();
+
+    if (attacker != null && victim != null) {
+      final knockbackDir = victim.position - attacker.position;
+      victim.triggerHitFlash(knockbackDirection: knockbackDir);
+      add(
+        ImpactLine(
+          from: attacker.position.clone(),
+          to: victim.position.clone(),
+        ),
+      );
+      add(KillBurst(worldPosition: victim.position.clone()));
+    } else {
+      victim?.triggerHitFlash();
+    }
+
     _shakeMagnitude = 1.0;
+    _flashAlpha = 1.0;
   }
 }
