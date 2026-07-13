@@ -15,7 +15,7 @@ class MechaToken extends PositionComponent {
     required Vector2 basePosition,
   }) : super(
          position: basePosition,
-         size: Vector2.all(36),
+         size: Vector2.all(42),
          anchor: Anchor.center,
        );
 
@@ -29,7 +29,12 @@ class MechaToken extends PositionComponent {
   double _targetOpacity = 1.0;
   double _scale = 1.0;
   double _targetScale = 1.0;
-  double _flash = 0.0;
+  double _sinkOffset = 0.0;
+  double _targetSinkOffset = 0.0;
+
+  double _killFlash = 0.0; // 撃破した瞬間の金色リング拡散
+  double _killPunch = 0.0; // 撃破した瞬間の自己スケールパンチ
+  double _hitFlash = 0.0; // 被弾した瞬間の赤フラッシュ
 
   Color get _teamColor =>
       team == 0 ? const Color(0xFF3B82F6) : const Color(0xFFEF4444);
@@ -39,11 +44,18 @@ class MechaToken extends PositionComponent {
     isAlive = alive;
     _targetOpacity = alive ? 1.0 : 0.25;
     _targetScale = alive ? 1.0 : 0.7;
+    _targetSinkOffset = alive ? 0.0 : 10.0;
   }
 
-  /// 撃破した瞬間に白いリングを一瞬拡散させる演出（実エフェクト素材が無いための代替）
+  /// 撃破した瞬間：金色リング拡散 + 自分が一瞬膨らむパンチ演出
   void triggerKillFlash() {
-    _flash = 1.0;
+    _killFlash = 1.0;
+    _killPunch = 1.0;
+  }
+
+  /// 被弾（撃破された）瞬間：赤フラッシュで衝撃を強調
+  void triggerHitFlash() {
+    _hitFlash = 1.0;
   }
 
   @override
@@ -52,45 +64,77 @@ class MechaToken extends PositionComponent {
     final lerpFactor = (dt * 6).clamp(0.0, 1.0);
     _opacity += (_targetOpacity - _opacity) * lerpFactor;
     _scale += (_targetScale - _scale) * lerpFactor;
-    if (_flash > 0) {
-      _flash = (_flash - dt * 2.5).clamp(0.0, 1.0);
+    _sinkOffset += (_targetSinkOffset - _sinkOffset) * lerpFactor;
+
+    if (_killFlash > 0) {
+      _killFlash = (_killFlash - dt * 2.2).clamp(0.0, 1.0);
+    }
+    if (_killPunch > 0) {
+      _killPunch = (_killPunch - dt * 4.5).clamp(0.0, 1.0);
+    }
+    if (_hitFlash > 0) {
+      _hitFlash = (_hitFlash - dt * 5.0).clamp(0.0, 1.0);
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final radius = (size.x / 2) * _scale;
-    final center = Offset(size.x / 2, size.y / 2);
+    // パンチ演出：撃破直後は一瞬だけ大きく膨らんでから収束する
+    final punchScale = 1.0 + _killPunch * 0.35;
+    final radius = (size.x / 2) * _scale * punchScale;
+    final center = Offset(size.x / 2, size.y / 2 + _sinkOffset);
 
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.25 * _opacity)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
+      ..color = Colors.black.withValues(alpha: 0.3 * _opacity)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(center.dx, center.dy + radius * 0.9),
-        width: radius * 1.6,
+        center: Offset(center.dx, size.y / 2 + radius * 0.9),
+        width: radius * 1.7,
         height: radius * 0.6,
       ),
       shadowPaint,
     );
 
+    // 被弾フラッシュ：本体の下地を赤く光らせて衝撃を伝える
+    if (_hitFlash > 0) {
+      final hitPaint = Paint()
+        ..color = Colors.red.withValues(alpha: _hitFlash * 0.9);
+      canvas.drawCircle(center, radius + 6, hitPaint);
+    }
+
     final bodyPaint = Paint()..color = _teamColor.withValues(alpha: _opacity);
     canvas.drawCircle(center, radius, bodyPaint);
+
+    // 外周グロー（存在感を強調）
+    final glowPaint = Paint()
+      ..color = _teamColor.withValues(alpha: _opacity * 0.5)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
+    canvas.drawCircle(center, radius, glowPaint);
 
     if (isSelf) {
       final ringPaint = Paint()
         ..color = Colors.amber.withValues(alpha: _opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
-      canvas.drawCircle(center, radius + 2, ringPaint);
+      canvas.drawCircle(center, radius + 3, ringPaint);
     }
 
-    if (_flash > 0) {
-      final flashPaint = Paint()
-        ..color = Colors.white.withValues(alpha: _flash)
+    // キルフラッシュ：金色の衝撃波を二重リングで拡散
+    if (_killFlash > 0) {
+      final outerPaint = Paint()
+        ..color = Colors.amberAccent.withValues(alpha: _killFlash)
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3;
-      canvas.drawCircle(center, radius + (1 - _flash) * 20, flashPaint);
+        ..strokeWidth = 4;
+      canvas.drawCircle(center, radius + (1 - _killFlash) * 34, outerPaint);
+
+      final innerPaint = Paint()
+        ..color = Colors.white.withValues(alpha: _killFlash * 0.8)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawCircle(center, radius + (1 - _killFlash) * 18, innerPaint);
     }
 
     final iconPainter = TextPainter(

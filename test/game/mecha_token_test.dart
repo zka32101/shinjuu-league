@@ -49,9 +49,29 @@ void main() {
       }
     });
 
+    test('triggerHitFlash() 後の update() も例外を投げない', () {
+      final token = _buildToken();
+      token.triggerHitFlash();
+      for (var i = 0; i < 10; i++) {
+        expect(() => token.update(1 / 60), returnsNormally);
+      }
+    });
+
     test('render() が例外を投げずCanvasに描画できる', () {
       final token = _buildToken(isSelf: true);
       token.triggerKillFlash();
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      expect(() => token.render(canvas), returnsNormally);
+      recorder.endRecording().dispose();
+    });
+
+    test('キル+被弾+死亡が同時に起きても render() は例外を投げない', () {
+      final token = _buildToken();
+      token.triggerKillFlash();
+      token.triggerHitFlash();
+      token.setAlive(false);
+      token.update(1 / 60);
       final recorder = ui.PictureRecorder();
       final canvas = ui.Canvas(recorder);
       expect(() => token.render(canvas), returnsNormally);

@@ -18,6 +18,8 @@ class BattlefieldGame extends FlameGame {
   static const _laneCenterYs = [-1.8, 1.8];
 
   final Map<String, MechaToken> _tokens = {};
+  final _random = Random();
+  double _shakeMagnitude = 0.0;
 
   @override
   Color backgroundColor() => const Color(0xFF14171F);
@@ -44,6 +46,19 @@ class BattlefieldGame extends FlameGame {
     ).clamp(0.6, 2.5);
     camera.viewfinder.zoom = zoom;
     camera.viewfinder.position = Vector2.zero();
+  }
+
+  @override
+  void update(double dt) {
+    super.update(dt);
+    if (_shakeMagnitude > 0) {
+      _shakeMagnitude = (_shakeMagnitude - dt * 10).clamp(0.0, 1.0);
+      final offsetX = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 8;
+      final offsetY = (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 8;
+      camera.viewfinder.position = Vector2(offsetX, offsetY);
+    } else {
+      camera.viewfinder.position = Vector2.zero();
+    }
   }
 
   /// バトルエンジンの参加者一覧を反映する。tick 毎に呼んでよい（位置は初回のみ確定）。
@@ -79,7 +94,9 @@ class BattlefieldGame extends FlameGame {
     }
   }
 
-  void onKillEvent(String attackerId) {
+  void onKillEvent(String attackerId, String victimId) {
     _tokens[attackerId]?.triggerKillFlash();
+    _tokens[victimId]?.triggerHitFlash();
+    _shakeMagnitude = 1.0;
   }
 }

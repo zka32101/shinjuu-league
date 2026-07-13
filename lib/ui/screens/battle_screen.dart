@@ -41,7 +41,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
       if (next.killFeed.length > prevKillCount) {
         final newEvents = next.killFeed.sublist(prevKillCount);
         for (final event in newEvents) {
-          _game.onKillEvent(event.attackerId);
+          _game.onKillEvent(event.attackerId, event.victimId);
         }
         if (selfId != null && newEvents.any((e) => e.attackerId == selfId)) {
           HapticService.onKill();

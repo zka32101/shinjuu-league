@@ -154,6 +154,11 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 - [lib/game/mecha_token.dart](lib/game/mecha_token.dart) — 参加者1人分のトークン。生死状態を`update()`内でopacity/scaleを補間して滑らかに反映、キル時は白リングフラッシュ演出
 - [lib/game/lane_floor.dart](lib/game/lane_floor.dart) — レーン地面を菱形パネルとして描画
 - [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart) — `FlameGame`本体。**シミュレーションロジックは一切持たず**、`BattleEngine`から渡された参加者状態を描画するだけのレンダラーに徹する設計（`sync(participants)`で位置確定・生死反映、`onKillEvent()`でキルフラッシュ発火）
+
+**迫力強化の追加実装（2026-07-13同日）**: ユーザーから「迫力ふやす」と指示があり、キル演出を強化。
+- `MechaToken`: キルフラッシュを金色の二重リング+自己スケールパンチに強化、被弾側に赤フラッシュ演出を追加、死亡時に「沈み込む」オフセットを追加（単純なopacity低下から、より物理的な手応えのある表現へ）
+- `BattlefieldGame.onKillEvent(attackerId, victimId)`: 引数をvictimId込みに変更し、被弾側トークンへの赤フラッシュ発火 + カメラシェイク（`update()`内でランダムジッターを減衰させながら適用）を追加
+- トークンサイズを36→42に拡大、外周グロー（ぼかしストローク）を追加して存在感を強化
 - [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — `ConsumerWidget`→`ConsumerStatefulWidget`化（`BattlefieldGame`インスタンスをbuild間で保持する必要があるため）。テキストベースの`_LaneView`/`_ParticipantRow`は`GameWidget`に置き換えて削除
 - テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。Flameのゲームループ全体はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証（既知の制約）
 
