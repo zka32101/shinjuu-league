@@ -166,6 +166,12 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 - `MechaToken.triggerHitFlash(knockbackDirection:)` — 被弾方向にノックバック（弾き飛ばされる動き）を追加。ゼロベクトル・null安全
 - `BattlefieldGame.onKillEvent()` — カメラシェイクの振幅を8→14に強化、`render()`をオーバーライドして白フラッシュ（画面全体を覆う半透明矩形）を追加。攻撃側・被弾側トークンの位置からKillBurst/ImpactLineを動的に生成
 - テスト12件追加（計44件）。KillBurst/ImpactLineは寿命切れ時の`removeFromParent()`が未マウント状態でも例外を投げないことを確認
+
+**リアルな2.5D質感化（2026-07-13同日、3回目）**: ユーザーから「2.5D、リアルに」と指示があり、演出の強度ではなく**トークンと地面の質感**を上げる方向で対応（前回までの派手なエフェクトとは別軸の改善）。
+- `MechaToken`: 平坦な単色円 → **球体シェーディング**（左上光源の放射状グラデ light→base→dark）+ リムライト（右下の暗い縁取り）+ ハイライトスポット（光沢）で立体的な玉に。さらに**浮遊ボブ**（生存中は上下にゆっくり揺れる、個体ごとに位相をずらして群れ感）と、本体の高さに応じて薄く・大きくなる**接地影の分離**（影は接地点に固定、本体だけが浮く）を追加。サイズ42→46
+- [lib/game/lane_floor.dart](lib/game/lane_floor.dart): 単色菱形 → 奥（暗）から手前（明）への**奥行きグラデーション** + 内部グリッド線（等角マス目でスケール感）+ 縁ハイライト
+- `BattlefieldGame.sync()`: トークンに`priority = screenPos.y.round()`を設定し、**奥のトークンを先に描き手前を上に重ねる正しい前後関係**（Y座標による深度ソート）を実現
+- 既存44件のテストは全てパスしたまま（質感変更はロジックに影響しないため既存テストで担保）
 - [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — `ConsumerWidget`→`ConsumerStatefulWidget`化（`BattlefieldGame`インスタンスをbuild間で保持する必要があるため）。テキストベースの`_LaneView`/`_ParticipantRow`は`GameWidget`に置き換えて削除
 - テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。Flameのゲームループ全体はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証（既知の制約）
 

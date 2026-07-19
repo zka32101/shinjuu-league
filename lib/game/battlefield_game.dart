@@ -96,13 +96,17 @@ class BattlefieldGame extends FlameGame {
         final gridY =
             _laneCenterYs[p.lane] +
             (slotIndex - (AppConfig.maxPlayersPerTeam - 1) / 2) * 0.5;
-        final newToken = MechaToken(
-          userId: p.userId,
-          team: p.team,
-          isSelf: p.isSelf,
-          icon: icon,
-          basePosition: _projection.toScreen(gridX, gridY),
-        );
+        final screenPos = _projection.toScreen(gridX, gridY);
+        final newToken =
+            MechaToken(
+                userId: p.userId,
+                team: p.team,
+                isSelf: p.isSelf,
+                icon: icon,
+                basePosition: screenPos,
+              )
+              // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
+              ..priority = screenPos.y.round();
         add(newToken);
         return newToken;
       });

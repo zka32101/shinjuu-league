@@ -1,3 +1,4 @@
+import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
@@ -5,7 +6,8 @@ import 'package:flutter/material.dart'
     show Colors, IconData, TextPainter, TextSpan, TextStyle, TextDirection;
 
 /// バトルフィールド上の1参加者を表すトークン。実キャラクター素材が無いため、
-/// 円+属性アイコン（東=火焔/西=氷結）+ 影で「浮いた」2.5D感を表現するプレースホルダー。
+/// 球体シェーディング（放射状グラデ）+ 属性アイコン + 接地影 + 浮遊ボブで
+/// 「宙に浮いた立体的な駒」としての2.5D感を表現するプレースホルダー。
 class MechaToken extends PositionComponent {
   MechaToken({
     required this.userId,
@@ -13,9 +15,10 @@ class MechaToken extends PositionComponent {
     required this.isSelf,
     required this.icon,
     required Vector2 basePosition,
-  }) : super(
+  }) : _bobPhase = (basePosition.x + basePosition.y) % (pi * 2),
+       super(
          position: basePosition,
-         size: Vector2.all(42),
+         size: Vector2.all(46),
          anchor: Anchor.center,
        );
 
@@ -31,6 +34,9 @@ class MechaToken extends PositionComponent {
   double _targetScale = 1.0;
   double _sinkOffset = 0.0;
   double _targetSinkOffset = 0.0;
+
+  final double _bobPhase; // 個体ごとに浮遊の位相をずらして群れ感を出す
+  double _bobTime = 0.0;
 
   double _killFlash = 0.0; // 撃破した瞬間の金色リング拡散
   double _killPunch = 0.0; // 撃破した瞬間の自己スケールパンチ
@@ -67,6 +73,7 @@ class MechaToken extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
+    _bobTime += dt;
     final lerpFactor = (dt * 6).clamp(0.0, 1.0);
     _opacity += (_targetOpacity - _opacity) * lerpFactor;
     _scale += (_targetScale - _scale) * lerpFactor;
@@ -91,21 +98,31 @@ class MechaToken extends PositionComponent {
     // パンチ演出：撃破直後は一瞬だけ大きく膨らんでから収束する
     final punchScale = 1.0 + _killPunch * 0.35;
     final radius = (size.x / 2) * _scale * punchScale;
+
+    // 浮遊ボブ：生存中は上下にゆっくり揺れて「宙に浮いている」立体感を出す
+    final bob = isAlive ? sin(_bobTime * 2.2 + _bobPhase) * 3.0 : 0.0;
+
     // ノックバック：攻撃方向の反対に一瞬弾き飛ばされてから戻る
     final knockbackAmount = _knockback * _knockback * 14;
+    // 接地点（影の中心）— これは浮遊しない。本体だけが bob 分だけ上に浮く。
+    final groundY = size.y / 2 + _sinkOffset;
     final center = Offset(
       size.x / 2 + _knockbackDir.x * knockbackAmount,
-      size.y / 2 + _sinkOffset + _knockbackDir.y * knockbackAmount * 0.5,
+      groundY - bob + _knockbackDir.y * knockbackAmount * 0.5,
     );
 
+    // 接地影：本体が高く浮くほど薄く・大きくして高さを感じさせる
+    final heightFactor = (bob + 3) / 6; // 0..1
     final shadowPaint = Paint()
-      ..color = Colors.black.withValues(alpha: 0.3 * _opacity)
+      ..color = Colors.black.withValues(
+        alpha: (0.35 - heightFactor * 0.15) * _opacity,
+      )
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawOval(
       Rect.fromCenter(
-        center: Offset(center.dx, size.y / 2 + radius * 0.9),
-        width: radius * 1.7,
-        height: radius * 0.6,
+        center: Offset(center.dx, groundY + radius * 0.95),
+        width: radius * (1.5 + heightFactor * 0.4),
+        height: radius * 0.55,
       ),
       shadowPaint,
     );
@@ -113,12 +130,49 @@ class MechaToken extends PositionComponent {
     // 被弾フラッシュ：本体の下地を赤く光らせて衝撃を伝える
     if (_hitFlash > 0) {
       final hitPaint = Paint()
-        ..color = Colors.red.withValues(alpha: _hitFlash * 0.9);
+        ..color = Colors.red.withValues(alpha: _hitFlash * 0.9)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
       canvas.drawCircle(center, radius + 6, hitPaint);
     }
 
-    final bodyPaint = Paint()..color = _teamColor.withValues(alpha: _opacity);
+    // 球体シェーディング：左上を光源とした放射状グラデで立体的な玉に見せる
+    final lightColor = Color.lerp(_teamColor, Colors.white, 0.55)!;
+    final darkColor = Color.lerp(_teamColor, Colors.black, 0.45)!;
+    final bodyPaint = Paint()
+      ..shader = Gradient.radial(
+        Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
+        radius * 1.3,
+        [
+          lightColor.withValues(alpha: _opacity),
+          _teamColor.withValues(alpha: _opacity),
+          darkColor.withValues(alpha: _opacity),
+        ],
+        [0.0, 0.5, 1.0],
+      );
     canvas.drawCircle(center, radius, bodyPaint);
+
+    // リムライト：右下側の縁を暗く締めて球の丸みを強調
+    final rimPaint = Paint()
+      ..color = darkColor.withValues(alpha: _opacity * 0.6)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2;
+    canvas.drawArc(
+      Rect.fromCircle(center: center, radius: radius - 1),
+      0.3,
+      pi * 0.9,
+      false,
+      rimPaint,
+    );
+
+    // ハイライトスポット：光沢のある玉の質感
+    final specPaint = Paint()
+      ..color = Colors.white.withValues(alpha: _opacity * 0.7)
+      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+    canvas.drawCircle(
+      Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
+      radius * 0.22,
+      specPaint,
+    );
 
     // 外周グロー（存在感を強調）
     final glowPaint = Paint()
