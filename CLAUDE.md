@@ -173,7 +173,19 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 - `BattlefieldGame.sync()`: トークンに`priority = screenPos.y.round()`を設定し、**奥のトークンを先に描き手前を上に重ねる正しい前後関係**（Y座標による深度ソート）を実現
 - 既存44件のテストは全てパスしたまま（質感変更はロジックに影響しないため既存テストで担保）
 - [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart) — `ConsumerWidget`→`ConsumerStatefulWidget`化（`BattlefieldGame`インスタンスをbuild間で保持する必要があるため）。テキストベースの`_LaneView`/`_ParticipantRow`は`GameWidget`に置き換えて削除
-- テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。Flameのゲームループ全体はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証（既知の制約）
+- テスト: [test/game/isometric_projection_test.dart](test/game/isometric_projection_test.dart)（投影の対称性検証）、[test/game/mecha_token_test.dart](test/game/mecha_token_test.dart)（生死遷移・update/render が例外を投げないことを検証）。実装当時はFirebase未接続のため実機/ブラウザ検証できず、純粋ロジック部分のみ単体テストで代替検証していた（→ 後日Firebase接続完了により解消、下記参照）
+
+### Firebase本設定完了（2026-07-21）
+
+ユーザーがFirebaseコンソールでAndroidアプリを登録し`google-services.json`を提供。**登録パッケージ名がプロジェクトの既存applicationIdと不一致**だったため（`com.petitworksapps.shinjukuleague` vs 旧`com.petit.works.shinjuu_league`、"shinjuku"と"shinjuu"のスペル差異あり）、AskUserQuestionで確認の上、**プロジェクト側のapplicationId/namespaceをFirebase登録済みの値に合わせる**方針で統一。
+
+- `android/app/build.gradle.kts`: `namespace`/`applicationId`を`com.petitworksapps.shinjukuleague`に変更
+- `MainActivity.kt`を`android/app/src/main/kotlin/com/petitworksapps/shinjukuleague/`に再配置（パッケージ宣言込み）、旧`com/petit/`ディレクトリは削除
+- `android/settings.gradle.kts`に`com.google.gms.google-services`プラグインを追加、`android/app/build.gradle.kts`のpluginsブロックにも適用（**このプラグイン適用が漏れているとgoogle-services.jsonを配置してもFirebaseが初期化されない**ので必須）
+- `google-services.json`を`android/app/`に配置（Firebaseプロジェクト`apps2-752cb` — nitesaki/senjoshogiと共有の複数アプリ収容プロジェクト）
+- `lib/firebase_options.dart`をプレースホルダーから実データに更新（apiKey/appId/messagingSenderId/projectId/storageBucket）。iOSアプリは未登録のため、iOSビルド時は別途Firebaseコンソールでの登録が必要
+- **ブラウザでのスモークテスト実施**: `flutter build web --release`→静的配信でFirebase Core/Firestore/Analytics/Auth/Remote Configの初期化ログを確認、エラーなし、Flutterエンジンも正常にアタッチ（`flt-glass-pane`確認）。**ただしスクリーンショット取得ツール自体がタイムアウトし、実際のピクセル単位の見た目は依然未確認**（環境側のCanvasKit/WebGLキャプチャ制約の可能性、アプリ側の不具合ではない）
+- `.claude/launch.json`に`shinjuu-league-web`（ポート8772、`build2/web`を配信）を追加
 
 **技術的判断**: Flameの`GameWidget`はウィジェット再構築のたびに再生成すると状態が失われるため、`BattleScreen`をStatefulにして`BattlefieldGame`インスタンスを保持。カメラは`onGameResize`でウィジェットサイズに応じて動的にズーム調整し、画面サイズが変わっても両レーンが収まるようにしている。
 

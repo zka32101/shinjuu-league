@@ -1,4 +1,4 @@
-package com.petit.works.shinjuu_league
+package com.petitworksapps.shinjukuleague
 
 import io.flutter.embedding.android.FlutterActivity
 
