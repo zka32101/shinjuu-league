@@ -44,6 +44,15 @@ class MechaToken extends PositionComponent {
   double _knockback = 0.0; // 被弾した瞬間のノックバック量（0..1で減衰）
   Vector2 _knockbackDir = Vector2.zero();
 
+  double _hpRatio = 1.0; // 0..1、HPバー表示用（滑らかに追従）
+  double _targetHpRatio = 1.0;
+
+  /// currentHp/maxHp を受け取ってHPバーを更新する。
+  void updateHp(double currentHp, double maxHp) {
+    if (maxHp <= 0) return;
+    _targetHpRatio = (currentHp / maxHp).clamp(0.0, 1.0);
+  }
+
   Color get _teamColor =>
       team == 0 ? const Color(0xFF3B82F6) : const Color(0xFFEF4444);
 
@@ -91,6 +100,7 @@ class MechaToken extends PositionComponent {
     if (_knockback > 0) {
       _knockback = (_knockback - dt * 4.0).clamp(0.0, 1.0);
     }
+    _hpRatio += (_targetHpRatio - _hpRatio) * lerpFactor;
   }
 
   @override
@@ -224,5 +234,36 @@ class MechaToken extends PositionComponent {
         center.dy - iconPainter.height / 2,
       ),
     );
+
+    // HPバー：頭上に表示。生存中のみ、削れ具合に応じて緑→黄→赤に変化させる
+    if (isAlive) {
+      const barWidth = 34.0;
+      const barHeight = 4.0;
+      final barTop = center.dy - radius - 12;
+      final barRect = Rect.fromLTWH(
+        center.dx - barWidth / 2,
+        barTop,
+        barWidth,
+        barHeight,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(barRect, const Radius.circular(2)),
+        Paint()..color = Colors.black.withValues(alpha: 0.5 * _opacity),
+      );
+
+      final hpColor = _hpRatio > 0.5
+          ? Colors.greenAccent
+          : (_hpRatio > 0.2 ? Colors.amber : Colors.redAccent);
+      final filledRect = Rect.fromLTWH(
+        barRect.left,
+        barRect.top,
+        barWidth * _hpRatio,
+        barHeight,
+      );
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(filledRect, const Radius.circular(2)),
+        Paint()..color = hpColor.withValues(alpha: _opacity),
+      );
+    }
   }
 }

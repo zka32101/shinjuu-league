@@ -11,6 +11,7 @@ BattleParticipantState _participant({
   required int team,
   bool isSelf = false,
   BaseStats? stats,
+  int lane = 0,
 }) {
   return BattleParticipantState(
     userId: userId,
@@ -18,7 +19,7 @@ BattleParticipantState _participant({
     isBot: !isSelf,
     isSelf: isSelf,
     team: team,
-    lane: 0,
+    lane: lane,
     baseStats: stats ?? BaseStats(hp: 100, atk: 50, spd: 40),
   );
 }
@@ -180,6 +181,106 @@ void main() {
       final resolved = engine.manualDuel('self', 'enemy_1');
 
       expect(resolved, isFalse);
+      engine.dispose();
+    });
+  });
+
+  group('BattleEngine HPダメージ蓄積（削り合い）', () {
+    test('弱い攻撃力では一撃で倒せず、HPが減るだけでcombatEventsは発火しない', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 20, spd: 40),
+      );
+      final enemy = _participant(
+        userId: 'enemy_1',
+        team: 1,
+        stats: BaseStats(hp: 200, atk: 50, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_hp_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      CombatEvent? killEvent;
+      CombatEvent? hitEvent;
+      engine.combatEvents.listen((e) => killEvent = e);
+      engine.hitEvents.listen((e) => hitEvent = e);
+
+      final resolved = engine.manualDuel('self', 'enemy_1');
+
+      expect(resolved, isTrue);
+      expect(enemy.isAlive, isTrue);
+      expect(enemy.currentHp, lessThan(200));
+      expect(killEvent, isNull);
+      expect(hitEvent, isNotNull);
+      engine.dispose();
+    });
+
+    test('累積ダメージがHPを上回った瞬間に撃破が確定しcombatEventsが発火する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 30, spd: 40),
+      );
+      final enemy = _participant(
+        userId: 'enemy_1',
+        team: 1,
+        stats: BaseStats(hp: 100, atk: 50, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_hp_2',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      var killCount = 0;
+      engine.combatEvents.listen((_) => killCount++);
+
+      // 十分な回数の手動攻撃を積めば必ず撃破に至る
+      for (var i = 0; i < 50 && enemy.isAlive; i++) {
+        engine.manualDuel('self', 'enemy_1');
+      }
+
+      expect(enemy.isAlive, isFalse);
+      expect(killCount, 1);
+      expect(self.kills, 1);
+      engine.dispose();
+    });
+
+    test('リスポーン時にHPが上限まで全回復する', () {
+      // 自動交戦（レーン内の確率交戦）と手動攻撃の干渉を避けるため、
+      // self/enemyを異なるレーンに置き、自動交戦が絶対に発生しないようにする。
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final enemy = _participant(
+        userId: 'enemy_1',
+        team: 1,
+        lane: 1,
+        stats: BaseStats(hp: 50, atk: 10, spd: 10),
+      )..currentHp = 1;
+      final engine = BattleEngine(
+        battleId: 'test_hp_3',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      // HPを0まで削って撃破・respawnAtSecondを確定させる（手動攻撃はレーン非依存）
+      engine.manualDuel('self', 'enemy_1');
+      expect(enemy.isAlive, isFalse);
+
+      // respawnAtSecondに到達するまでtickを進める（レーンが違うため自動交戦は発生しない）
+      for (var i = 0; i < 20 && !enemy.isAlive; i++) {
+        engine.tick();
+      }
+
+      expect(enemy.isAlive, isTrue);
+      expect(enemy.currentHp, enemy.effectiveHp);
       engine.dispose();
     });
   });

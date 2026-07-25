@@ -19,6 +19,7 @@ class BattleState {
     required this.isEvolutionLocked,
     required this.selectedEvolution,
     required this.killFeed,
+    required this.hitFeed,
     required this.isLoading,
     required this.isFinished,
     required this.error,
@@ -32,6 +33,7 @@ class BattleState {
     isEvolutionLocked: false,
     selectedEvolution: null,
     killFeed: [],
+    hitFeed: [],
     isLoading: false,
     isFinished: false,
     error: null,
@@ -44,6 +46,7 @@ class BattleState {
   final bool isEvolutionLocked;
   final Evolution? selectedEvolution;
   final List<CombatEvent> killFeed;
+  final List<CombatEvent> hitFeed;
   final bool isLoading;
   final bool isFinished;
   final String? error;
@@ -56,6 +59,7 @@ class BattleState {
     bool? isEvolutionLocked,
     Evolution? selectedEvolution,
     List<CombatEvent>? killFeed,
+    List<CombatEvent>? hitFeed,
     bool? isLoading,
     bool? isFinished,
     String? error,
@@ -68,6 +72,7 @@ class BattleState {
       isEvolutionLocked: isEvolutionLocked ?? this.isEvolutionLocked,
       selectedEvolution: selectedEvolution ?? this.selectedEvolution,
       killFeed: killFeed ?? this.killFeed,
+      hitFeed: hitFeed ?? this.hitFeed,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
@@ -89,6 +94,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   final AnalyticsService _analyticsService;
 
   StreamSubscription<CombatEvent>? _combatSub;
+  StreamSubscription<CombatEvent>? _hitSub;
   StreamSubscription<int>? _tickSub;
 
   late String _selfUserId;
@@ -133,6 +139,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
     );
 
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
+    _hitSub = engine.hitEvents.listen(_onHitEvent);
     _tickSub = engine.onTick.listen((second) => _onTick(second, engine));
 
     final battle = Battle(
@@ -192,6 +199,25 @@ class BattleViewModel extends StateNotifier<BattleState> {
     }
   }
 
+  DateTime? _lastManualSkillAt;
+  static const _manualSkillCooldown = Duration(seconds: 6);
+
+  /// クールタイム中かどうか（UIのスキルボタン表示に使う）
+  bool get isSkillOnCooldown {
+    if (_lastManualSkillAt == null) return false;
+    return DateTime.now().difference(_lastManualSkillAt!) <
+        _manualSkillCooldown;
+  }
+
+  /// プレイヤーのスキル発動。範囲内の対象idはBattlefieldGame側で判定済みの前提。
+  void attemptManualSkill(List<String> targetIdsInRange) {
+    final engine = state.engine;
+    if (engine == null || isSkillOnCooldown) return;
+
+    engine.manualSkill(_selfUserId, targetIdsInRange);
+    _lastManualSkillAt = DateTime.now();
+  }
+
   void _onCombatEvent(CombatEvent event) {
     state = state.copyWith(killFeed: [...state.killFeed, event]);
 
@@ -199,6 +225,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
       state = state.copyWith(ahaMomentReached: true);
       _analyticsService.logAhaMomentReached(_selfUserId);
     }
+  }
+
+  void _onHitEvent(CombatEvent event) {
+    state = state.copyWith(hitFeed: [...state.hitFeed, event]);
   }
 
   void _onTick(int second, BattleEngine engine) {
@@ -253,6 +283,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   @override
   void dispose() {
     _combatSub?.cancel();
+    _hitSub?.cancel();
     _tickSub?.cancel();
     state.engine?.dispose();
     super.dispose();

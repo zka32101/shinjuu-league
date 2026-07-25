@@ -36,6 +36,7 @@ class BattleParticipantState {
   int assists = 0;
   bool isAlive = true;
   int respawnAtSecond = 0;
+  late double currentHp;
 
   BattleParticipantState({
     required this.userId,
@@ -46,7 +47,9 @@ class BattleParticipantState {
     required this.lane,
     required this.baseStats,
     this.evolution,
-  });
+  }) {
+    currentHp = effectiveHp;
+  }
 
   double get effectiveAtk =>
       baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
@@ -70,6 +73,8 @@ class BattleParticipantState {
 class BattleEngine {
   static const _respawnDelaySeconds = 8;
   static const _engagementChancePerTick = 0.12;
+  static const _hitDamageFactor = 0.35;
+  static const _skillDamageMultiplier = 2.2;
 
   final String battleId;
   final BattleMode mode;
@@ -94,9 +99,12 @@ class BattleEngine {
   // sync:true でキルイベントを同フレームで即時配信する（Aha Momentの即時検知に必要）
   final _combatController = StreamController<CombatEvent>.broadcast(sync: true);
   final _tickController = StreamController<int>.broadcast();
+  // 撃破に至らない被弾（HP削り）を通知する。killFeed/Aha Momentには影響させない。
+  final _hitController = StreamController<CombatEvent>.broadcast(sync: true);
 
   Stream<CombatEvent> get combatEvents => _combatController.stream;
   Stream<int> get onTick => _tickController.stream;
+  Stream<CombatEvent> get hitEvents => _hitController.stream;
 
   bool get isRunning => _isRunning;
   int get elapsedSeconds => _elapsedSeconds;
@@ -106,7 +114,10 @@ class BattleEngine {
     final participant = participants
         .where((p) => p.userId == userId)
         .firstOrNull;
-    participant?.evolution = evolution;
+    if (participant == null) return;
+    participant.evolution = evolution;
+    // 進化ボーナスでHP上限が変わるため、交戦開始前に満タンへ再計算する
+    participant.currentHp = participant.effectiveHp;
   }
 
   void start() {
@@ -124,6 +135,7 @@ class BattleEngine {
     stop();
     _combatController.close();
     _tickController.close();
+    _hitController.close();
   }
 
   /// 1秒分のシミュレーションを進める。Timer.periodic から呼ばれる他、
@@ -143,6 +155,7 @@ class BattleEngine {
     for (final p in participants) {
       if (!p.isAlive && _elapsedSeconds >= p.respawnAtSecond) {
         p.isAlive = true;
+        p.currentHp = p.effectiveHp;
       }
     }
   }
@@ -163,10 +176,8 @@ class BattleEngine {
         if (_random.nextDouble() > _engagementChancePerTick) continue;
         final aliveDefenders = teamBAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
-        _resolveDuel(
-          attacker,
-          aliveDefenders[_random.nextInt(aliveDefenders.length)],
-        );
+        final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
+        _applyDamage(attacker, defender, _computeDamage(attacker, defender));
       }
 
       for (final attacker in teamBAlive) {
@@ -174,50 +185,58 @@ class BattleEngine {
         if (_random.nextDouble() > _engagementChancePerTick) continue;
         final aliveDefenders = teamAAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
-        _resolveDuel(
-          attacker,
-          aliveDefenders[_random.nextInt(aliveDefenders.length)],
-        );
+        final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
+        _applyDamage(attacker, defender, _computeDamage(attacker, defender));
       }
     }
   }
 
-  void _resolveDuel(
+  /// 素早さが高いほど被弾を軽減する（回避寄りの簡易ミティゲーション）
+  double _computeDamage(
     BattleParticipantState attacker,
     BattleParticipantState defender,
   ) {
+    final mitigation =
+        1.0 - (defender.effectiveSpd / (defender.effectiveSpd + 200));
+    return attacker.effectiveAtk * _hitDamageFactor * mitigation;
+  }
+
+  /// HPを削り、0以下になった時点で撃破として確定する（即死判定ではなく削り合い）。
+  /// 撃破に至らない場合は `hitEvents` のみへ通知し、killFeed/Aha Momentは反応させない。
+  void _applyDamage(
+    BattleParticipantState attacker,
+    BattleParticipantState defender,
+    double damage,
+  ) {
     if (!attacker.isAlive || !defender.isAlive) return;
 
-    final attackPower = attacker.effectiveAtk;
-    final defensePower =
-        defender.effectiveHp * 0.5 + defender.effectiveSpd * 0.3;
-    final winChance = (attackPower / (attackPower + defensePower)).clamp(
-      0.15,
-      0.85,
+    defender.currentHp = (defender.currentHp - damage).clamp(
+      0.0,
+      double.infinity,
     );
 
-    final BattleParticipantState winner;
-    final BattleParticipantState loser;
-    if (_random.nextDouble() < winChance) {
-      winner = attacker;
-      loser = defender;
+    if (defender.currentHp <= 0) {
+      attacker.kills++;
+      defender.deaths++;
+      defender.isAlive = false;
+      defender.respawnAtSecond = _elapsedSeconds + _respawnDelaySeconds;
+
+      _combatController.add(
+        CombatEvent(
+          attackerId: attacker.userId,
+          victimId: defender.userId,
+          tickSecond: _elapsedSeconds,
+        ),
+      );
     } else {
-      winner = defender;
-      loser = attacker;
+      _hitController.add(
+        CombatEvent(
+          attackerId: attacker.userId,
+          victimId: defender.userId,
+          tickSecond: _elapsedSeconds,
+        ),
+      );
     }
-
-    winner.kills++;
-    loser.deaths++;
-    loser.isAlive = false;
-    loser.respawnAtSecond = _elapsedSeconds + _respawnDelaySeconds;
-
-    _combatController.add(
-      CombatEvent(
-        attackerId: winner.userId,
-        victimId: loser.userId,
-        tickSecond: _elapsedSeconds,
-      ),
-    );
   }
 
   List<PlayerStats> buildPlayerStats() =>
@@ -225,7 +244,7 @@ class BattleEngine {
 
   /// プレイヤーがマップ上で敵に接近して発動する手動攻撃（Pokémon UNITE風の接近戦）。
   /// 範囲判定はUI層（BattlefieldGame）が担当し、ここではチーム・生死のみ検証して
-  /// 既存の自動交戦と同じ `_resolveDuel` を再利用する（勝敗ロジックを二重管理しない）。
+  /// 自動交戦と同じ `_applyDamage` を再利用する（ダメージ計算ロジックを二重管理しない）。
   bool manualDuel(String attackerId, String victimId) {
     final attacker = participants
         .where((p) => p.userId == attackerId)
@@ -235,8 +254,33 @@ class BattleEngine {
     if (!attacker.isAlive || !victim.isAlive) return false;
     if (attacker.team == victim.team) return false;
 
-    _resolveDuel(attacker, victim);
+    _applyDamage(attacker, victim, _computeDamage(attacker, victim));
     return true;
+  }
+
+  /// プレイヤーのスキル発動（クールタイム付き範囲攻撃）。指定半径内の敵全員に
+  /// 通常攻撃よりも高い倍率でダメージを与える。範囲判定はBattlefieldGame側が担当。
+  bool manualSkill(String attackerId, List<String> targetIdsInRange) {
+    final attacker = participants
+        .where((p) => p.userId == attackerId)
+        .firstOrNull;
+    if (attacker == null || !attacker.isAlive) return false;
+
+    var hitAny = false;
+    for (final targetId in targetIdsInRange) {
+      final target = participants
+          .where((p) => p.userId == targetId)
+          .firstOrNull;
+      if (target == null) continue;
+      if (!target.isAlive || target.team == attacker.team) continue;
+      _applyDamage(
+        attacker,
+        target,
+        _computeDamage(attacker, target) * _skillDamageMultiplier,
+      );
+      hitAny = true;
+    }
+    return hitAny;
   }
 
   /// チーム合計スコアで勝敗判定。同点は引き分けなしのランダム決着（MOBAは必ず勝敗をつける）。

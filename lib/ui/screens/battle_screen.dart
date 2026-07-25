@@ -21,11 +21,24 @@ class BattleScreen extends ConsumerStatefulWidget {
 
 class _BattleScreenState extends ConsumerState<BattleScreen> {
   final _game = BattlefieldGame();
+  final _skillOnCooldown = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
     _game.attackTargetId.dispose();
+    _skillOnCooldown.dispose();
     super.dispose();
+  }
+
+  void _activateSkill() {
+    if (_skillOnCooldown.value) return;
+    final targets = _game.enemiesWithinSkillRadius();
+    ref.read(battleViewModelProvider.notifier).attemptManualSkill(targets);
+    _game.onSkillActivate();
+    _skillOnCooldown.value = true;
+    Future.delayed(const Duration(seconds: 6), () {
+      if (mounted) _skillOnCooldown.value = false;
+    });
   }
 
   @override
@@ -52,6 +65,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         if (selfId != null && newEvents.any((e) => e.attackerId == selfId)) {
           HapticService.onKill();
           AudioService().playKillSe();
+        }
+      }
+
+      // 撃破に至らない被弾（HP削り）の軽い反応
+      final prevHitCount = previous?.hitFeed.length ?? 0;
+      if (next.hitFeed.length > prevHitCount) {
+        for (final event in next.hitFeed.sublist(prevHitCount)) {
+          _game.onHitEvent(event.victimId);
         }
       }
 
@@ -169,6 +190,45 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                             Icons.flash_on,
                             color: Colors.white,
                             size: 32,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+                Positioned(
+                  right: 108,
+                  bottom: 36,
+                  child: ValueListenableBuilder<bool>(
+                    valueListenable: _skillOnCooldown,
+                    builder: (context, onCooldown, _) {
+                      return GestureDetector(
+                        onTap: onCooldown ? null : _activateSkill,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 56,
+                          height: 56,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: onCooldown
+                                ? Colors.grey.withValues(alpha: 0.4)
+                                : Colors.cyanAccent,
+                            boxShadow: onCooldown
+                                ? null
+                                : [
+                                    BoxShadow(
+                                      color: Colors.cyanAccent.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                      blurRadius: 12,
+                                      spreadRadius: 2,
+                                    ),
+                                  ],
+                          ),
+                          child: const Icon(
+                            Icons.blur_circular,
+                            color: Colors.black87,
+                            size: 26,
                           ),
                         ),
                       );

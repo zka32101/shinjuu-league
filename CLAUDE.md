@@ -202,9 +202,20 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 - [lib/viewmodels/battle_viewmodel.dart](lib/viewmodels/battle_viewmodel.dart): `attemptManualAttack(targetUserId)`を追加。900msのクールダウンで連打を防止。`manualDuel`が発火する`CombatEvent`は既存の`_onCombatEvent`パイプラインにそのまま乗るため、**キルフラッシュ・ハプティクス・SE・カメラシェイク・パーティクル等の演出は追加配線なしで手動攻撃にもそのまま適用される**（自動交戦と手動攻撃でイベント発火経路が共通なため）
 - [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart): `GameWidget`をStackで包み、右下に攻撃ボタン（`ValueListenableBuilder`で射程内判定に応じて有効/無効・光彩演出）を追加
 
-**既知の制約（今回のスコープ外）**: 味方/Botの位置は引き続きBattleEngineの自動シミュレーション任せで、フリー移動するのはプレイヤーの自キャラのみ。真の「ポケモンユナイト」のような全キャラ移動+AIパスファインディングは別途の大規模作業。また見た目の実機確認はユーザー側の端末待ち（上記APKビルドの節参照）。
-
 テスト: `battle_engine_test.dart`に`manualDuel`のテスト4件（成功/同チーム拒否/不正ID/死亡対象拒否）、`test/game/battlefield_game_test.dart`を新規作成し攻撃対象検出の挙動を3件検証（味方は距離が近くても対象外になることを確認 — チームフィルタが実際に効いていることの証明）。計51件全通過。
+
+### ゲーム性さらにリッチ化（2026-07-21同日、4項目一括実装）
+
+ユーザーから「ポケモンユナイトのようなゲーム感」を再度指示され、実機で確認したが「さらに要素を追加したい」との回答。AskUserQuestion（複数選択）で4項目を確認：①スキル発動（クールタイム付き範囲攻撃）②マップ全体を自由に歩き回れるようにする③味方/BotもAI移動④HPを削っていくタイプにする。全て選択されたため一括実装。
+
+**設計方針**: 前回実装した「BattlefieldGameは描画専用、BattleEngineが唯一のシミュレーション正」という原則を維持しつつ、④（HP削り）だけは自動交戦（`_resolveEngagements`）自体の内部ロジック変更が必要だったため、既存47件のテストへの影響を精査しながら慎重に置き換えた。
+
+- **HP削り合い（既存の即死コインフリップを廃止）**: `BattleParticipantState.currentHp`を追加（構築時に`effectiveHp`で初期化、進化ロック時・リスポーン時に再充填）。`_resolveDuel`（勝敗確率で即死）を`_applyDamage` + `_computeDamage`（素早さによる被弾軽減付き）に置き換え、**自動交戦・手動攻撃・スキル発動すべてが同じダメージ計算を共有**。撃破に至らない被弾は新設の`hitEvents`ストリームでのみ通知し、`killFeed`/Aha Momentには影響させない設計。既存のAha Momentテスト（atk=9999で即死級ダメージを与える設計だったため、新ダメージ式でも実質的に一撃圏内に収まり）は無改修で通過
+- **プレイフィールド拡張**: `_playfieldHalfWidth/Height`を230/140→900/560に拡大。[lib/game/open_field.dart](lib/game/open_field.dart)を新設し、レーン外が真っ暗な虚空に見えないよう単色の地面プレートを追加。カメラはマップ全体を映す固定ズームから**自キャラに追従する方式**に変更（`_cameraFollowPos`を`update()`毎フレームでlerp）
+- **味方/BotのAI移動（視覚レイヤーのみ）**: `_updateBotWander()`で各Bot/味方トークンが1.5秒毎に最寄りの生存中の敵を再探索し、緩やかに近づく（速度22px/秒、自キャラの90px/秒より控えめ）。**BattleEngineの撃破判定・勝敗ロジックには一切影響しない**、純粋な描画位置更新
+- **スキル発動**: [lib/game/skill_burst.dart](lib/game/skill_burst.dart)（拡大するリング演出）を新設。`BattleEngine.manualSkill(attackerId, targetIdsInRange)`で範囲内の敵全員に通常攻撃の2.2倍ダメージ。`BattlefieldGame.enemiesWithinSkillRadius()`（半径90px）で対象を都度計算。UIはクールタイム6秒のスキルボタンを攻撃ボタンの隣に追加（ローカルの`ValueNotifier<bool>`でクールダウン管理、サーバー側はBattleViewModelの`isSkillOnCooldown`で二重に強制）
+
+テスト追加: HPダメージ蓄積の専用テスト3件（弱攻撃は一撃で倒せない/累積で撃破しcombatEvents発火/リスポーンでHP全回復）。リスポーンテストでは自動交戦との干渉を避けるため`_participant()`ヘルパーに`lane`パラメータを追加し、self/enemyを異なるレーンに配置して決定性を確保。**計54件全通過**。
 
 ---
 
