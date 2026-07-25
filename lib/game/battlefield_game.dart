@@ -3,7 +3,8 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/material.dart' show Colors, Icons;
+import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter/material.dart' show Colors, EdgeInsets, Icons;
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/game/impact_line.dart';
@@ -15,14 +16,28 @@ import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 /// 参加者の状態（位置・生死）だけを受け取って描画するレンダラー。
 /// 対戦のシミュレーションロジックは持たない（BattleEngine が唯一の正）。
+///
+/// 自キャラのみジョイスティックでフリー移動できる（Pokémon UNITE風の接近戦）。
+/// 味方/Botは引き続きBattleEngineの自動交戦シミュレーションに委ねる — 位置は固定枠のまま。
 class BattlefieldGame extends FlameGame {
   static const _projection = IsometricProjection();
   static const _laneCenterYs = [-1.8, 1.8];
+  static const _selfMoveSpeed = 90.0; // world px/sec
+  static const _attackRange = 46.0;
+  static const _playfieldHalfWidth = 230.0;
+  static const _playfieldHalfHeight = 140.0;
 
   final Map<String, MechaToken> _tokens = {};
   final _random = Random();
   double _shakeMagnitude = 0.0;
   double _flashAlpha = 0.0;
+
+  JoystickComponent? _joystick;
+  MechaToken? _selfToken;
+  double _targetScanTimer = 0.0;
+
+  /// 攻撃可能な射程内に敵がいる場合、そのuserIdを保持する。UIの攻撃ボタン有効化に使う。
+  final ValueNotifier<String?> attackTargetId = ValueNotifier(null);
 
   @override
   Color backgroundColor() => const Color(0xFF14171F);
@@ -36,6 +51,21 @@ class BattlefieldGame extends FlameGame {
       add(LaneFloor(laneCenterY: _laneCenterYs[lane], color: color));
     }
     camera.viewfinder.anchor = Anchor.center;
+
+    final joystick = JoystickComponent(
+      knob: CircleComponent(
+        radius: 14,
+        paint: Paint()..color = Colors.white.withValues(alpha: 0.75),
+      ),
+      background: CircleComponent(
+        radius: 36,
+        paint: Paint()..color = Colors.white.withValues(alpha: 0.2),
+      ),
+      margin: const EdgeInsets.only(left: 24, bottom: 24),
+    );
+    _joystick = joystick;
+    // カメラシェイク/ズームの影響を受けないHUD空間に配置
+    camera.viewport.add(joystick);
   }
 
   @override
@@ -65,6 +95,63 @@ class BattlefieldGame extends FlameGame {
     if (_flashAlpha > 0) {
       _flashAlpha = (_flashAlpha - dt * 4).clamp(0.0, 1.0);
     }
+
+    _updateSelfMovement(dt);
+
+    _targetScanTimer += dt;
+    if (_targetScanTimer >= 0.15) {
+      _targetScanTimer = 0.0;
+      _updateAttackTarget();
+    }
+  }
+
+  /// ジョイスティックの入力方向へ自キャラのみを毎フレーム移動させる。
+  /// 味方/Botの位置はBattleEngineの自動シミュレーション任せのまま変更しない。
+  void _updateSelfMovement(double dt) {
+    final self = _selfToken;
+    final joystick = _joystick;
+    if (self == null || joystick == null || !self.isAlive) return;
+    if (joystick.direction == JoystickDirection.idle) return;
+
+    final delta = joystick.relativeDelta;
+    self.position += delta * _selfMoveSpeed * dt;
+    self.position.x = self.position.x.clamp(
+      -_playfieldHalfWidth,
+      _playfieldHalfWidth,
+    );
+    self.position.y = self.position.y.clamp(
+      -_playfieldHalfHeight,
+      _playfieldHalfHeight,
+    );
+    // 奥/手前関係をリアルタイムに更新（移動に伴い前後の重なりが変わるため）
+    self.priority = self.position.y.round();
+  }
+
+  /// 自キャラの射程内にいる最も近い敵を探し、攻撃可能対象として公開する。
+  void _updateAttackTarget() {
+    final self = _selfToken;
+    if (self == null || !self.isAlive) {
+      attackTargetId.value = null;
+      return;
+    }
+
+    MechaToken? nearest;
+    var nearestDistSq = double.infinity;
+    for (final token in _tokens.values) {
+      if (token.userId == self.userId) continue;
+      if (token.team == self.team) continue;
+      if (!token.isAlive) continue;
+      final distSq = (token.position - self.position).length2;
+      if (distSq < nearestDistSq) {
+        nearestDistSq = distSq;
+        nearest = token;
+      }
+    }
+
+    attackTargetId.value =
+        (nearest != null && nearestDistSq <= _attackRange * _attackRange)
+        ? nearest.userId
+        : null;
   }
 
   @override
@@ -108,6 +195,7 @@ class BattlefieldGame extends FlameGame {
               // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
               ..priority = screenPos.y.round();
         add(newToken);
+        if (p.isSelf) _selfToken = newToken;
         return newToken;
       });
 

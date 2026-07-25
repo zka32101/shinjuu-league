@@ -105,6 +105,85 @@ void main() {
     });
   });
 
+  group('BattleEngine.manualDuel（プレイヤー手動攻撃）', () {
+    test('敵チームへの手動攻撃は成功しCombatEventが発火する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 9999, spd: 40),
+      );
+      final enemy = _participant(userId: 'enemy_1', team: 1);
+      final engine = BattleEngine(
+        battleId: 'test_manual_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      CombatEvent? received;
+      engine.combatEvents.listen((event) => received = event);
+
+      final resolved = engine.manualDuel('self', 'enemy_1');
+
+      expect(resolved, isTrue);
+      expect(received, isNotNull);
+      expect(
+        received!.attackerId == 'self' || received!.victimId == 'self',
+        isTrue,
+      );
+      engine.dispose();
+    });
+
+    test('同じチームへの手動攻撃は無効化される', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final ally = _participant(userId: 'ally_1', team: 0);
+      final engine = BattleEngine(
+        battleId: 'test_manual_2',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, ally],
+      );
+
+      final resolved = engine.manualDuel('self', 'ally_1');
+
+      expect(resolved, isFalse);
+      expect(self.kills, 0);
+      expect(ally.kills, 0);
+      engine.dispose();
+    });
+
+    test('存在しないuserIdへの手動攻撃は例外を投げず失敗を返す', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'test_manual_3',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(() => engine.manualDuel('self', '存在しないID'), returnsNormally);
+      expect(engine.manualDuel('self', '存在しないID'), isFalse);
+      engine.dispose();
+    });
+
+    test('死亡中の対象への手動攻撃は無効化される', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final enemy = _participant(userId: 'enemy_1', team: 1)..isAlive = false;
+      final engine = BattleEngine(
+        battleId: 'test_manual_4',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      final resolved = engine.manualDuel('self', 'enemy_1');
+
+      expect(resolved, isFalse);
+      engine.dispose();
+    });
+  });
+
   group('EloService', () {
     test('同レーティング同士の勝利で kFactor/2 分だけ上昇する', () {
       final change = EloService.calculateEloChange(

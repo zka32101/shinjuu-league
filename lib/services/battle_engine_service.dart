@@ -223,6 +223,22 @@ class BattleEngine {
   List<PlayerStats> buildPlayerStats() =>
       participants.map((p) => p.toPlayerStats()).toList();
 
+  /// プレイヤーがマップ上で敵に接近して発動する手動攻撃（Pokémon UNITE風の接近戦）。
+  /// 範囲判定はUI層（BattlefieldGame）が担当し、ここではチーム・生死のみ検証して
+  /// 既存の自動交戦と同じ `_resolveDuel` を再利用する（勝敗ロジックを二重管理しない）。
+  bool manualDuel(String attackerId, String victimId) {
+    final attacker = participants
+        .where((p) => p.userId == attackerId)
+        .firstOrNull;
+    final victim = participants.where((p) => p.userId == victimId).firstOrNull;
+    if (attacker == null || victim == null) return false;
+    if (!attacker.isAlive || !victim.isAlive) return false;
+    if (attacker.team == victim.team) return false;
+
+    _resolveDuel(attacker, victim);
+    return true;
+  }
+
   /// チーム合計スコアで勝敗判定。同点は引き分けなしのランダム決着（MOBAは必ず勝敗をつける）。
   BattleResult resultForUser(String userId) {
     final participant = participants.firstWhere((p) => p.userId == userId);

@@ -23,6 +23,12 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   final _game = BattlefieldGame();
 
   @override
+  void dispose() {
+    _game.attackTargetId.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final selfId = widget.match.teamA.isNotEmpty
         ? widget.match.teamA.first.userId
@@ -121,7 +127,57 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
               ),
             ],
           ),
-          Expanded(child: GameWidget(game: _game)),
+          Expanded(
+            child: Stack(
+              children: [
+                GameWidget(game: _game),
+                Positioned(
+                  right: 24,
+                  bottom: 24,
+                  child: ValueListenableBuilder<String?>(
+                    valueListenable: _game.attackTargetId,
+                    builder: (context, targetId, _) {
+                      final canAttack = targetId != null;
+                      return GestureDetector(
+                        onTap: canAttack
+                            ? () => ref
+                                  .read(battleViewModelProvider.notifier)
+                                  .attemptManualAttack(targetId)
+                            : null,
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 150),
+                          width: 72,
+                          height: 72,
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: canAttack
+                                ? Colors.redAccent
+                                : Colors.grey.withValues(alpha: 0.4),
+                            boxShadow: canAttack
+                                ? [
+                                    BoxShadow(
+                                      color: Colors.redAccent.withValues(
+                                        alpha: 0.6,
+                                      ),
+                                      blurRadius: 12,
+                                      spreadRadius: 2,
+                                    ),
+                                  ]
+                                : null,
+                          ),
+                          child: const Icon(
+                            Icons.flash_on,
+                            color: Colors.white,
+                            size: 32,
+                          ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
           Container(
             height: 140,
             padding: const EdgeInsets.all(8),

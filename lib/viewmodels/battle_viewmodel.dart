@@ -171,6 +171,27 @@ class BattleViewModel extends StateNotifier<BattleState> {
     state.engine?.start();
   }
 
+  DateTime? _lastManualAttackAt;
+  static const _manualAttackCooldown = Duration(milliseconds: 900);
+
+  /// プレイヤーがマップ上で敵に接近して手動攻撃ボタンを押した時に呼ばれる。
+  /// 範囲判定はBattlefieldGame側で済んでいる前提。連打防止のクールダウンのみここで管理。
+  void attemptManualAttack(String targetUserId) {
+    final engine = state.engine;
+    if (engine == null) return;
+
+    final now = DateTime.now();
+    if (_lastManualAttackAt != null &&
+        now.difference(_lastManualAttackAt!) < _manualAttackCooldown) {
+      return;
+    }
+
+    final resolved = engine.manualDuel(_selfUserId, targetUserId);
+    if (resolved) {
+      _lastManualAttackAt = now;
+    }
+  }
+
   void _onCombatEvent(CombatEvent event) {
     state = state.copyWith(killFeed: [...state.killFeed, event]);
 

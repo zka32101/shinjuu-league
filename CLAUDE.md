@@ -189,6 +189,23 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 
 **技術的判断**: Flameの`GameWidget`はウィジェット再構築のたびに再生成すると状態が失われるため、`BattleScreen`をStatefulにして`BattlefieldGame`インスタンスを保持。カメラは`onGameResize`でウィジェットサイズに応じて動的にズーム調整し、画面サイズが変わっても両レーンが収まるようにしている。
 
+### APKビルド + ジョイスティック操作（Pokémon UNITE風）実装（2026-07-21）
+
+**APKビルド**: 実機確認のため`build-flutter-apk`スキルでビルド。このホストは物理RAM約4GBしかなく、初期状態のGradleデーモン設定（`-Xmx8G`）ではOOMクラッシュした。`android/gradle.properties`のJVMヒープを`-Xmx1536M`に縮小して解決（**このホスト固有の制約**、他の潤沢なマシンでは元の設定で問題ない可能性が高い）。desugar/minSdk設定もこの機会に追加（`build-flutter-apk`スキルの前提条件）。実機テストは、このセッションが物理USB接続を持たないクラウド環境のため`adb`実行自体が不可能（`STATUS_DLL_NOT_FOUND`）と判明 → ユーザー自身の端末での確認に切り替え。
+
+**ゲーム性リッチ化「ポケモンユナイトのようなゲーム感」（AskUserQuestionで実装規模を確認 → 最大規模の「プレイヤーがJoystickでキャラを直接操作」を選択）**:
+
+現状のバトルは1秒毎の自動シミュレーション（`BattleEngine.tick()`）のみで、プレイヤーが戦闘中に操作できる要素がゼロだった。これに対し、既存の「BattlefieldGameは描画専用、シミュレーションロジックを持たない」設計原則を維持しつつ、**自キャラのみ**フリー移動できる層を追加：
+
+- [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart): Flame標準の`JoystickComponent`を`camera.viewport`（HUD空間、カメラシェイクの影響を受けない）に追加。自トークンのみ`update()`毎フレームでジョイスティック入力方向に移動（速度90px/秒、プレイフィールド範囲内にクランプ）。移動に応じて`priority`（描画順）もリアルタイム更新。射程46px以内の最も近い敵（別チーム・生存中のみ）を`ValueNotifier<String?> attackTargetId`で公開
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart): `manualDuel(attackerId, victimId)`を追加。範囲判定はUI層が担当し、ここではチーム・生死のみ検証して既存の`_resolveDuel`（自動交戦と同じロジック）を再利用 — 勝敗ロジックを二重管理しない設計
+- [lib/viewmodels/battle_viewmodel.dart](lib/viewmodels/battle_viewmodel.dart): `attemptManualAttack(targetUserId)`を追加。900msのクールダウンで連打を防止。`manualDuel`が発火する`CombatEvent`は既存の`_onCombatEvent`パイプラインにそのまま乗るため、**キルフラッシュ・ハプティクス・SE・カメラシェイク・パーティクル等の演出は追加配線なしで手動攻撃にもそのまま適用される**（自動交戦と手動攻撃でイベント発火経路が共通なため）
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart): `GameWidget`をStackで包み、右下に攻撃ボタン（`ValueListenableBuilder`で射程内判定に応じて有効/無効・光彩演出）を追加
+
+**既知の制約（今回のスコープ外）**: 味方/Botの位置は引き続きBattleEngineの自動シミュレーション任せで、フリー移動するのはプレイヤーの自キャラのみ。真の「ポケモンユナイト」のような全キャラ移動+AIパスファインディングは別途の大規模作業。また見た目の実機確認はユーザー側の端末待ち（上記APKビルドの節参照）。
+
+テスト: `battle_engine_test.dart`に`manualDuel`のテスト4件（成功/同チーム拒否/不正ID/死亡対象拒否）、`test/game/battlefield_game_test.dart`を新規作成し攻撃対象検出の挙動を3件検証（味方は距離が近くても対象外になることを確認 — チームフィルタが実際に効いていることの証明）。計51件全通過。
+
 ---
 
 ## Project Structure
