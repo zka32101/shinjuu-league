@@ -14,4 +14,15 @@ class IsometricProjection {
     final screenY = (gridX + gridY) * (tileHeight / 2);
     return Vector2(screenX, screenY);
   }
+
+  /// toScreen の逆変換。tileWidth != tileHeight のため画面座標上の距離は
+  /// 縦横で伸縮する（等方ではない）。真の間合い判定にはこちらでグリッド空間に
+  /// 戻してから距離を測る必要がある（射程判定が歪んだ楕円になる問題の対策）。
+  Vector2 toGrid(Vector2 screen) {
+    final a = screen.x / (tileWidth / 2);
+    final b = screen.y / (tileHeight / 2);
+    final gridX = (a + b) / 2;
+    final gridY = (b - a) / 2;
+    return Vector2(gridX, gridY);
+  }
 }

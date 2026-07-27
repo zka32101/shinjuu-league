@@ -12,10 +12,12 @@ class MechaToken extends PositionComponent {
   MechaToken({
     required this.userId,
     required this.team,
+    required this.lane,
     required this.isSelf,
     required this.icon,
     required Vector2 basePosition,
-  }) : _bobPhase = (basePosition.x + basePosition.y) % (pi * 2),
+  }) : spawnPosition = basePosition.clone(),
+       _bobPhase = (basePosition.x + basePosition.y) % (pi * 2),
        super(
          position: basePosition,
          size: Vector2.all(46),
@@ -24,8 +26,12 @@ class MechaToken extends PositionComponent {
 
   final String userId;
   final int team;
+  final int lane;
   final bool isSelf;
   final IconData icon;
+
+  /// 出撃時の位置。リスポーン時にここへ戻す（死亡地点にとどまらないようにする）。
+  final Vector2 spawnPosition;
 
   bool isAlive = true;
   double _opacity = 1.0;

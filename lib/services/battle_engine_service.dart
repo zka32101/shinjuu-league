@@ -243,8 +243,9 @@ class BattleEngine {
       participants.map((p) => p.toPlayerStats()).toList();
 
   /// プレイヤーがマップ上で敵に接近して発動する手動攻撃（Pokémon UNITE風の接近戦）。
-  /// 範囲判定はUI層（BattlefieldGame）が担当し、ここではチーム・生死のみ検証して
+  /// 範囲判定はUI層（BattlefieldGame）が担当し、ここではチーム・レーン・生死を検証して
   /// 自動交戦と同じ `_applyDamage` を再利用する（ダメージ計算ロジックを二重管理しない）。
+  /// laneが一致しない相手を攻撃できてしまうと2レーン制の設計そのものが崩れるため必須の検証。
   bool manualDuel(String attackerId, String victimId) {
     final attacker = participants
         .where((p) => p.userId == attackerId)
@@ -253,6 +254,7 @@ class BattleEngine {
     if (attacker == null || victim == null) return false;
     if (!attacker.isAlive || !victim.isAlive) return false;
     if (attacker.team == victim.team) return false;
+    if (attacker.lane != victim.lane) return false;
 
     _applyDamage(attacker, victim, _computeDamage(attacker, victim));
     return true;
@@ -260,6 +262,7 @@ class BattleEngine {
 
   /// プレイヤーのスキル発動（クールタイム付き範囲攻撃）。指定半径内の敵全員に
   /// 通常攻撃よりも高い倍率でダメージを与える。範囲判定はBattlefieldGame側が担当。
+  /// manualDuelと同様、レーンをまたいだ対象は除外する。
   bool manualSkill(String attackerId, List<String> targetIdsInRange) {
     final attacker = participants
         .where((p) => p.userId == attackerId)
@@ -272,7 +275,11 @@ class BattleEngine {
           .where((p) => p.userId == targetId)
           .firstOrNull;
       if (target == null) continue;
-      if (!target.isAlive || target.team == attacker.team) continue;
+      if (!target.isAlive ||
+          target.team == attacker.team ||
+          target.lane != attacker.lane) {
+        continue;
+      }
       _applyDamage(
         attacker,
         target,

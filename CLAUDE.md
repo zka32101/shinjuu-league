@@ -217,6 +217,30 @@ Step 6以来のTODOだった「参加者のBaseStatsが固定ダミー値」を�
 
 テスト追加: HPダメージ蓄積の専用テスト3件（弱攻撃は一撃で倒せない/累積で撃破しcombatEvents発火/リスポーンでHP全回復）。リスポーンテストでは自動交戦との干渉を避けるため`_participant()`ヘルパーに`lane`パラメータを追加し、self/enemyを異なるレーンに配置して決定性を確保。**計54件全通過**。
 
+### バグ調査 + 修正（2026-07-21同日）
+
+ユーザーから「バグ調査」の指示。まず手動でコードレビューし2件（リスポーン位置未リセット、射程判定の等角投影歪み）を発見・報告。ユーザーから「修正、さらに全体バグ調査」の指示があり、上記2件を修正した上でExploreエージェントに全体バグ調査を依頼し、追加で2件（高優先度: 手動攻撃/スキルのレーン判定欠落、中優先度: 進化選択画面のレースコンディション）を発見・修正。
+
+**修正1: リスポーン時に位置がリセットされない**
+- `MechaToken`に`spawnPosition`（出撃時の固定位置）を追加
+- `BattlefieldGame.sync()`で`isAlive`が false→true に遷移した瞬間を検知し、`token.position`を`spawnPosition`へ戻す（Bot徘徊の目標もクリア）。これがないと死んだ場所（敵陣のど真ん中等）でそのまま復活してしまっていた
+
+**修正2: 射程判定が等角投影の歪んだ楕円になっていた**
+- [lib/game/isometric_projection.dart](lib/game/isometric_projection.dart)に`toGrid()`（`toScreen()`の逆変換）を追加。tileWidth(96)とtileHeight(48)の比率が2:1のため、画面座標上の円形距離判定は実際のグリッド空間では2:1の楕円に歪んでいた（特異値分解で確認: 67.88/33.94の2:1比）
+- `BattlefieldGame`の`_findNearestAliveEnemy`/`_updateAttackTarget`/`enemiesWithinSkillRadius`をすべて`_gridDistance()`（グリッド空間での真の距離）ベースに変更。攻撃射程=1.0グリッド単位、スキル半径=2.0グリッド単位で再定義
+
+**修正3（高優先度・Explore調査で発見）: 手動攻撃/スキルにレーン判定が皆無で2レーン制設計が崩れていた**
+- 自動交戦`_resolveEngagements()`は`p.lane == lane`で厳密にレーンごとに交戦相手を絞っているのに対し、`manualDuel`/`manualSkill`はチームチェックのみでレーン一致を検証していなかった。マップ全体を自由に歩き回れる機能により、反対レーンまで歩けば本来交戦してはいけない敵を直接キルできる実害あるバグだった
+- `BattleEngine.manualDuel`/`manualSkill`に`attacker.lane != victim.lane`のチェックを追加（サーバー側/エンジン側の防御）
+- `MechaToken`に`lane`フィールドを追加し、`BattlefieldGame`の対象検出（`_findNearestAliveEnemy`/`enemiesWithinSkillRadius`）にも`lane`一致条件を追加（UI側の防御、二重の安全策）
+- 副次効果: Bot徘徊AIも`_findNearestAliveEnemy`を共有しているため、この修正で「Botがレーンを無視して反対側まで歩いていく」不自然な挙動も同時に解消
+
+**修正4（中優先度・Explore調査で発見）: 進化選択画面の非同期初期化とカウントダウンのレースコンディション**
+- [lib/ui/screens/evolution_select_screen.dart](lib/ui/screens/evolution_select_screen.dart): `_countdownTimer`は`initState()`で同期的に即座に開始される一方、`prepareBattle()`（engineをセットする処理）は`addPostFrameCallback`で1フレーム遅延実行されていた。ごく短いタイミングで進化カードをタップすると`state.engine`がまだnullで`lockEvolution`/`beginCombat`が無言でno-opし、その後engineが用意されても二度と`start()`が呼ばれず**試合が永久に進行しない**状態になり得た
+- `Completer<void> _prepareCompleter`を追加し、`_select()`が`lockEvolution`/`beginCombat`を呼ぶ前に必ず`_prepareCompleter.future`を待つよう変更。これでタイミングに依存せず安全に
+
+テスト追加: レーン判定のテスト4件（manualDuel/manualSkil双方でレーン不一致を拒否することを検証）、`toGrid()`の往復変換・歪み検証テスト2件、BattlefieldGame層のレーン除外テスト1件。既存のリスポーンHP全回復テストは`manualDuel`経由の撃破がレーン判定で不発になったため、死亡状態を直接構築する方式に修正。**計62件全通過**。
+
 ---
 
 ## Project Structure

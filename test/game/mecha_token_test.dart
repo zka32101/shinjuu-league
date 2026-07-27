@@ -5,13 +5,15 @@ import 'package:flutter/material.dart' show Icons;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/game/mecha_token.dart';
 
-MechaToken _buildToken({bool isSelf = false, int team = 0}) => MechaToken(
-  userId: 'u1',
-  team: team,
-  isSelf: isSelf,
-  icon: Icons.local_fire_department,
-  basePosition: Vector2.zero(),
-);
+MechaToken _buildToken({bool isSelf = false, int team = 0, int lane = 0}) =>
+    MechaToken(
+      userId: 'u1',
+      team: team,
+      lane: lane,
+      isSelf: isSelf,
+      icon: Icons.local_fire_department,
+      basePosition: Vector2.zero(),
+    );
 
 void main() {
   group('MechaToken', () {

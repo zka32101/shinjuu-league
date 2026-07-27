@@ -27,8 +27,13 @@ class BattlefieldGame extends FlameGame {
   static const _laneCenterYs = [-1.8, 1.8];
   static const _selfMoveSpeed = 90.0; // world px/sec
   static const _botWanderSpeed = 22.0; // world px/sec（自キャラより控えめ）
-  static const _attackRange = 46.0;
-  static const _skillRadius = 90.0;
+  // 等角投影はtileWidth(96)とtileHeight(48)が異なるため、画面座標上の距離は
+  // 縦横で伸縮する（等方ではない）。射程判定は必ずグリッド空間（toGrid変換後）の
+  // 真の距離で行い、画面上で歪んだ楕円形の間合いにならないようにする。
+  static const _attackRangeGrid = 1.0;
+  static const _skillRadiusGrid = 2.0;
+  static const _attackRange = 46.0; // Bot徘徊の見た目上の距離判定にのみ使用
+  static const _skillRadius = 90.0; // SkillBurstの描画半径（画面ピクセル）
   static const _playfieldHalfWidth = 900.0;
   static const _playfieldHalfHeight = 560.0;
 
@@ -186,16 +191,26 @@ class BattlefieldGame extends FlameGame {
     }
   }
 
+  /// 画面座標上の2点間の「真の」距離をグリッド空間で測る（等角投影の歪みを除去）。
+  double _gridDistance(Vector2 screenA, Vector2 screenB) {
+    final gridA = _projection.toGrid(screenA);
+    final gridB = _projection.toGrid(screenB);
+    return (gridA - gridB).length;
+  }
+
+  /// 同じレーンの生存中の敵のみを対象にする（BattleEngineの自動交戦がレーン限定なのと
+  /// 揃えないと、自由に歩き回れる自キャラが本来交戦できないレーンの敵を攻撃できてしまう）。
   MechaToken? _findNearestAliveEnemy(MechaToken from) {
     MechaToken? nearest;
-    var nearestDistSq = double.infinity;
+    var nearestDist = double.infinity;
     for (final other in _tokens.values) {
       if (other.userId == from.userId) continue;
       if (other.team == from.team) continue;
+      if (other.lane != from.lane) continue;
       if (!other.isAlive) continue;
-      final distSq = (other.position - from.position).length2;
-      if (distSq < nearestDistSq) {
-        nearestDistSq = distSq;
+      final dist = _gridDistance(other.position, from.position);
+      if (dist < nearestDist) {
+        nearestDist = dist;
         nearest = other;
       }
     }
@@ -216,10 +231,8 @@ class BattlefieldGame extends FlameGame {
       return;
     }
 
-    final distSq = (nearest.position - self.position).length2;
-    attackTargetId.value = distSq <= _attackRange * _attackRange
-        ? nearest.userId
-        : null;
+    final dist = _gridDistance(nearest.position, self.position);
+    attackTargetId.value = dist <= _attackRangeGrid ? nearest.userId : null;
   }
 
   @override
@@ -256,6 +269,7 @@ class BattlefieldGame extends FlameGame {
             MechaToken(
                 userId: p.userId,
                 team: p.team,
+                lane: p.lane,
                 isSelf: p.isSelf,
                 icon: icon,
                 basePosition: screenPos,
@@ -267,7 +281,17 @@ class BattlefieldGame extends FlameGame {
         return newToken;
       });
 
+      final wasAlive = token.isAlive;
       token.setAlive(p.isAlive);
+
+      // リスポーン（死亡→生存）した瞬間、出撃地点へ位置を戻す。
+      // これをしないと死んだ場所（敵陣のど真ん中など）でそのまま復活してしまう。
+      if (!wasAlive && p.isAlive) {
+        token.position.setFrom(token.spawnPosition);
+        token.priority = token.spawnPosition.y.round();
+        _wanderTargets.remove(p.userId);
+      }
+
       token.updateHp(p.currentHp, p.effectiveHp);
     }
   }
@@ -278,18 +302,21 @@ class BattlefieldGame extends FlameGame {
   }
 
   /// 自キャラ周囲のスキル範囲内にいる敵のuserIdを列挙する（発動時に1回だけ呼ばれる想定）。
+  /// レーンが異なる相手は対象外（BattleEngine側の自動交戦・manualDuel/manualSkillと揃える）。
   List<String> enemiesWithinSkillRadius() {
     final self = _selfToken;
     if (self == null || !self.isAlive) return [];
 
     return _tokens.values
         .where(
-          (t) => t.userId != self.userId && t.team != self.team && t.isAlive,
+          (t) =>
+              t.userId != self.userId &&
+              t.team != self.team &&
+              t.lane == self.lane &&
+              t.isAlive,
         )
         .where(
-          (t) =>
-              (t.position - self.position).length2 <=
-              _skillRadius * _skillRadius,
+          (t) => _gridDistance(t.position, self.position) <= _skillRadiusGrid,
         )
         .map((t) => t.userId)
         .toList();

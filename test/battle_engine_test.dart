@@ -183,6 +183,88 @@ void main() {
       expect(resolved, isFalse);
       engine.dispose();
     });
+
+    test('レーンが異なる敵への手動攻撃は無効化される（2レーン制の設計を守る）', () {
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final enemy = _participant(userId: 'enemy_1', team: 1, lane: 1);
+      final engine = BattleEngine(
+        battleId: 'test_manual_5',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      final resolved = engine.manualDuel('self', 'enemy_1');
+
+      expect(resolved, isFalse);
+      expect(self.kills, 0);
+      engine.dispose();
+    });
+  });
+
+  group('BattleEngine.manualSkill（プレイヤーのスキル発動）', () {
+    test('範囲内の敵チーム全員にダメージを与える', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 9999, spd: 40),
+      );
+      final enemy1 = _participant(userId: 'enemy_1', team: 1);
+      final enemy2 = _participant(userId: 'enemy_2', team: 1);
+      final engine = BattleEngine(
+        battleId: 'test_skill_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy1, enemy2],
+      );
+
+      final hitAny = engine.manualSkill('self', ['enemy_1', 'enemy_2']);
+
+      expect(hitAny, isTrue);
+      expect(enemy1.isAlive, isFalse);
+      expect(enemy2.isAlive, isFalse);
+      engine.dispose();
+    });
+
+    test('レーンが異なる対象idを渡してもダメージを与えない', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        lane: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 9999, spd: 40),
+      );
+      final enemy = _participant(userId: 'enemy_1', team: 1, lane: 1);
+      final engine = BattleEngine(
+        battleId: 'test_skill_2',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      final hitAny = engine.manualSkill('self', ['enemy_1']);
+
+      expect(hitAny, isFalse);
+      expect(enemy.isAlive, isTrue);
+      engine.dispose();
+    });
+
+    test('同じチームの対象idを渡してもダメージを与えない', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final ally = _participant(userId: 'ally_1', team: 0);
+      final engine = BattleEngine(
+        battleId: 'test_skill_3',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, ally],
+      );
+
+      final hitAny = engine.manualSkill('self', ['ally_1']);
+
+      expect(hitAny, isFalse);
+      engine.dispose();
+    });
   });
 
   group('BattleEngine HPダメージ蓄積（削り合い）', () {
@@ -254,25 +336,26 @@ void main() {
     });
 
     test('リスポーン時にHPが上限まで全回復する', () {
-      // 自動交戦（レーン内の確率交戦）と手動攻撃の干渉を避けるため、
-      // self/enemyを異なるレーンに置き、自動交戦が絶対に発生しないようにする。
+      // 自動交戦（レーン内の確率交戦）との干渉を避けるため、self/enemyを異なるレーンに
+      // 置く。manualDuelはレーン一致が必須のため使えず、死亡状態は直接構築する
+      // （このテストの目的は撃破手段の検証ではなく _resolveRespawns のHP全回復確認のため）。
       final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
-      final enemy = _participant(
-        userId: 'enemy_1',
-        team: 1,
-        lane: 1,
-        stats: BaseStats(hp: 50, atk: 10, spd: 10),
-      )..currentHp = 1;
+      final enemy =
+          _participant(
+              userId: 'enemy_1',
+              team: 1,
+              lane: 1,
+              stats: BaseStats(hp: 50, atk: 10, spd: 10),
+            )
+            ..isAlive = false
+            ..currentHp = 0
+            ..respawnAtSecond = 8;
       final engine = BattleEngine(
         battleId: 'test_hp_3',
         mode: BattleMode.quick,
         mapId: 'map_test',
         participants: [self, enemy],
       );
-
-      // HPを0まで削って撃破・respawnAtSecondを確定させる（手動攻撃はレーン非依存）
-      engine.manualDuel('self', 'enemy_1');
-      expect(enemy.isAlive, isFalse);
 
       // respawnAtSecondに到達するまでtickを進める（レーンが違うため自動交戦は発生しない）
       for (var i = 0; i < 20 && !enemy.isAlive; i++) {

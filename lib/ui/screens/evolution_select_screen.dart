@@ -22,11 +22,19 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
   Timer? _countdownTimer;
   int _remainingSeconds = _selectTimeoutSeconds;
   bool _isLocked = false;
+  // prepareBattle()（非同期）の完了をselect()側で必ず待てるようにする。
+  // 待たないと、初回フレーム直後の極めて短い間にユーザーがタップした場合
+  // state.engineがまだnullで lockEvolution/beginCombat が無言で失敗し、
+  // 試合が永久に開始されない状態になり得る（レースコンディション）。
+  final _prepareCompleter = Completer<void>();
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addPostFrameCallback((_) => _prepare());
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _prepare();
+      if (!_prepareCompleter.isCompleted) _prepareCompleter.complete();
+    });
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
       setState(() => _remainingSeconds--);
@@ -36,18 +44,21 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
     });
   }
 
-  void _prepare() {
+  Future<void> _prepare() async {
     final currentUser = ref.read(userViewModelProvider).value;
     if (currentUser == null) return;
-    ref
+    await ref
         .read(battleViewModelProvider.notifier)
         .prepareBattle(widget.match, currentUser.uid, currentUser.eloRating);
   }
 
-  void _select(Evolution evolution) {
+  Future<void> _select(Evolution evolution) async {
     if (_isLocked) return;
     _isLocked = true;
     _countdownTimer?.cancel();
+
+    await _prepareCompleter.future;
+    if (!mounted) return;
 
     final viewModel = ref.read(battleViewModelProvider.notifier);
     viewModel.lockEvolution(evolution);
