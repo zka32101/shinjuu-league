@@ -44,3 +44,35 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Environment variables
+.env
+.env.local
+.env.*.local
+.env.production.local
+.env.development.local
+
+# Firebase & API keys
+google-services.json
+GoogleService-Info.plist
+firebase*.json
+
+# SSH/SSL Keys
+*.pem
+*.p8
+*.key
+*.p12
+*.keystore
+
+# Credentials
+credentials.json
+*-creds.json
+
+# Secrets
+*secret*
+*token*
+
+# App Store & Play Store
+*.jks
+*.keystore
+appstore_api_key.p8
