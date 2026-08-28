@@ -76,3 +76,11 @@ credentials.json
 *.jks
 *.keystore
 appstore_api_key.p8
+
+# Firebase configuration (DO NOT COMMIT)
+google-services.json
+GoogleService-Info.plist
+.firebaserc
+*.mobileprovision
+*.p8
+*.p12
