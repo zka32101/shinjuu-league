@@ -5,6 +5,8 @@ import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
+import 'package:shinjuu_league/data/models/resource_model.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
@@ -18,6 +20,8 @@ class BattleState {
     required this.ahaMomentReached,
     required this.isEvolutionLocked,
     required this.selectedEvolution,
+    required this.skillBuild,
+    required this.playerResources,
     required this.killFeed,
     required this.hitFeed,
     required this.isLoading,
@@ -32,6 +36,8 @@ class BattleState {
     ahaMomentReached: false,
     isEvolutionLocked: false,
     selectedEvolution: null,
+    skillBuild: null,
+    playerResources: null,
     killFeed: [],
     hitFeed: [],
     isLoading: false,
@@ -45,6 +51,8 @@ class BattleState {
   final bool ahaMomentReached;
   final bool isEvolutionLocked;
   final Evolution? selectedEvolution;
+  final SkillBuild? skillBuild;
+  final PlayerResources? playerResources;
   final List<CombatEvent> killFeed;
   final List<CombatEvent> hitFeed;
   final bool isLoading;
@@ -58,6 +66,8 @@ class BattleState {
     bool? ahaMomentReached,
     bool? isEvolutionLocked,
     Evolution? selectedEvolution,
+    SkillBuild? skillBuild,
+    PlayerResources? playerResources,
     List<CombatEvent>? killFeed,
     List<CombatEvent>? hitFeed,
     bool? isLoading,
@@ -71,6 +81,8 @@ class BattleState {
       ahaMomentReached: ahaMomentReached ?? this.ahaMomentReached,
       isEvolutionLocked: isEvolutionLocked ?? this.isEvolutionLocked,
       selectedEvolution: selectedEvolution ?? this.selectedEvolution,
+      skillBuild: skillBuild ?? this.skillBuild,
+      playerResources: playerResources ?? this.playerResources,
       killFeed: killFeed ?? this.killFeed,
       hitFeed: hitFeed ?? this.hitFeed,
       isLoading: isLoading ?? this.isLoading,
@@ -119,15 +131,28 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     final participants = match.allParticipants
         .map(
-          (mp) => BattleParticipantState(
-            userId: mp.userId,
-            mechaId: mp.mechaId,
-            isBot: mp.isBot,
-            isSelf: mp.userId == selfUserId,
-            team: mp.team,
-            lane: mp.lane,
-            baseStats: mechaById(mp.mechaId).baseStats,
-          ),
+          (mp) {
+            // 自分の場合は初期リソース（100 mana, 0 gold）を設定、Botは後で設定
+            final initialResources = mp.userId == selfUserId
+                ? PlayerResources(
+                    currentMana: 100.0,
+                    maxMana: 100.0,
+                    gold: 0,
+                    ownedItemIds: [],
+                  )
+                : null;
+
+            return BattleParticipantState(
+              userId: mp.userId,
+              mechaId: mp.mechaId,
+              isBot: mp.isBot,
+              isSelf: mp.userId == selfUserId,
+              team: mp.team,
+              lane: mp.lane,
+              baseStats: mechaById(mp.mechaId).baseStats,
+              resources: initialResources,
+            );
+          },
         )
         .toList();
 
@@ -155,7 +180,20 @@ class BattleViewModel extends StateNotifier<BattleState> {
       startedAt: DateTime.now(),
     );
 
-    state = state.copyWith(battle: battle, engine: engine, isLoading: false);
+    // Initialize playerResources for UI display
+    final initialResources = PlayerResources(
+      currentMana: 100.0,
+      maxMana: 100.0,
+      gold: 0,
+      ownedItemIds: [],
+    );
+
+    state = state.copyWith(
+      battle: battle,
+      engine: engine,
+      playerResources: initialResources,
+      isLoading: false,
+    );
 
     await _firestoreService.createBattle(battle);
     await _analyticsService.logBattleStart(selfUserId, match.mode.name);
@@ -218,6 +256,54 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _lastManualSkillAt = DateTime.now();
   }
 
+  /// スキルビルドを選択して保存する（進化選択後、バトル開始前に呼ばれる想定）
+  void selectSkillBuild(SkillBuild skillBuild) {
+    // 初期リソースを設定：最大100マナ、0ゴール
+    final resources = PlayerResources(
+      currentMana: 100.0,
+      maxMana: 100.0,
+      gold: 0,
+      ownedItemIds: [],
+    );
+    state = state.copyWith(skillBuild: skillBuild, playerResources: resources);
+  }
+
+  /// エンジンのリソース状態を反映（毎フレーム tick で呼ばれる想定）
+  void _updatePlayerResources() {
+    final engine = state.engine;
+    final selfParticipant = engine?.participants.firstWhere(
+      (p) => p.userId == _selfUserId,
+      orElse: () => null as dynamic,
+    ) as BattleParticipantState?;
+
+    if (selfParticipant != null && state.playerResources != null) {
+      final updated = state.playerResources!.copyWith(
+        currentMana: selfParticipant.resources?.currentMana ?? 100.0,
+        gold: selfParticipant.resources?.gold ?? 0,
+        ownedItemIds: selfParticipant.resources?.ownedItemIds ?? [],
+      );
+      state = state.copyWith(playerResources: updated);
+    }
+  }
+
+  /// スキルを発動する（mana コストと cooldown をサーバー側で管理）
+  void attemptSkill(String skillId) {
+    final engine = state.engine;
+    final skillBuild = state.skillBuild;
+    if (engine == null || skillBuild == null) return;
+
+    final targets = <String>[]; // UI側で targets を計算して渡すか、ここで計算
+    engine.useSkill(_selfUserId, skillId, targets);
+  }
+
+  /// アイテムを購入する（gold コストと在庫数をサーバー側で管理）
+  void attemptPurchaseItem(String itemId) {
+    final engine = state.engine;
+    if (engine == null) return;
+
+    engine.purchaseItem(_selfUserId, itemId);
+  }
+
   void _onCombatEvent(CombatEvent event) {
     state = state.copyWith(killFeed: [...state.killFeed, event]);
 
@@ -233,6 +319,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
   void _onTick(int second, BattleEngine engine) {
     state = state.copyWith(elapsedSeconds: second);
+    _updatePlayerResources();
 
     if (!engine.isRunning && !state.isFinished) {
       unawaited(_finishBattle(engine));

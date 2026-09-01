@@ -62,9 +62,9 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
 
     final viewModel = ref.read(battleViewModelProvider.notifier);
     viewModel.lockEvolution(evolution);
-    viewModel.beginCombat();
 
-    context.pushReplacement(AppRoutes.battle, extra: widget.match);
+    // 進化選択後、スキルビルド選択画面へ遷移
+    context.pushReplacement(AppRoutes.skillBuild, extra: widget.match);
   }
 
   @override

@@ -13,6 +13,7 @@ import 'package:shinjuu_league/ui/screens/onboarding_screen.dart';
 import 'package:shinjuu_league/ui/screens/rank_screen.dart';
 import 'package:shinjuu_league/ui/screens/result_screen.dart';
 import 'package:shinjuu_league/ui/screens/shop_screen.dart';
+import 'package:shinjuu_league/ui/screens/skill_build_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 
 abstract class AppRoutes {
@@ -21,6 +22,7 @@ abstract class AppRoutes {
   static const lobby = '/lobby';
   static const matching = '/matching';
   static const evolution = '/evolution';
+  static const skillBuild = '/skill-build';
   static const battle = '/battle';
   static const result = '/result';
   static const rank = '/rank';
@@ -85,6 +87,14 @@ final appRouter = GoRouter(
         context,
         state,
         EvolutionSelectScreen(match: state.extra as MatchResult),
+      ),
+    ),
+    GoRoute(
+      path: AppRoutes.skillBuild,
+      pageBuilder: (context, state) => _buildPage(
+        context,
+        state,
+        SkillBuildScreen(match: state.extra as MatchResult),
       ),
     ),
     GoRoute(
