@@ -4,6 +4,9 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
+import 'package:shinjuu_league/data/models/resource_model.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
+import 'package:shinjuu_league/services/skill_system_service.dart';
 
 /// 1秒ごとにレーン内の生存者同士を交戦させる決定論的でないリアルタイムシミュレーション。
 /// 真の同期型マルチプレイ通信（専用ゲームサーバー）は将来のスコープ。
@@ -31,12 +34,18 @@ class BattleParticipantState {
   final BaseStats baseStats;
   Evolution? evolution;
 
+  // リソース管理
+  late PlayerResources resources;
+  SkillBuild? skillBuild;
+  final Map<String, double> skillCooldowns = {}; // skillId -> 残りクールダウン秒数
+
   int kills = 0;
   int deaths = 0;
   int assists = 0;
   bool isAlive = true;
   int respawnAtSecond = 0;
   late double currentHp;
+  int totalGoldEarned = 0; // 試合中のゴール累計
 
   BattleParticipantState({
     required this.userId,
@@ -47,8 +56,26 @@ class BattleParticipantState {
     required this.lane,
     required this.baseStats,
     this.evolution,
+    this.skillBuild,
+    PlayerResources? initialResources,
   }) {
     currentHp = effectiveHp;
+    resources = initialResources ??
+        PlayerResources(
+          currentMana: 100,
+          maxMana: 100,
+          gold: 0,
+        );
+    _initializeSkillCooldowns();
+  }
+
+  void _initializeSkillCooldowns() {
+    if (skillBuild != null) {
+      final skills = SkillSystemService.getSkillsForMecha(mechaId);
+      for (final skill in skills) {
+        skillCooldowns[skill.skillId] = 0.0;
+      }
+    }
   }
 
   double get effectiveAtk =>
@@ -59,6 +86,32 @@ class BattleParticipantState {
       baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
 
   int get score => kills * 3 + assists - deaths;
+
+  /// スキルが使用可能か判定
+  bool canUseSkill(String skillId) {
+    final skill = SkillSystemService.getSkillDefinition(skillId);
+    if (skill == null) return false;
+
+    // スキルビルドレベルを取得
+    final level = _getSkillLevel(skillId);
+    if (level == 0) return false;
+
+    // マナコストを取得
+    final cost = skill.getCostAtLevel(level);
+
+    // マナとクールダウンをチェック
+    return resources.canAffordMana(cost) &&
+        (skillCooldowns[skillId] ?? 0.0) <= 0.0;
+  }
+
+  /// スキルレベルを取得
+  int _getSkillLevel(String skillId) {
+    if (skillBuild == null) return 0;
+    if (skillId == skillBuild!.skillId1) return skillBuild!.level1;
+    if (skillId == skillBuild!.skillId2) return skillBuild!.level2;
+    if (skillId == skillBuild!.skillId3) return skillBuild!.level3;
+    return 0;
+  }
 
   PlayerStats toPlayerStats() => PlayerStats(
     userId: userId,
@@ -143,11 +196,114 @@ class BattleEngine {
   void tick() {
     _elapsedSeconds++;
     _resolveRespawns();
+    _updateResources(); // マナ回復・ゴール配分・クールダウン減少
     _resolveEngagements();
     _tickController.add(_elapsedSeconds);
 
     if (_elapsedSeconds >= durationSeconds) {
       stop();
+    }
+  }
+
+  /// マナ自然リジェン・パッシブゴール・スキルクールダウン更新
+  void _updateResources() {
+    for (final p in participants) {
+      if (!p.isAlive) continue;
+
+      // マナ回復
+      p.resources = p.resources.regenMana(SkillSystemService.manaRegenPerSecond);
+
+      // パッシブゴール獲得
+      p.resources = p.resources.addGold(GoldRewards.passiveGoldPerSecond);
+      p.totalGoldEarned += GoldRewards.passiveGoldPerSecond;
+
+      // スキルクールダウン減少
+      p.skillCooldowns.forEach((skillId, cooldown) {
+        if (cooldown > 0) {
+          p.skillCooldowns[skillId] = cooldown - 1.0;
+        }
+      });
+    }
+  }
+
+  /// スキルを発動（マナコスト・クールダウンを適用）
+  bool useSkill(String userId, String skillId, List<String> targetUserIds) {
+    final attacker = participants.firstWhere(
+      (p) => p.userId == userId,
+      orElse: () => throw Exception('User not found: $userId'),
+    );
+
+    if (!attacker.isAlive) return false;
+    if (!attacker.canUseSkill(skillId)) return false;
+
+    final skill = SkillSystemService.getSkillDefinition(skillId);
+    if (skill == null) return false;
+
+    final level = attacker._getSkillLevel(skillId);
+    final cost = skill.getCostAtLevel(level);
+
+    // マナ消費
+    attacker.resources = attacker.resources.spendMana(cost);
+
+    // クールダウン設定
+    final cooldownTime = skill.getCooldownAtLevel(level);
+    attacker.skillCooldowns[skillId] = cooldownTime;
+
+    // ダメージ適用
+    final damageMultiplier = skill.getDamageMultiplierAtLevel(level);
+    for (final targetId in targetUserIds) {
+      final target = participants.firstWhere(
+        (p) => p.userId == targetId,
+        orElse: () => throw Exception('Target not found: $targetId'),
+      );
+
+      if (target.isAlive && target.team != attacker.team) {
+        final damage =
+            _computeDamage(attacker, target) * damageMultiplier;
+        _applyDamage(attacker, target, damage);
+      }
+    }
+
+    return true;
+  }
+
+  /// アイテムを購入
+  bool purchaseItem(String userId, String itemId) {
+    final participant = participants.firstWhere(
+      (p) => p.userId == userId,
+      orElse: () => throw Exception('User not found: $userId'),
+    );
+
+    final item = SkillSystemService.getItemDefinition(itemId);
+    if (item == null) return false;
+    if (!participant.resources.canAffordGold(item.cost)) return false;
+
+    // ゴール消費・アイテム購入
+    participant.resources = participant.resources.purchaseItem(itemId, item.cost);
+
+    // TODO: アイテムボーナスをステータスに反映
+    // 今後：EffectiveStatの計算でアイテムボーナスを加算
+
+    return true;
+  }
+
+  /// キル報酬・アシスト報酬
+  void awardKillReward(String killerId, List<String> assistantIds) {
+    final killer = participants.firstWhere(
+      (p) => p.userId == killerId,
+      orElse: () => throw Exception('Killer not found: $killerId'),
+    );
+
+    killer.resources = killer.resources.addGold(GoldRewards.killReward);
+    killer.totalGoldEarned += GoldRewards.killReward;
+
+    for (final assistantId in assistantIds) {
+      final assistant = participants.firstWhere(
+        (p) => p.userId == assistantId,
+        orElse: () => throw Exception('Assistant not found: $assistantId'),
+      );
+      assistant.resources = assistant.resources.addGold(GoldRewards.assistReward);
+      assistant.totalGoldEarned += GoldRewards.assistReward;
     }
   }
 

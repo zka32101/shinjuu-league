@@ -3,8 +3,11 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
+import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
+import 'package:shinjuu_league/services/skill_system_service.dart';
 
 BattleParticipantState _participant({
   required String userId,
@@ -364,6 +367,171 @@ void main() {
 
       expect(enemy.isAlive, isTrue);
       expect(enemy.currentHp, enemy.effectiveHp);
+      engine.dispose();
+    });
+  });
+
+  group('BattleEngine マナ・ゴールシステム', () {
+    test('毎秒マナが自然回復する', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      self.resources = self.resources.spendMana(50);
+      expect(self.resources.currentMana, 50);
+
+      final engine = BattleEngine(
+        battleId: 'test_mana_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      for (var i = 0; i < 10; i++) {
+        engine.tick();
+      }
+
+      expect(self.resources.currentMana, 80); // 50 + (3 * 10)
+      engine.dispose();
+    });
+
+    test('毎秒パッシブゴールが獲得される', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      expect(self.resources.gold, 0);
+
+      final engine = BattleEngine(
+        battleId: 'test_gold_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      for (var i = 0; i < 5; i++) {
+        engine.tick();
+      }
+
+      expect(self.resources.gold, 25); // 5 * 5秒
+      expect(self.totalGoldEarned, 25);
+      engine.dispose();
+    });
+
+    test('キル報酬でゴールが与えられる', () {
+      final killer = _participant(userId: 'killer', team: 0, isSelf: true);
+      final assistant1 =
+          _participant(userId: 'assistant_1', team: 0, isSelf: false);
+      final assistant2 =
+          _participant(userId: 'assistant_2', team: 0, isSelf: false);
+      final victim = _participant(userId: 'victim', team: 1, isSelf: false);
+
+      final engine = BattleEngine(
+        battleId: 'test_gold_2',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [killer, assistant1, assistant2, victim],
+      );
+
+      engine.awardKillReward('killer', ['assistant_1', 'assistant_2']);
+
+      expect(killer.resources.gold, 100); // killReward
+      expect(killer.totalGoldEarned, 100);
+      expect(assistant1.resources.gold, 50); // assistReward
+      expect(assistant2.resources.gold, 50);
+      engine.dispose();
+    });
+
+    test('マナ不足ではスキルが使用できない', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 50, spd: 40),
+      );
+      final skill =
+          SkillBuild(
+            skillId1: 'skill_east_01_q',
+            skillId2: 'skill_east_01_w',
+            skillId3: 'skill_east_01_e',
+            level1: 3, // レベル3 = コスト60
+          );
+      self.skillBuild = skill;
+      self.resources = self.resources.spendMana(45); // マナ55に
+
+      final enemy = _participant(userId: 'enemy', team: 1);
+
+      final engine = BattleEngine(
+        battleId: 'test_skill_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      final result =
+          engine.useSkill('self', 'skill_east_01_q', ['enemy']);
+      expect(result, isFalse); // マナ不足
+      engine.dispose();
+    });
+
+    test('スキル使用後はクールダウンが発生', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 50, spd: 40),
+      );
+      final skill =
+          SkillBuild(
+            skillId1: 'skill_east_01_q',
+            skillId2: 'skill_east_01_w',
+            skillId3: 'skill_east_01_e',
+          );
+      self.skillBuild = skill;
+
+      final enemy = _participant(userId: 'enemy', team: 1);
+
+      final engine = BattleEngine(
+        battleId: 'test_skill_2',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      expect(self.skillCooldowns['skill_east_01_q'], 0.0);
+
+      final result =
+          engine.useSkill('self', 'skill_east_01_q', ['enemy']);
+      expect(result, isTrue);
+      expect(
+        self.skillCooldowns['skill_east_01_q'],
+        greaterThan(0.0),
+      ); // クールダウン中
+
+      // 5秒待つ
+      for (var i = 0; i < 5; i++) {
+        engine.tick();
+      }
+
+      expect(
+        self.skillCooldowns['skill_east_01_q'],
+        lessThanOrEqualTo(0.0),
+      ); // クールダウン終了
+      expect(self.canUseSkill('skill_east_01_q'), isTrue);
+      engine.dispose();
+    });
+
+    test('アイテム購入でステータスが変わる', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      self.resources = self.resources.addGold(500);
+
+      final engine = BattleEngine(
+        battleId: 'test_item_1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final initialGold = self.resources.gold;
+      final result = engine.purchaseItem('self', 'item_sword_01');
+
+      expect(result, isTrue);
+      expect(self.resources.gold, initialGold - 300);
+      expect(self.resources.ownedItemIds.contains('item_sword_01'), true);
       engine.dispose();
     });
   });
