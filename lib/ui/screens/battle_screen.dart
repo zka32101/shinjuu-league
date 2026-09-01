@@ -5,11 +5,15 @@ import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
+import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
+import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/haptic_service.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
+import 'package:shinjuu_league/ui/widgets/resource_hud.dart';
+import 'package:shinjuu_league/ui/widgets/skill_buttons.dart';
 
 class BattleScreen extends ConsumerStatefulWidget {
   const BattleScreen({super.key, required this.match});
@@ -21,24 +25,19 @@ class BattleScreen extends ConsumerStatefulWidget {
 
 class _BattleScreenState extends ConsumerState<BattleScreen> {
   final _game = BattlefieldGame();
-  final _skillOnCooldown = ValueNotifier<bool>(false);
 
   @override
   void dispose() {
     _game.attackTargetId.dispose();
-    _skillOnCooldown.dispose();
     super.dispose();
   }
 
-  void _activateSkill() {
-    if (_skillOnCooldown.value) return;
+  void _onSkillTap(String skillId, List<String> _) {
+    // targets パラメータは無視、ゲーム側で再度計算する（設計上の一貫性）
     final targets = _game.enemiesWithinSkillRadius();
-    ref.read(battleViewModelProvider.notifier).attemptManualSkill(targets);
+    final viewModel = ref.read(battleViewModelProvider.notifier);
+    viewModel.attemptManualSkill(targets);
     _game.onSkillActivate();
-    _skillOnCooldown.value = true;
-    Future.delayed(const Duration(seconds: 6), () {
-      if (mounted) _skillOnCooldown.value = false;
-    });
   }
 
   @override
@@ -122,6 +121,21 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                   )
                 : const SizedBox.shrink(key: ValueKey('no-banner')),
           ),
+          // リソース表示：マナ・ゴール・アイテム
+          if (state.skillBuild != null && state.playerResources != null)
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              child: ResourceHUD(
+                resources: state.playerResources!,
+                elapsedSeconds: state.elapsedSeconds,
+                ownedItemIds: state.playerResources!.ownedItemIds,
+                onItemPurchase: (itemId) {
+                  ref
+                      .read(battleViewModelProvider.notifier)
+                      .attemptPurchaseItem(itemId);
+                },
+              ),
+            ),
           Stack(
             alignment: Alignment.center,
             children: [
@@ -196,45 +210,33 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     },
                   ),
                 ),
-                Positioned(
-                  right: 108,
-                  bottom: 36,
-                  child: ValueListenableBuilder<bool>(
-                    valueListenable: _skillOnCooldown,
-                    builder: (context, onCooldown, _) {
-                      return GestureDetector(
-                        onTap: onCooldown ? null : _activateSkill,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 56,
-                          height: 56,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: onCooldown
-                                ? Colors.grey.withValues(alpha: 0.4)
-                                : Colors.cyanAccent,
-                            boxShadow: onCooldown
-                                ? null
-                                : [
-                                    BoxShadow(
-                                      color: Colors.cyanAccent.withValues(
-                                        alpha: 0.6,
-                                      ),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ],
-                          ),
-                          child: const Icon(
-                            Icons.blur_circular,
-                            color: Colors.black87,
-                            size: 26,
-                          ),
-                        ),
-                      );
-                    },
+                // スキルボタン表示（Q/W/E + クールタイム）
+                if (state.skillBuild != null && selfId != null)
+                  Positioned(
+                    right: 24,
+                    bottom: 120,
+                    child: Builder(
+                      builder: (context) {
+                        final participant = engine.participants.firstWhere(
+                          (p) => p.userId == selfId,
+                          orElse: () => null as dynamic,
+                        ) as BattleParticipantState?;
+
+                        return SkillButtons(
+                          skillBuild: state.skillBuild!,
+                          resources: state.playerResources ??
+                              const PlayerResources(
+                                currentMana: 100,
+                                maxMana: 100,
+                                gold: 0,
+                                ownedItemIds: [],
+                              ),
+                          cooldowns: participant?.skillCooldowns ?? {},
+                          onSkillTap: _onSkillTap,
+                        );
+                      },
+                    ),
                   ),
-                ),
               ],
             ),
           ),

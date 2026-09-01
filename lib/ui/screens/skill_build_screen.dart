@@ -1,40 +1,56 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
-import 'package:shinjuu_league/data/models/mecha_model.dart';
+import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/skill_system_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 
-/// スキルビルド選択画面
-/// マッチング成功後・バトル前にプレイヤーが3スキルを選択する
-class SkillBuildScreen extends ConsumerStatefulWidget {
-  final String mechaId;
-  final VoidCallback onBuildConfirmed;
+const _selectTimeoutSeconds = 30;
 
-  const SkillBuildScreen({
-    required this.mechaId,
-    required this.onBuildConfirmed,
-  });
+/// スキルビルド選択画面
+/// 進化選択後、バトル前にプレイヤーが3スキルを選択する
+class SkillBuildScreen extends ConsumerStatefulWidget {
+  const SkillBuildScreen({super.key, required this.match});
+  final MatchResult match;
 
   @override
   ConsumerState<SkillBuildScreen> createState() => _SkillBuildScreenState();
 }
 
 class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
+  Timer? _countdownTimer;
+  int _countdownSeconds = _selectTimeoutSeconds;
+  bool _isLocked = false;
+
   late List<SkillDefinition> availableSkills;
   late String selectedQ;
   late String selectedW;
   late String selectedE;
-  int _countdownSeconds = 30;
-  late DateTime _startTime;
 
   @override
   void initState() {
     super.initState();
-    availableSkills =
-        SkillSystemService.getSkillsForMecha(widget.mechaId);
+
+    // プレイヤーの選択中の神獣を取得してスキルリストを初期化
+    String mechaId = 'east_01';
+    try {
+      final userState = ref.read(userViewModelProvider);
+      if (userState is AsyncData) {
+        final user = userState.value;
+        mechaId = user.selectedMechaId ?? 'east_01';
+      }
+    } catch (_) {
+      // ユーザー情報が未読み込みの場合はデフォルト神獣を使用
+      mechaId = 'east_01';
+    }
+    availableSkills = SkillSystemService.getSkillsForMecha(mechaId);
 
     if (availableSkills.length >= 3) {
       selectedQ = availableSkills[0].skillId;
@@ -44,32 +60,44 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
       throw Exception('Mecha must have at least 3 skills');
     }
 
-    _startTime = DateTime.now();
-    _startCountdown();
-  }
-
-  void _startCountdown() {
-    Future.doWhile(() async {
-      await Future.delayed(const Duration(seconds: 1));
-      if (!mounted) return false;
-
-      setState(() {
-        _countdownSeconds--;
-      });
-
+    // 30秒のカウントダウンを開始
+    _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
+      if (!mounted) return;
+      setState(() => _countdownSeconds--);
       if (_countdownSeconds <= 0) {
-        _confirmBuild();
-        return false;
+        _confirmBuild(); // タイムアウト時は現在の選択で確定
       }
-
-      return true;
     });
   }
 
-  void _confirmBuild() {
-    // TODO: SkillBuild を BattleViewModel に保存
-    widget.onBuildConfirmed();
-    context.go('/battle');
+  void _confirmBuild() async {
+    if (_isLocked) return;
+    _isLocked = true;
+    _countdownTimer?.cancel();
+
+    if (!mounted) return;
+
+    // スキルビルドを作成・確定
+    final skillBuild = SkillBuild(
+      skillId1: selectedQ,
+      level1: 1,
+      skillId2: selectedW,
+      level2: 1,
+      skillId3: selectedE,
+      level3: 1,
+    );
+
+    final viewModel = ref.read(battleViewModelProvider.notifier);
+    viewModel.selectSkillBuild(skillBuild);
+    viewModel.beginCombat();
+
+    context.pushReplacement(AppRoutes.battle, extra: widget.match);
+  }
+
+  @override
+  void dispose() {
+    _countdownTimer?.cancel();
+    super.dispose();
   }
 
   @override
@@ -265,20 +293,16 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                       children: [
                         Chip(
                           label: Text('コスト: ${selectedSkill.baseCost}'),
-                          visualDensity:
-                              VisualDensity.compact,
-                          backgroundColor:
-                              Colors.blue.withOpacity(0.2),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: Colors.blue.withOpacity(0.2),
                         ),
                         const SizedBox(width: 8),
                         Chip(
                           label: Text(
                             'CD: ${selectedSkill.cooldownSeconds.toStringAsFixed(1)}s',
                           ),
-                          visualDensity:
-                              VisualDensity.compact,
-                          backgroundColor:
-                              Colors.orange.withOpacity(0.2),
+                          visualDensity: VisualDensity.compact,
+                          backgroundColor: Colors.orange.withOpacity(0.2),
                         ),
                       ],
                     ),
