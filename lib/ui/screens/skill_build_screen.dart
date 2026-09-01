@@ -39,8 +39,17 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
     super.initState();
 
     // プレイヤーの選択中の神獣を取得してスキルリストを初期化
-    final currentUser = ref.read(userViewModelProvider).value;
-    final mechaId = currentUser?.selectedMechaId ?? 'east_01';
+    String mechaId = 'east_01';
+    try {
+      final userState = ref.read(userViewModelProvider);
+      if (userState is AsyncData) {
+        final user = userState.value;
+        mechaId = user.selectedMechaId ?? 'east_01';
+      }
+    } catch (_) {
+      // ユーザー情報が未読み込みの場合はデフォルト神獣を使用
+      mechaId = 'east_01';
+    }
     availableSkills = SkillSystemService.getSkillsForMecha(mechaId);
 
     if (availableSkills.length >= 3) {
