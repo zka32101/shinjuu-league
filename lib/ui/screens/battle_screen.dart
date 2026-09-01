@@ -225,7 +225,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                         return SkillButtons(
                           skillBuild: state.skillBuild!,
                           resources: state.playerResources ??
-                              const PlayerResources(
+                              PlayerResources(
                                 currentMana: 100,
                                 maxMana: 100,
                                 gold: 0,
