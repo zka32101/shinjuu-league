@@ -182,8 +182,8 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     // Initialize playerResources for UI display
     final initialResources = PlayerResources(
-      currentMana: 100.0,
-      maxMana: 100.0,
+      currentMana: 100,
+      maxMana: 100,
       gold: 0,
       ownedItemIds: [],
     );
@@ -260,8 +260,8 @@ class BattleViewModel extends StateNotifier<BattleState> {
   void selectSkillBuild(SkillBuild skillBuild) {
     // 初期リソースを設定：最大100マナ、0ゴール
     final resources = PlayerResources(
-      currentMana: 100.0,
-      maxMana: 100.0,
+      currentMana: 100,
+      maxMana: 100,
       gold: 0,
       ownedItemIds: [],
     );
