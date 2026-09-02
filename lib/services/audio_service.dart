@@ -62,6 +62,8 @@ class AudioService {
         return 'skill_defensive.mp3'; // 深く重い防御音
       case SkillType.utility:
         return 'skill_utility.mp3'; // 軽い汎用効果音
+      default:
+        return 'skill_generic.mp3';
     }
   }
 
