@@ -11,6 +11,8 @@ enum EvolutionType {
         return '防御';
       case EvolutionType.mobility:
         return '機動';
+      default:
+        return 'Unknown';
     }
   }
 }

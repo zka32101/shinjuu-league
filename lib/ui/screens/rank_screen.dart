@@ -34,7 +34,7 @@ class RankScreen extends ConsumerWidget {
                 tileColor: isMe
                     ? Theme.of(
                         context,
-                      ).colorScheme.primaryContainer.withValues(alpha: 0.3)
+                      ).colorScheme.primaryContainer.withOpacity(0.3)
                     : null,
                 leading: CircleAvatar(
                   backgroundColor: i < 3

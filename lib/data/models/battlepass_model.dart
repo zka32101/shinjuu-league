@@ -14,6 +14,8 @@ enum RewardType {
         return 'コスメティック';
       case RewardType.nameplate:
         return 'ネームプレート';
+      default:
+        return 'Unknown';
     }
   }
 }

@@ -50,7 +50,7 @@ class LaneFloor extends PositionComponent {
 
     // 内部グリッド線（等角のマス目）でスケール感を出す
     final gridPaint = Paint()
-      ..color = Colors.white.withValues(alpha: 0.05)
+      ..color = Colors.white.withOpacity(0.05)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1;
     for (var i = 1; i < 6; i++) {
@@ -64,7 +64,7 @@ class LaneFloor extends PositionComponent {
     canvas.drawPath(
       path,
       Paint()
-        ..color = Colors.white.withValues(alpha: 0.12)
+        ..color = Colors.white.withOpacity(0.12)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 1.5,
     );

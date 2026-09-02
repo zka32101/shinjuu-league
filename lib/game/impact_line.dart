@@ -41,7 +41,7 @@ class ImpactLine extends PositionComponent {
     path.lineTo(to.x, to.y);
 
     final paint = Paint()
-      ..color = Colors.white.withValues(alpha: alpha * 0.85)
+      ..color = Colors.white.withOpacity(alpha * 0.85)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.5;
     canvas.drawPath(path, paint);

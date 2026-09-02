@@ -28,8 +28,17 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   final _game = BattlefieldGame();
 
   @override
+  void initState() {
+    super.initState();
+    // バトルBGMを開始
+    AudioService().playBgm('battle_bgm');
+  }
+
+  @override
   void dispose() {
     _game.attackTargetId.dispose();
+    // バトル画面を離れるときはBGMを停止
+    AudioService().stopBgm();
     super.dispose();
   }
 
@@ -39,9 +48,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     final viewModel = ref.read(battleViewModelProvider.notifier);
     viewModel.attemptManualSkill(targets);
 
-    // スキルの種別を取得して、視覚効果に反映
+    // スキルの種別を取得して、視覚効果＋音響効果に反映
     final skillDef = SkillSystemService.getSkillDefinition(skillId);
     _game.onSkillActivate(skillType: skillDef?.type);
+
+    // スキルタイプ別の効果音を再生
+    if (skillDef != null) {
+      AudioService().playSkillSe(skillDef.type);
+    }
   }
 
   @override
@@ -79,11 +93,16 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
-      // ダメージ数値表示
+      // ダメージ数値表示＋音響フィードバック
       final prevDamageCount = previous?.damageEvents.length ?? 0;
       if (next.damageEvents.length > prevDamageCount) {
         for (final event in next.damageEvents.sublist(prevDamageCount)) {
           _game.onDamageEvent(event.victimId, event.damage, event.isCritical);
+
+          // クリティカルヒット時は特殊音声、通常被弾は音声なし
+          if (event.isCritical) {
+            AudioService().playCriticalHitSe();
+          }
         }
       }
 
@@ -199,13 +218,11 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                             shape: BoxShape.circle,
                             color: canAttack
                                 ? Colors.redAccent
-                                : Colors.grey.withValues(alpha: 0.4),
+                                : Colors.grey.withOpacity(0.4),
                             boxShadow: canAttack
                                 ? [
                                     BoxShadow(
-                                      color: Colors.redAccent.withValues(
-                                        alpha: 0.6,
-                                      ),
+                                      color: Colors.redAccent.withOpacity(0.6),
                                       blurRadius: 12,
                                       spreadRadius: 2,
                                     ),
@@ -229,10 +246,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     bottom: 120,
                     child: Builder(
                       builder: (context) {
-                        final participant = engine.participants.firstWhere(
-                          (p) => p.userId == selfId,
-                          orElse: () => null as dynamic,
-                        ) as BattleParticipantState?;
+                        BattleParticipantState? participant;
+                        try {
+                          participant = engine.participants.firstWhere(
+                            (p) => p.userId == selfId,
+                          );
+                        } catch (_) {
+                          participant = null;
+                        }
 
                         return SkillButtons(
                           skillBuild: state.skillBuild!,
@@ -257,7 +278,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
             padding: const EdgeInsets.all(8),
             color: Theme.of(
               context,
-            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
+            ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
             child: ListView.builder(
               reverse: true,
               itemCount: state.killFeed.length,

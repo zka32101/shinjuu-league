@@ -92,7 +92,7 @@ class _BurstPainter extends CustomPainter {
     final center = size.center(Offset.zero);
     final maxRadius = size.width / 2;
     final paint = Paint()
-      ..color = color.withValues(alpha: (1 - progress).clamp(0.0, 1.0));
+      ..color = color.withOpacity((1 - progress).clamp(0.0, 1.0));
 
     for (final dir in directions) {
       final distance = maxRadius * progress;

@@ -11,6 +11,8 @@ enum BattleResult {
         return '敗北';
       case BattleResult.pending:
         return '進行中';
+      default:
+        return 'Unknown';
     }
   }
 }
@@ -25,6 +27,8 @@ enum BattleMode {
         return 'クイック';
       case BattleMode.ranked:
         return 'ランク';
+      default:
+        return 'Unknown';
     }
   }
 }

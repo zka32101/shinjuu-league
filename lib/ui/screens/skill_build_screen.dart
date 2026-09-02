@@ -41,7 +41,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
     // スキルリストを初期化（デフォルト神獣を使用）
     // 注：プレイヤーの選択中の神獣はMatchResultから取得するか、
     // BattleViewModelで既に設定されている状態で使用
-    final mechaId = 'east_01';
+    final mechaId = defaultMechaId;
     availableSkills = SkillSystemService.getSkillsForMecha(mechaId);
 
     if (availableSkills.length >= 3) {
@@ -62,7 +62,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
     });
   }
 
-  void _confirmBuild() async {
+  void _confirmBuild() {
     if (_isLocked) return;
     _isLocked = true;
     _countdownTimer?.cancel();
@@ -401,6 +401,8 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
         return Colors.blue;
       case SkillType.utility:
         return Colors.green;
+      default:
+        return Colors.white;
     }
   }
 }

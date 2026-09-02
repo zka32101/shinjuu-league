@@ -32,13 +32,13 @@ class BuffIndicator extends Component {
 
   @override
   Future<void> onLoad() async {
-    _startTime = game.clock.t;
+    _startTime = gameRef.clock.t;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = gameRef.clock.t - _startTime;
 
     // 上昇アニメーション（time-wise）
     position = Vector2(
@@ -53,7 +53,7 @@ class BuffIndicator extends Component {
 
   @override
   void render(Canvas canvas) {
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = gameRef.clock.t - _startTime;
     final progress = (elapsed / duration).clamp(0, 1);
     final opacity = 1.0 - progress;
 
@@ -140,7 +140,6 @@ class BuffIndicator extends Component {
 
   Path _createArrowPath(bool up) {
     final path = Path();
-    const scale = 0.15;
 
     if (up) {
       // 上向き矢印
@@ -249,6 +248,8 @@ class BuffIndicator extends Component {
         return const Color(0xFFFFD93D); // 黄：素早さ系
       case BuffType.healing:
         return const Color(0xFF90EE90); // 緑：回復
+      default:
+        return const Color(0xFFFFFFFF); // 白：デフォルト
     }
   }
 

@@ -141,8 +141,8 @@ class BattleViewModel extends StateNotifier<BattleState> {
             // 自分の場合は初期リソース（100 mana, 0 gold）を設定、Botは後で設定
             final initialResources = mp.userId == selfUserId
                 ? PlayerResources(
-                    currentMana: 100.0,
-                    maxMana: 100.0,
+                    currentMana: 100,
+                    maxMana: 100,
                     gold: 0,
                     ownedItemIds: [],
                   )
@@ -278,10 +278,16 @@ class BattleViewModel extends StateNotifier<BattleState> {
   /// エンジンのリソース状態を反映（毎フレーム tick で呼ばれる想定）
   void _updatePlayerResources() {
     final engine = state.engine;
-    final selfParticipant = engine?.participants.firstWhere(
-      (p) => p.userId == _selfUserId,
-      orElse: () => null as dynamic,
-    ) as BattleParticipantState?;
+    BattleParticipantState? selfParticipant;
+    if (engine != null) {
+      try {
+        selfParticipant = engine.participants.firstWhere(
+          (p) => p.userId == _selfUserId,
+        );
+      } catch (_) {
+        selfParticipant = null;
+      }
+    }
 
     if (selfParticipant != null && state.playerResources != null) {
       final updated = state.playerResources!.copyWith(
