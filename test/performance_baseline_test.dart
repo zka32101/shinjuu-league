@@ -70,6 +70,8 @@ void main() {
           for (int i = 0; i < 1000; i++) {
             sum += i;
           }
+          // Verify sum is computed (prevents unused variable warning)
+          expect(sum, greaterThan(0));
         });
 
         expect(duration, greaterThanOrEqualTo(0));
@@ -114,9 +116,9 @@ void main() {
         expect(dump, containsPair('current_memory_mb', isA<double>()));
       });
 
-      test('performance dump includes slow frame statistics', () {
+      test('performance dump includes slow frame statistics', () async {
         // Record some slow frames
-        performanceService.measureFrameTime(() {
+        await performanceService.measureFrameTime(() async {
           for (int i = 0; i < 100000; i++) {}
         });
 
