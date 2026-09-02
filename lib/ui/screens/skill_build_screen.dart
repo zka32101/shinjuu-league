@@ -334,12 +334,21 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
     final skillW = SkillSystemService.getSkillDefinition(selectedW);
     final skillE = SkillSystemService.getSkillDefinition(selectedE);
 
+    // Gracefully handle missing skill definitions
+    if (skillQ == null || skillW == null || skillE == null) {
+      return [
+        const Center(
+          child: Text('スキル定義が見つかりません'),
+        ),
+      ];
+    }
+
     return [
-      _buildSkillDetailRow('Q', skillQ!),
+      _buildSkillDetailRow('Q', skillQ),
       const Divider(),
-      _buildSkillDetailRow('W', skillW!),
+      _buildSkillDetailRow('W', skillW),
       const Divider(),
-      _buildSkillDetailRow('E', skillE!),
+      _buildSkillDetailRow('E', skillE),
     ];
   }
 
