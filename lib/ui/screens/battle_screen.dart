@@ -14,6 +14,7 @@ import 'package:shinjuu_league/services/haptic_service.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 import 'package:shinjuu_league/ui/widgets/resource_hud.dart';
 import 'package:shinjuu_league/ui/widgets/skill_buttons.dart';
+import 'package:shinjuu_league/services/skill_system_service.dart';
 
 class BattleScreen extends ConsumerStatefulWidget {
   const BattleScreen({super.key, required this.match});
@@ -37,7 +38,10 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     final targets = _game.enemiesWithinSkillRadius();
     final viewModel = ref.read(battleViewModelProvider.notifier);
     viewModel.attemptManualSkill(targets);
-    _game.onSkillActivate();
+
+    // スキルの種別を取得して、視覚効果に反映
+    final skillDef = SkillSystemService.getSkillDefinition(skillId);
+    _game.onSkillActivate(skillType: skillDef?.type);
   }
 
   @override

@@ -1,4 +1,5 @@
 import 'package:shinjuu_league/data/models/skill_model.dart';
+import 'package:shinjuu_league/data/item_catalog.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 
@@ -141,11 +142,7 @@ class SkillSystemService {
 
   /// アイテムIDからアイテム定義を取得
   static ItemDefinition? getItemDefinition(String itemId) {
-    try {
-      return _items.firstWhere((item) => item.itemId == itemId);
-    } catch (e) {
-      return null;
-    }
+    return ItemCatalog.getItemDefinition(itemId);
   }
 
   /// ビルドの有効性を検証

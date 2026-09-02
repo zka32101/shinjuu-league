@@ -95,12 +95,29 @@ class BattleParticipantState {
     }
   }
 
-  double get effectiveAtk =>
-      baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
-  double get effectiveHp =>
-      baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
-  double get effectiveSpd =>
-      baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
+  double get effectiveAtk {
+    final baseAtk = baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
+    final itemBonuses = SkillSystemService.calculateItemBonuses(
+      ownedItemIds: resources.ownedItemIds,
+    );
+    return baseAtk + itemBonuses.atk;
+  }
+
+  double get effectiveHp {
+    final baseHp = baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
+    final itemBonuses = SkillSystemService.calculateItemBonuses(
+      ownedItemIds: resources.ownedItemIds,
+    );
+    return baseHp + itemBonuses.hp;
+  }
+
+  double get effectiveSpd {
+    final baseSpd = baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
+    final itemBonuses = SkillSystemService.calculateItemBonuses(
+      ownedItemIds: resources.ownedItemIds,
+    );
+    return baseSpd + itemBonuses.spd;
+  }
 
   int get score => kills * 3 + assists - deaths;
 
