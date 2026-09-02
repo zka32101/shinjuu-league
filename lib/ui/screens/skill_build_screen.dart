@@ -62,7 +62,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
     });
   }
 
-  void _confirmBuild() async {
+  void _confirmBuild() {
     if (_isLocked) return;
     _isLocked = true;
     _countdownTimer?.cancel();

@@ -246,10 +246,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     bottom: 120,
                     child: Builder(
                       builder: (context) {
-                        final participant = engine.participants.firstWhere(
-                          (p) => p.userId == selfId,
-                          orElse: () => null as dynamic,
-                        ) as BattleParticipantState?;
+                        BattleParticipantState? participant;
+                        try {
+                          participant = engine.participants.firstWhere(
+                            (p) => p.userId == selfId,
+                          );
+                        } catch (_) {
+                          participant = null;
+                        }
 
                         return SkillButtons(
                           skillBuild: state.skillBuild!,
