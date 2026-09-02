@@ -36,7 +36,7 @@ jobs:
             git commit -m "style: apply dart formatting"
             # Get the branch name from GITHUB_HEAD_REF (for PRs) or GITHUB_REF_NAME
             BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
-            git push --force-with-lease origin HEAD:$BRANCH
+            git push --force origin HEAD:$BRANCH
           fi
 
       - name: Analyze
