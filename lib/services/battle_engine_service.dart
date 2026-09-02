@@ -24,6 +24,23 @@ class CombatEvent {
   });
 }
 
+/// ダメージイベント（ダメージ数値表示用）
+class DamageEvent {
+  final String attackerId;
+  final String victimId;
+  final int damage;
+  final bool isCritical;
+  final int tickSecond;
+
+  DamageEvent({
+    required this.attackerId,
+    required this.victimId,
+    required this.damage,
+    this.isCritical = false,
+    required this.tickSecond,
+  });
+}
+
 class BattleParticipantState {
   final String userId;
   final String mechaId;
@@ -154,10 +171,13 @@ class BattleEngine {
   final _tickController = StreamController<int>.broadcast();
   // 撃破に至らない被弾（HP削り）を通知する。killFeed/Aha Momentには影響させない。
   final _hitController = StreamController<CombatEvent>.broadcast(sync: true);
+  // ダメージイベント（ダメージ数値表示用）
+  final _damageController = StreamController<DamageEvent>.broadcast(sync: true);
 
   Stream<CombatEvent> get combatEvents => _combatController.stream;
   Stream<int> get onTick => _tickController.stream;
   Stream<CombatEvent> get hitEvents => _hitController.stream;
+  Stream<DamageEvent> get damageEvents => _damageController.stream;
 
   bool get isRunning => _isRunning;
   int get elapsedSeconds => _elapsedSeconds;
@@ -189,6 +209,7 @@ class BattleEngine {
     _combatController.close();
     _tickController.close();
     _hitController.close();
+    _damageController.close();
   }
 
   /// 1秒分のシミュレーションを進める。Timer.periodic から呼ばれる他、
@@ -258,9 +279,9 @@ class BattleEngine {
       );
 
       if (target.isAlive && target.team != attacker.team) {
-        final damage =
-            _computeDamage(attacker, target) * damageMultiplier;
-        _applyDamage(attacker, target, damage);
+        final damageResult = _computeDamage(attacker, target);
+        final damage = damageResult.damage * damageMultiplier;
+        _applyDamage(attacker, target, damage, damageResult.isCritical);
       }
     }
 
@@ -333,7 +354,8 @@ class BattleEngine {
         final aliveDefenders = teamBAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
         final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
-        _applyDamage(attacker, defender, _computeDamage(attacker, defender));
+        final damageResult = _computeDamage(attacker, defender);
+        _applyDamage(attacker, defender, damageResult.damage, damageResult.isCritical);
       }
 
       for (final attacker in teamBAlive) {
@@ -342,33 +364,56 @@ class BattleEngine {
         final aliveDefenders = teamAAlive.where((p) => p.isAlive).toList();
         if (aliveDefenders.isEmpty) continue;
         final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
-        _applyDamage(attacker, defender, _computeDamage(attacker, defender));
+        final damageResult = _computeDamage(attacker, defender);
+        _applyDamage(attacker, defender, damageResult.damage, damageResult.isCritical);
       }
     }
   }
 
   /// 素早さが高いほど被弾を軽減する（回避寄りの簡易ミティゲーション）
-  double _computeDamage(
+  /// 攻撃力が高いほどクリティカル確率が上がる
+  ({double damage, bool isCritical}) _computeDamage(
     BattleParticipantState attacker,
     BattleParticipantState defender,
   ) {
     final mitigation =
         1.0 - (defender.effectiveSpd / (defender.effectiveSpd + 200));
-    return attacker.effectiveAtk * _hitDamageFactor * mitigation;
+    final baseDamage = attacker.effectiveAtk * _hitDamageFactor * mitigation;
+
+    // クリティカル判定：攻撃力 / 600 が基本確率（最大25%）
+    final critChance = (attacker.effectiveAtk / 600).clamp(0, 0.25);
+    final isCritical = _random.nextDouble() < critChance;
+
+    final finalDamage = isCritical ? baseDamage * 2.0 : baseDamage;
+
+    return (damage: finalDamage, isCritical: isCritical);
   }
 
   /// HPを削り、0以下になった時点で撃破として確定する（即死判定ではなく削り合い）。
   /// 撃破に至らない場合は `hitEvents` のみへ通知し、killFeed/Aha Momentは反応させない。
+  /// ダメージイベントは常に emitされ、ダメージ数値表示に使用される。
   void _applyDamage(
     BattleParticipantState attacker,
     BattleParticipantState defender,
     double damage,
+    bool isCritical,
   ) {
     if (!attacker.isAlive || !defender.isAlive) return;
 
     defender.currentHp = (defender.currentHp - damage).clamp(
       0.0,
       double.infinity,
+    );
+
+    // ダメージイベント（ダメージ数値表示用、常に emit）
+    _damageController.add(
+      DamageEvent(
+        attackerId: attacker.userId,
+        victimId: defender.userId,
+        damage: damage.toInt(),
+        isCritical: isCritical,
+        tickSecond: _elapsedSeconds,
+      ),
     );
 
     if (defender.currentHp <= 0) {
@@ -412,7 +457,8 @@ class BattleEngine {
     if (attacker.team == victim.team) return false;
     if (attacker.lane != victim.lane) return false;
 
-    _applyDamage(attacker, victim, _computeDamage(attacker, victim));
+    final damageResult = _computeDamage(attacker, victim);
+    _applyDamage(attacker, victim, damageResult.damage, damageResult.isCritical);
     return true;
   }
 
@@ -436,10 +482,12 @@ class BattleEngine {
           target.lane != attacker.lane) {
         continue;
       }
+      final damageResult = _computeDamage(attacker, target);
       _applyDamage(
         attacker,
         target,
-        _computeDamage(attacker, target) * _skillDamageMultiplier,
+        damageResult.damage * _skillDamageMultiplier,
+        damageResult.isCritical,
       );
       hitAny = true;
     }

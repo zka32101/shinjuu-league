@@ -75,6 +75,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
+      // ダメージ数値表示
+      final prevDamageCount = previous?.damageEvents.length ?? 0;
+      if (next.damageEvents.length > prevDamageCount) {
+        for (final event in next.damageEvents.sublist(prevDamageCount)) {
+          _game.onDamageEvent(event.victimId, event.damage, event.isCritical);
+        }
+      }
+
       if (next.isFinished &&
           !(previous?.isFinished ?? false) &&
           next.battle != null) {
