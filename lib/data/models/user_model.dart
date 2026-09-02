@@ -15,6 +15,7 @@ class User {
   final bool hasBattlePassPremium;
   final String? guildId;
   final String selectedMechaId;
+  final List<String> fcmTokens;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -33,6 +34,7 @@ class User {
     this.hasBattlePassPremium = false,
     this.guildId,
     this.selectedMechaId = defaultMechaId,
+    this.fcmTokens = const [],
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -51,6 +53,7 @@ class User {
     List<String>? ownedSkinIds,
     bool? hasBattlePassPremium,
     String? selectedMechaId,
+    List<String>? fcmTokens,
     DateTime? createdAt,
     DateTime? lastBattleAt,
   }) {
@@ -69,6 +72,7 @@ class User {
       hasBattlePassPremium: hasBattlePassPremium ?? this.hasBattlePassPremium,
       guildId: guildId,
       selectedMechaId: selectedMechaId ?? this.selectedMechaId,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
       createdAt: createdAt ?? this.createdAt,
       lastBattleAt: lastBattleAt ?? this.lastBattleAt,
     );
@@ -92,6 +96,9 @@ class User {
       hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
       guildId: json['guildId'] as String?,
       selectedMechaId: json['selectedMechaId'] as String? ?? defaultMechaId,
+      fcmTokens: List<String>.from(
+        json['fcmTokens'] as List<dynamic>? ?? [],
+      ),
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -117,6 +124,7 @@ class User {
       'hasBattlePassPremium': hasBattlePassPremium,
       'guildId': guildId,
       'selectedMechaId': selectedMechaId,
+      'fcmTokens': fcmTokens,
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };

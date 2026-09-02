@@ -1,7 +1,9 @@
 import 'dart:async';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'firestore_service.dart';
 
 /// プッシュ通知（FCM）統合サービス
 /// バックグラウンド・フォアグラウンド・終了状態の通知をハンドル
@@ -43,14 +45,14 @@ class PushNotificationService {
       // FCM トークンを取得・保存
       final token = await _messaging.getToken();
       if (token != null) {
-        _saveFCMToken(token);
+        await _saveFCMToken(token);
         if (kDebugMode) {
           debugPrint('FCM Token: $token');
         }
       }
 
       // トークンリフレッシュ時にキャッシュを更新
-      _messaging.onTokenRefresh.listen(_onTokenRefresh);
+      _messaging.onTokenRefresh.listen((token) => _onTokenRefresh(token));
 
       // ローカル通知の初期化
       await _initializeLocalNotifications();
@@ -102,11 +104,11 @@ class PushNotificationService {
   }
 
   /// FCM トークンリフレッシュ時のコールバック
-  void _onTokenRefresh(String token) {
+  Future<void> _onTokenRefresh(String token) async {
     if (kDebugMode) {
       debugPrint('FCM token refreshed: $token');
     }
-    _saveFCMToken(token);
+    await _saveFCMToken(token);
   }
 
   /// フォアグラウンド メッセージハンドラ
@@ -188,10 +190,28 @@ class PushNotificationService {
     // （実装は ViewModel 層で処理）
   }
 
-  /// FCM トークンを保存（Firestore/SharedPrefs）
-  void _saveFCMToken(String token) {
-    // TODO: UserDocument の fcmToken フィールドを更新
-    // Firestore 投入時に実装
+  /// FCM トークンを Firestore に永続化
+  Future<void> _saveFCMToken(String token) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final firestoreService = FirestoreService();
+        await firestoreService.persistFcmToken(user.uid, token);
+        if (kDebugMode) {
+          debugPrint('FCM token persisted for user ${user.uid}');
+        }
+      } else {
+        if (kDebugMode) {
+          debugPrint('User not authenticated, skipping FCM token persistence');
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error persisting FCM token: $e');
+      }
+      // Don't throw - token persistence is non-critical
+      // App continues to function with only topic-based subscriptions
+    }
   }
 
   /// トピックをサブスクライブ
