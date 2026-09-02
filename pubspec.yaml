@@ -36,6 +36,10 @@ dependencies:
 
   # Notifications
   flutter_local_notifications: ^17.0.0
+  permission_handler: ^11.0.0
+
+  # Device Info
+  device_info_plus: ^10.0.0
 
   # 2.5D Battlefield Rendering
   flame: ^1.18.0

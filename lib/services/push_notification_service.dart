@@ -1,8 +1,11 @@
 import 'dart:async';
+import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'firestore_service.dart';
 
 /// プッシュ通知（FCM）統合サービス
@@ -24,6 +27,9 @@ class PushNotificationService {
   /// 初期化
   Future<void> init() async {
     try {
+      // Android 13+ の POST_NOTIFICATIONS 許可をリクエスト
+      await _requestAndroid13NotificationPermission();
+
       // iOS の APN 許可をリクエスト
       final settings = await _messaging.requestPermission(
         alert: true,
@@ -72,6 +78,45 @@ class PushNotificationService {
       if (kDebugMode) {
         debugPrint('PushNotificationService.init error: $e');
       }
+    }
+  }
+
+  /// Android 13+ の POST_NOTIFICATIONS 許可をリクエスト
+  /// Android 13 (API 33) 以降では、通知を表示するためにランタイムパーミッションが必須
+  Future<void> _requestAndroid13NotificationPermission() async {
+    try {
+      // DeviceInfoPlugin を使用して Android バージョンを確認
+      final deviceInfo = DeviceInfoPlugin();
+      final androidInfo = await deviceInfo.androidInfo;
+
+      // API 33 (Android 13) 以降の場合
+      if (androidInfo.version.sdkInt >= 33) {
+        final status = await Permission.notification.request();
+
+        if (kDebugMode) {
+          debugPrint('Android 13+ notification permission: ${status.toString()}');
+        }
+
+        if (status.isDenied) {
+          if (kDebugMode) {
+            debugPrint(
+              'User denied POST_NOTIFICATIONS permission. '
+              'Notifications will not be displayed.',
+            );
+          }
+          // ユーザーが許可を拒否した場合、通知はシステムによって自動的に非表示になります
+          // 必要に応じて、ユーザーに設定で手動で許可するよう促すバナーを表示できます
+        } else if (status.isGranted) {
+          if (kDebugMode) {
+            debugPrint('POST_NOTIFICATIONS permission granted');
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('Error requesting Android 13+ notification permission: $e');
+      }
+      // エラーが発生した場合も、アプリの起動は続行します
     }
   }
 
