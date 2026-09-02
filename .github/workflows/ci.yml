@@ -32,7 +32,9 @@ jobs:
             git config user.email "noreply@anthropic.com"
             git add -A
             git commit -m "style: apply dart formatting"
-            git push
+            # Get the branch name from GITHUB_HEAD_REF (for PRs) or GITHUB_REF_NAME
+            BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            git push origin HEAD:$BRANCH
           fi
 
       - name: Analyze
