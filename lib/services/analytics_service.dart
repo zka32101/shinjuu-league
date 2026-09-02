@@ -255,7 +255,7 @@ class AnalyticsService {
       final firestoreService = FirestoreService();
       await firestoreService.updateUserCohortProperties(
         userId,
-        cohortProperties,
+        cohortProperties.toJson(),
       );
     } catch (e) {
       // Log error but don't throw - cohort persistence is non-critical

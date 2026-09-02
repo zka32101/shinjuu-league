@@ -102,16 +102,11 @@ class FirestoreService {
   /// アナリティクスの分析と、サーバー側のユーザー検索/ターゲティングに使用
   Future<void> updateUserCohortProperties(
     String userId,
-    dynamic cohortProperties,
+    Map<String, dynamic> cohortProperties,
   ) async {
     try {
-      // cohortProperties can be either CohortProperties object or Map
-      final cohortData = cohortProperties is Map
-          ? cohortProperties
-          : (cohortProperties as dynamic).toJson() as Map<String, dynamic>;
-
       await _db.collection('users').doc(userId).update({
-        'cohortProperties': cohortData,
+        'cohortProperties': cohortProperties,
       });
     } catch (e) {
       throw 'Failed to update cohort properties: $e';
