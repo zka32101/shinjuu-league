@@ -1,0 +1,225 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isUserOwnData(userId) {
+      return request.auth.uid == userId;
+    }
+
+    function hasOnlyAllowedUserFields() {
+      // Users can only update non-sensitive fields (profile, selectedMechaId, etc)
+      // Elo/stats changes are ONLY via Cloud Functions
+      let allowedFields = ['name', 'selectedMechaId', 'guildId', 'cohortProperties', 'fcmTokens'];
+      let updatingFields = request.resource.data.keys();
+      return updatingFields.hasAll(allowedFields) || updatingFields.size() == allowedFields.size();
+    }
+
+    function isServerUpdate() {
+      // Only Cloud Functions (no auth.uid) can perform these writes
+      return request.auth == null;
+    }
+
+    // ============================================================================
+    // USERS COLLECTION
+    // ============================================================================
+    // Rules: User can read/write own profile data only
+    // Server (Cloud Functions) can write Elo/stats fields
+    // ============================================================================
+    match /users/{userId} {
+      // User can read their own document
+      allow read: if isUserOwnData(userId);
+
+      // User can update their own non-sensitive fields
+      allow update: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
+        'eloPoints', 'rank', 'level', 'winRate', 'totalBattles',
+        'gems', 'gold', 'createdAt', 'lastBattleAt'
+      ]);
+
+      // User can create their own document (onboarding)
+      allow create: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
+        'eloPoints', 'rank', 'winRate', 'totalBattles', 'gems', 'gold'
+      ]);
+
+      // Only server can update sensitive fields (Elo, stats, currency)
+      // This is enforced via Cloud Functions triggered by battle/result
+      allow write: if isServerUpdate();
+
+      // Delete not allowed (archival only via Cloud Functions)
+      allow delete: if false;
+
+      // Subcollections under user (achievements, settings, etc)
+      match /achievements/{achievementId} {
+        allow read: if isUserOwnData(userId);
+        allow write: if isUserOwnData(userId);
+      }
+
+      match /settings/{settingId} {
+        allow read: if isUserOwnData(userId);
+        allow write: if isUserOwnData(userId);
+      }
+    }
+
+    // ============================================================================
+    // REPLAYS COLLECTION
+    // ============================================================================
+    // Rules: Owner can read/write own replays
+    // Everyone can read replays (for sharing/viewing)
+    // ============================================================================
+    match /replays/{replayId} {
+      // Anyone can read replays (enables sharing via link)
+      allow read: if true;
+
+      // Only owner (userId == auth.uid) can write/delete their replays
+      allow write: if isAuthenticated() && isUserOwnData(resource.data.userId);
+      allow delete: if isAuthenticated() && isUserOwnData(resource.data.userId);
+
+      // Create own replay
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+    }
+
+    // ============================================================================
+    // FRIEND REQUESTS COLLECTION
+    // ============================================================================
+    // Rules: Users can read/write their own friend requests
+    // ============================================================================
+    match /friendRequests/{requestId} {
+      // User can read requests where they are sender or receiver
+      allow read: if isAuthenticated() && (
+        resource.data.senderId == request.auth.uid ||
+        resource.data.receiverId == request.auth.uid
+      );
+
+      // User can create request (becomes sender)
+      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+
+      // Only receiver can accept/reject request
+      allow update: if isAuthenticated() && resource.data.receiverId == request.auth.uid;
+
+      // Sender can delete own request (before acceptance)
+      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+    }
+
+    // ============================================================================
+    // GUILDS COLLECTION
+    // ============================================================================
+    // Rules: Guild members can read/write guild data
+    // Guild owner can modify guild settings
+    // ============================================================================
+    match /guilds/{guildId} {
+      // Anyone can read guild info (for search/join flow)
+      allow read: if true;
+
+      // Guild owner can update guild settings
+      allow update: if isAuthenticated() &&
+        get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid;
+
+      // Only owner can create guild (via Cloud Function)
+      allow create: if isServerUpdate();
+
+      // Only owner can delete guild
+      allow delete: if isAuthenticated() &&
+        resource.data.ownerId == request.auth.uid;
+
+      // Guild members subcollection
+      match /members/{memberId} {
+        // Guild members can read member list
+        allow read: if isAuthenticated();
+
+        // Only guild owner can manage members
+        allow write: if isAuthenticated() &&
+          get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid;
+      }
+
+      // Guild chat/bulletin board
+      match /board/{postId} {
+        // Guild members can read posts
+        allow read: if isAuthenticated();
+
+        // Any authenticated user can create posts to guild board
+        allow create: if isAuthenticated();
+
+        // Post author can update/delete own posts
+        allow update, delete: if isAuthenticated() && resource.data.authorId == request.auth.uid;
+      }
+    }
+
+    // ============================================================================
+    // LEADERBOARD COLLECTION
+    // ============================================================================
+    // Rules: Everyone can read leaderboard (public ranking)
+    // Server only can write (updated via Cloud Functions after battle)
+    // ============================================================================
+    match /leaderboard/{leaderboardId} {
+      // Anyone can read leaderboard
+      allow read: if true;
+
+      // Only server (Cloud Functions) can update
+      allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // BATTLE RESULTS COLLECTION
+    // ============================================================================
+    // Rules: User can read own battle results
+    // User can create battle results (from battle screen)
+    // Server validates and processes results via Cloud Function
+    // ============================================================================
+    match /battleResults/{battleResultId} {
+      // User can read their own battle results
+      allow read: if isAuthenticated() &&
+        resource.data.participants.any(p => p.userId == request.auth.uid);
+
+      // User can create battle result (submitted from client)
+      // Cloud Function validates and processes
+      allow create: if isAuthenticated() &&
+        request.resource.data.participants.any(p => p.userId == request.auth.uid);
+
+      // Cloud Functions can update (process result, update Elo)
+      allow update: if isServerUpdate();
+
+      // No deletes (audit trail)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // ACHIEVEMENTS COLLECTION (Global Definitions)
+    // ============================================================================
+    // Rules: Everyone can read achievement definitions
+    // ============================================================================
+    match /achievements/{achievementId} {
+      // Anyone can read achievement definitions
+      allow read: if true;
+
+      // Only server can create/update definitions
+      allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // CONFIG COLLECTION (Settings, Feature Flags, Remote Config)
+    // ============================================================================
+    // Rules: Everyone can read config (for client-side features)
+    // Only server can write
+    // ============================================================================
+    match /config/{configId} {
+      // Anyone can read config
+      allow read: if true;
+
+      // Only server can update
+      allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // FALLBACK - Deny everything else
+    // ============================================================================
+    match /{document=**} {
+      allow read, write, delete: if false;
+    }
+  }
+}
