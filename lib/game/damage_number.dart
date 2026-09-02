@@ -131,7 +131,7 @@ class ComboCounter extends Component {
 }
 
 /// バフ/デバフインジケーター（トークン上部に表示）
-class BuffIndicator extends PositionComponent {
+class BuffIndicatorUI extends PositionComponent {
   final String buffName;
   final Duration duration;
   final Color color;
