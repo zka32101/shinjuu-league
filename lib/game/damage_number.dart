@@ -137,7 +137,7 @@ class BuffIndicatorUI extends PositionComponent {
   final Color color;
   late DateTime startTime;
 
-  BuffIndicator({
+  BuffIndicatorUI({
     required Vector2 position,
     required this.buffName,
     required this.duration,
