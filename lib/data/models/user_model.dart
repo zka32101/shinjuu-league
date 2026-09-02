@@ -1,4 +1,5 @@
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/cohort_properties.dart';
 
 class User {
   final String uid;
@@ -16,6 +17,7 @@ class User {
   final String? guildId;
   final String selectedMechaId;
   final List<String> fcmTokens;
+  final CohortProperties? cohortProperties;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -35,6 +37,7 @@ class User {
     this.guildId,
     this.selectedMechaId = defaultMechaId,
     this.fcmTokens = const [],
+    this.cohortProperties,
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -54,6 +57,7 @@ class User {
     bool? hasBattlePassPremium,
     String? selectedMechaId,
     List<String>? fcmTokens,
+    CohortProperties? cohortProperties,
     DateTime? createdAt,
     DateTime? lastBattleAt,
   }) {
@@ -73,6 +77,7 @@ class User {
       guildId: guildId,
       selectedMechaId: selectedMechaId ?? this.selectedMechaId,
       fcmTokens: fcmTokens ?? this.fcmTokens,
+      cohortProperties: cohortProperties ?? this.cohortProperties,
       createdAt: createdAt ?? this.createdAt,
       lastBattleAt: lastBattleAt ?? this.lastBattleAt,
     );
@@ -99,6 +104,11 @@ class User {
       fcmTokens: List<String>.from(
         json['fcmTokens'] as List<dynamic>? ?? [],
       ),
+      cohortProperties: json['cohortProperties'] != null
+          ? CohortProperties.fromJson(
+              json['cohortProperties'] as Map<String, dynamic>,
+            )
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -125,6 +135,7 @@ class User {
       'guildId': guildId,
       'selectedMechaId': selectedMechaId,
       'fcmTokens': fcmTokens,
+      if (cohortProperties != null) 'cohortProperties': cohortProperties!.toJson(),
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };

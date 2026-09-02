@@ -98,6 +98,26 @@ class FirestoreService {
     }
   }
 
+  /// ユーザーのコホートプロパティを Firestore に更新
+  /// アナリティクスの分析と、サーバー側のユーザー検索/ターゲティングに使用
+  Future<void> updateUserCohortProperties(
+    String userId,
+    dynamic cohortProperties,
+  ) async {
+    try {
+      // cohortProperties can be either CohortProperties object or Map
+      final cohortData = cohortProperties is Map
+          ? cohortProperties
+          : (cohortProperties as dynamic).toJson() as Map<String, dynamic>;
+
+      await _db.collection('users').doc(userId).update({
+        'cohortProperties': cohortData,
+      });
+    } catch (e) {
+      throw 'Failed to update cohort properties: $e';
+    }
+  }
+
   // ============ Mecha Methods ============
   Future<List<Mecha>> getAllMechas() async {
     try {

@@ -1,5 +1,7 @@
 import 'package:firebase_analytics/firebase_analytics.dart';
 import 'package:firebase_crashlytics/firebase_crashlytics.dart';
+import 'package:shinjuu_league/data/models/cohort_properties.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 
 class AnalyticsService {
   static final AnalyticsService _instance = AnalyticsService._internal();
@@ -218,12 +220,15 @@ class AnalyticsService {
   /// installCohort: 登録日（YYYY-MM-DD）
   /// platformCohort: iOS or Android
   /// purchaseCohort: D1Payer, F2P, etc
+  /// Also persists cohort properties to Firestore for querying and targeting
   Future<void> setCohortProperties(
     String userId, {
     required String installCohort,
     required String platformCohort,
     required String purchaseCohort,
+    Map<String, String>? customCohorts,
   }) async {
+    // Log to Firebase Analytics (for dashboard reporting)
     await _analytics.setUserProperty(
       name: 'install_cohort',
       value: installCohort,
@@ -236,6 +241,31 @@ class AnalyticsService {
       name: 'purchase_cohort',
       value: purchaseCohort,
     );
+
+    // Also persist to Firestore for querying and server-side targeting
+    try {
+      final cohortProperties = CohortProperties(
+        installCohort: installCohort,
+        platformCohort: platformCohort,
+        purchaseCohort: purchaseCohort,
+        customCohorts: customCohorts ?? {},
+        assignedAt: DateTime.now(),
+      );
+
+      final firestoreService = FirestoreService();
+      await firestoreService.updateUserCohortProperties(
+        userId,
+        cohortProperties,
+      );
+    } catch (e) {
+      // Log error but don't throw - cohort persistence is non-critical
+      recordError(
+        e,
+        StackTrace.current,
+        reason: 'Failed to persist cohort properties to Firestore',
+        information: [userId],
+      );
+    }
   }
 
   // ============ Retention Metrics ============
