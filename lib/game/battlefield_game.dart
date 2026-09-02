@@ -14,6 +14,7 @@ import 'package:shinjuu_league/game/lane_floor.dart';
 import 'package:shinjuu_league/game/mecha_token.dart';
 import 'package:shinjuu_league/game/open_field.dart';
 import 'package:shinjuu_league/game/skill_burst.dart';
+import 'package:shinjuu_league/game/damage_number.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 /// 参加者の状態（位置・生死）だけを受け取って描画するレンダラー。
@@ -352,5 +353,22 @@ class BattlefieldGame extends FlameGame {
 
     _shakeMagnitude = 1.0;
     _flashAlpha = 1.0;
+  }
+
+  /// ダメージ数値表示を画面上に追加
+  void onDamageEvent(String victimId, int damage, bool isCritical) {
+    final victim = _tokens[victimId];
+    if (victim == null) return;
+
+    // ダメージ数値は被弾者の上部に表示
+    final damagePos = victim.position + Vector2(0, -victim.size.y / 2 - 10);
+    add(
+      DamageNumber(
+        position: damagePos,
+        damage: damage,
+        isCritical: isCritical,
+        color: isCritical ? Colors.red : Colors.white,
+      ),
+    );
   }
 }

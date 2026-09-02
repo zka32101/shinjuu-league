@@ -75,6 +75,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
+      // ダメージ数値表示
+      final prevDamageCount = previous?.damageEvents.length ?? 0;
+      if (next.damageEvents.length > prevDamageCount) {
+        for (final event in next.damageEvents.sublist(prevDamageCount)) {
+          _game.onDamageEvent(event.victimId, event.damage, event.isCritical);
+        }
+      }
+
       if (next.isFinished &&
           !(previous?.isFinished ?? false) &&
           next.battle != null) {
@@ -225,7 +233,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                         return SkillButtons(
                           skillBuild: state.skillBuild!,
                           resources: state.playerResources ??
-                              const PlayerResources(
+                              PlayerResources(
                                 currentMana: 100,
                                 maxMana: 100,
                                 gold: 0,

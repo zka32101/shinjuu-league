@@ -24,6 +24,7 @@ class BattleState {
     required this.playerResources,
     required this.killFeed,
     required this.hitFeed,
+    required this.damageEvents,
     required this.isLoading,
     required this.isFinished,
     required this.error,
@@ -40,6 +41,7 @@ class BattleState {
     playerResources: null,
     killFeed: [],
     hitFeed: [],
+    damageEvents: [],
     isLoading: false,
     isFinished: false,
     error: null,
@@ -55,6 +57,7 @@ class BattleState {
   final PlayerResources? playerResources;
   final List<CombatEvent> killFeed;
   final List<CombatEvent> hitFeed;
+  final List<DamageEvent> damageEvents;
   final bool isLoading;
   final bool isFinished;
   final String? error;
@@ -70,6 +73,7 @@ class BattleState {
     PlayerResources? playerResources,
     List<CombatEvent>? killFeed,
     List<CombatEvent>? hitFeed,
+    List<DamageEvent>? damageEvents,
     bool? isLoading,
     bool? isFinished,
     String? error,
@@ -85,6 +89,7 @@ class BattleState {
       playerResources: playerResources ?? this.playerResources,
       killFeed: killFeed ?? this.killFeed,
       hitFeed: hitFeed ?? this.hitFeed,
+      damageEvents: damageEvents ?? this.damageEvents,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
@@ -108,6 +113,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   StreamSubscription<CombatEvent>? _combatSub;
   StreamSubscription<CombatEvent>? _hitSub;
   StreamSubscription<int>? _tickSub;
+  StreamSubscription<DamageEvent>? _damageSub;
 
   late String _selfUserId;
   late double _selfEloAtStart;
@@ -165,6 +171,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
     _hitSub = engine.hitEvents.listen(_onHitEvent);
+    _damageSub = engine.damageEvents.listen(_onDamageEvent);
     _tickSub = engine.onTick.listen((second) => _onTick(second, engine));
 
     final battle = Battle(
@@ -317,6 +324,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
     state = state.copyWith(hitFeed: [...state.hitFeed, event]);
   }
 
+  void _onDamageEvent(DamageEvent event) {
+    state = state.copyWith(damageEvents: [...state.damageEvents, event]);
+  }
+
   void _onTick(int second, BattleEngine engine) {
     state = state.copyWith(elapsedSeconds: second);
     _updatePlayerResources();
@@ -372,6 +383,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _combatSub?.cancel();
     _hitSub?.cancel();
     _tickSub?.cancel();
+    _damageSub?.cancel();
     state.engine?.dispose();
     super.dispose();
   }
