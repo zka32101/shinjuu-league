@@ -67,13 +67,20 @@ class AudioService {
 
   // === BGM管理 ===
   /// BGMをループ再生開始（既存BGMがあれば停止）
-  Future<void> playBgm(String bgmName, {double crossfadeDuration = 0.5}) async {
+  Future<void> playBgm(
+    String bgmName, {
+    double crossfadeDuration = 0.5,
+  }) async {
     if (_currentBgm == bgmName) return; // 同じBGMは重複再生しない
 
     try {
       if (_currentBgm != null) {
         // クロスフェード: 既存BGMをフェードアウト
-        await _fadeOutBgm(duration: Duration(milliseconds: (crossfadeDuration * 1000).toInt()));
+        await _fadeOutBgm(
+          duration: Duration(
+            milliseconds: (crossfadeDuration * 1000).toInt(),
+          ),
+        );
       }
 
       _currentBgm = bgmName;
@@ -91,7 +98,9 @@ class AudioService {
   }
 
   /// BGMをフェードアウトして停止
-  Future<void> _fadeOutBgm({Duration duration = const Duration(milliseconds: 500)}) async {
+  Future<void> _fadeOutBgm({
+    Duration duration = const Duration(milliseconds: 500),
+  }) async {
     try {
       final steps = 10;
       final stepDuration = duration.inMilliseconds ~/ steps;
