@@ -15,6 +15,9 @@ import 'package:shinjuu_league/game/mecha_token.dart';
 import 'package:shinjuu_league/game/open_field.dart';
 import 'package:shinjuu_league/game/skill_burst.dart';
 import 'package:shinjuu_league/game/damage_number.dart';
+import 'package:shinjuu_league/game/skill_visual_effect.dart';
+import 'package:shinjuu_league/game/buff_indicator.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 /// 参加者の状態（位置・生死）だけを受け取って描画するレンダラー。
@@ -323,11 +326,23 @@ class BattlefieldGame extends FlameGame {
         .toList();
   }
 
-  /// スキル発動の視覚演出（範囲リングの拡散 + カメラシェイク）。
-  void onSkillActivate() {
+  /// スキル発動の視覚演出（スキルタイプ別カラーのリング + カメラシェイク）。
+  void onSkillActivate({SkillType? skillType}) {
     final self = _selfToken;
     if (self == null) return;
-    add(SkillBurst(worldPosition: self.position.clone(), radius: _skillRadius));
+
+    // スキルタイプが指定されていればSkillVisualEffectを使用、なければSkillBurst（後方互換性）
+    if (skillType != null) {
+      add(
+        SkillVisualEffect(
+          position: self.position.clone(),
+          skillType: skillType,
+          maxRadius: _skillRadius,
+        ),
+      );
+    } else {
+      add(SkillBurst(worldPosition: self.position.clone(), radius: _skillRadius));
+    }
     _shakeMagnitude = 1.0;
   }
 
@@ -355,7 +370,7 @@ class BattlefieldGame extends FlameGame {
     _flashAlpha = 1.0;
   }
 
-  /// ダメージ数値表示を画面上に追加
+  /// ダメージ数値表示を画面上に追加。クリティカル時は拡張バースト演出も同時実行。
   void onDamageEvent(String victimId, int damage, bool isCritical) {
     final victim = _tokens[victimId];
     if (victim == null) return;
@@ -368,6 +383,54 @@ class BattlefieldGame extends FlameGame {
         damage: damage,
         isCritical: isCritical,
         color: isCritical ? Colors.red : Colors.white,
+      ),
+    );
+
+    // クリティカルヒット時は追加の視覚演出
+    if (isCritical) {
+      add(CriticalBurst(position: victim.position.clone()));
+    }
+  }
+
+  /// 攻撃側のバフを一時的に表示（攻撃UPなど）。
+  void showAttackerBuff(String attackerId, BuffType buffType, {double duration = 1.0}) {
+    final attacker = _tokens[attackerId];
+    if (attacker != null) {
+      add(
+        BuffIndicator(
+          buffType: buffType,
+          duration: duration,
+          tokenPosition: attacker.position.clone(),
+        ),
+      );
+    }
+  }
+
+  /// 被弾側のデバフを一時的に表示（防御ダウンなど）。
+  void showVictimDebuff(String victimId, BuffType debuffType, {double duration = 1.0}) {
+    final victim = _tokens[victimId];
+    if (victim != null) {
+      add(
+        BuffIndicator(
+          buffType: debuffType,
+          duration: duration,
+          tokenPosition: victim.position.clone(),
+        ),
+      );
+    }
+  }
+
+  /// 自キャラの位置にスキル範囲インジケーターを表示（視認性向上用）。
+  void showSkillRangeIndicator({SkillType skillType = SkillType.offensive, bool isActive = true}) {
+    final self = _selfToken;
+    if (self == null) return;
+
+    add(
+      SkillAreaIndicator(
+        position: self.position.clone(),
+        radius: _skillRadius,
+        skillType: skillType,
+        isActive: isActive,
       ),
     );
   }
