@@ -6,8 +6,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
+import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/bgm_service.dart';
+import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/remote_config_service.dart';
 import 'firebase_options.dart';
 
@@ -23,6 +25,10 @@ void main() async {
   // 実ファイルが無い場合でも安全に続行
   await AssetService().init();
   await BGMService().init();
+
+  // プッシュ通知・実績システムを初期化
+  await PushNotificationService().init();
+  await AchievementService().init();
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;

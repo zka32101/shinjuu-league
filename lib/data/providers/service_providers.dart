@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
+import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
@@ -10,6 +11,7 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
+import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
@@ -96,4 +98,12 @@ final assetServiceProvider = Provider<AssetService>((ref) {
 
 final bgmServiceProvider = Provider<BGMService>((ref) {
   return BGMService();
+});
+
+final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+  return PushNotificationService();
+});
+
+final achievementServiceProvider = Provider<AchievementService>((ref) {
+  return AchievementService();
 });
