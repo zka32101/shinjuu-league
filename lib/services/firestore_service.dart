@@ -86,6 +86,34 @@ class FirestoreService {
     }
   }
 
+  /// FCM トークンを Firestore に永続化
+  /// トークンをユーザードキュメントの fcmTokens 配列に追加（重複排除）
+  Future<void> persistFcmToken(String userId, String token) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'fcmTokens': FieldValue.arrayUnion([token]),
+      });
+    } catch (e) {
+      throw 'Failed to persist FCM token: $e';
+    }
+  }
+
+  /// ユーザーのコホートプロパティを Firestore に更新
+  /// アナリティクスの分析と、サーバー側のユーザー検索/ターゲティングに使用
+  /// cohortProperties は既に toJson() で変換済みの Map<String, dynamic> であることを期待
+  Future<void> updateUserCohortProperties(
+    String userId,
+    Map<String, dynamic> cohortProperties,
+  ) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'cohortProperties': cohortProperties,
+      });
+    } catch (e) {
+      throw 'Failed to update cohort properties: $e';
+    }
+  }
+
   // ============ Mecha Methods ============
   Future<List<Mecha>> getAllMechas() async {
     try {

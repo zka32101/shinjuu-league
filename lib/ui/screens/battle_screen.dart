@@ -122,9 +122,20 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
 
     _game.sync(engine.participants);
 
-    final selfParticipant = engine.participants.firstWhere(
-      (p) => p.userId == selfId,
-    );
+    BattleParticipantState? selfParticipant;
+    try {
+      selfParticipant = engine.participants.firstWhere(
+        (p) => p.userId == selfId,
+      );
+    } catch (_) {
+      selfParticipant = null;
+    }
+
+    if (selfParticipant == null) {
+      return const Scaffold(
+        body: Center(child: Text('プレイヤー情報が見つかりません')),
+      );
+    }
     final remaining = AppConfig.battleDurationSeconds - state.elapsedSeconds;
 
     return Scaffold(

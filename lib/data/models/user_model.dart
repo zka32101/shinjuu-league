@@ -1,4 +1,5 @@
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/cohort_properties.dart';
 
 class User {
   final String uid;
@@ -15,6 +16,8 @@ class User {
   final bool hasBattlePassPremium;
   final String? guildId;
   final String selectedMechaId;
+  final List<String> fcmTokens;
+  final CohortProperties? cohortProperties;
   final DateTime createdAt;
   final DateTime lastBattleAt;
 
@@ -33,6 +36,8 @@ class User {
     this.hasBattlePassPremium = false,
     this.guildId,
     this.selectedMechaId = defaultMechaId,
+    this.fcmTokens = const [],
+    this.cohortProperties,
     required this.createdAt,
     required this.lastBattleAt,
   });
@@ -50,7 +55,10 @@ class User {
     int? gold,
     List<String>? ownedSkinIds,
     bool? hasBattlePassPremium,
+    String? guildId,
     String? selectedMechaId,
+    List<String>? fcmTokens,
+    CohortProperties? cohortProperties,
     DateTime? createdAt,
     DateTime? lastBattleAt,
   }) {
@@ -67,8 +75,10 @@ class User {
       gold: gold ?? this.gold,
       ownedSkinIds: ownedSkinIds ?? this.ownedSkinIds,
       hasBattlePassPremium: hasBattlePassPremium ?? this.hasBattlePassPremium,
-      guildId: guildId,
+      guildId: guildId ?? this.guildId,
       selectedMechaId: selectedMechaId ?? this.selectedMechaId,
+      fcmTokens: fcmTokens ?? this.fcmTokens,
+      cohortProperties: cohortProperties ?? this.cohortProperties,
       createdAt: createdAt ?? this.createdAt,
       lastBattleAt: lastBattleAt ?? this.lastBattleAt,
     );
@@ -92,6 +102,14 @@ class User {
       hasBattlePassPremium: json['hasBattlePassPremium'] as bool? ?? false,
       guildId: json['guildId'] as String?,
       selectedMechaId: json['selectedMechaId'] as String? ?? defaultMechaId,
+      fcmTokens: List<String>.from(
+        json['fcmTokens'] as List<dynamic>? ?? [],
+      ),
+      cohortProperties: json['cohortProperties'] != null
+          ? CohortProperties.fromJson(
+              json['cohortProperties'] as Map<String, dynamic>,
+            )
+          : null,
       createdAt: json['createdAt'] != null
           ? DateTime.parse(json['createdAt'] as String)
           : DateTime.now(),
@@ -117,6 +135,8 @@ class User {
       'hasBattlePassPremium': hasBattlePassPremium,
       'guildId': guildId,
       'selectedMechaId': selectedMechaId,
+      'fcmTokens': fcmTokens,
+      if (cohortProperties != null) 'cohortProperties': cohortProperties!.toJson(),
       'createdAt': createdAt.toIso8601String(),
       'lastBattleAt': lastBattleAt.toIso8601String(),
     };
