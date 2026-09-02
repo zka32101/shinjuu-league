@@ -86,6 +86,18 @@ class FirestoreService {
     }
   }
 
+  /// FCM トークンを Firestore に永続化
+  /// トークンをユーザードキュメントの fcmTokens 配列に追加（重複排除）
+  Future<void> persistFcmToken(String userId, String token) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'fcmTokens': FieldValue.arrayUnion([token]),
+      });
+    } catch (e) {
+      throw 'Failed to persist FCM token: $e';
+    }
+  }
+
   // ============ Mecha Methods ============
   Future<List<Mecha>> getAllMechas() async {
     try {
