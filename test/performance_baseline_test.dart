@@ -206,7 +206,7 @@ void main() {
 
         final service2 = PerformanceService();
         // FPS should be calculated from accumulated frames
-        expect(service2.currentFps, greaterThanOrEqualTo(0));
+        expect(service2.getFrameRate(), greaterThanOrEqualTo(0));
       });
     });
 
