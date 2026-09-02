@@ -100,6 +100,7 @@ class FirestoreService {
 
   /// ユーザーのコホートプロパティを Firestore に更新
   /// アナリティクスの分析と、サーバー側のユーザー検索/ターゲティングに使用
+  /// cohortProperties は既に toJson() で変換済みの Map<String, dynamic> であることを期待
   Future<void> updateUserCohortProperties(
     String userId,
     Map<String, dynamic> cohortProperties,
