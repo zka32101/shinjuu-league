@@ -141,8 +141,8 @@ class BattleViewModel extends StateNotifier<BattleState> {
             // 自分の場合は初期リソース（100 mana, 0 gold）を設定、Botは後で設定
             final initialResources = mp.userId == selfUserId
                 ? PlayerResources(
-                    currentMana: 100.0,
-                    maxMana: 100.0,
+                    currentMana: 100,
+                    maxMana: 100,
                     gold: 0,
                     ownedItemIds: [],
                   )

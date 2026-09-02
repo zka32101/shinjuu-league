@@ -13,6 +13,13 @@ abstract class AppColors {
   static const rarityRare = Color(0xFF3D7FE0);
   static const rarityEpic = Color(0xFFA355E0);
   static const rarityLegend = Color(0xFFE0B93D);
+
+  // UI colors
+  static const background = Color(0xFF121212);
+  static const cardBackground = Color(0xFF1E1E1E);
+  static const borderColor = Color(0xFF404040);
+  static const accentBlue = Color(0xFF3D7FE0);
+  static const text = Color(0xFFFFFFFF);
 }
 
 class AppTheme {
