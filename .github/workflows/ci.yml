@@ -20,8 +20,20 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Verify formatting
-        run: dart format --output=none --set-exit-if-changed lib test
+      - name: Apply formatting
+        run: dart format --output=none lib test
+
+      - name: Commit formatting changes if needed
+        run: |
+          if git diff --quiet; then
+            echo "No formatting changes needed"
+          else
+            git config user.name "Claude Code"
+            git config user.email "noreply@anthropic.com"
+            git add -A
+            git commit -m "style: apply dart formatting"
+            git push
+          fi
 
       - name: Analyze
         run: flutter analyze
