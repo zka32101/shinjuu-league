@@ -75,43 +75,42 @@ final appRouter = GoRouter(
     ),
     GoRoute(
       path: AppRoutes.matching,
-      pageBuilder: (context, state) => _buildPage(
-        context,
-        state,
-        MatchingScreen(mode: state.extra as BattleMode),
-      ),
+      pageBuilder: (context, state) {
+        final mode = state.extra as BattleMode? ?? BattleMode.quick;
+        return _buildPage(context, state, MatchingScreen(mode: mode));
+      },
     ),
     GoRoute(
       path: AppRoutes.evolution,
-      pageBuilder: (context, state) => _buildPage(
-        context,
-        state,
-        EvolutionSelectScreen(match: state.extra as MatchResult),
-      ),
+      pageBuilder: (context, state) {
+        final match = state.extra as MatchResult?;
+        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        return _buildPage(context, state, EvolutionSelectScreen(match: match));
+      },
     ),
     GoRoute(
       path: AppRoutes.skillBuild,
-      pageBuilder: (context, state) => _buildPage(
-        context,
-        state,
-        SkillBuildScreen(match: state.extra as MatchResult),
-      ),
+      pageBuilder: (context, state) {
+        final match = state.extra as MatchResult?;
+        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        return _buildPage(context, state, SkillBuildScreen(match: match));
+      },
     ),
     GoRoute(
       path: AppRoutes.battle,
-      pageBuilder: (context, state) => _buildPage(
-        context,
-        state,
-        BattleScreen(match: state.extra as MatchResult),
-      ),
+      pageBuilder: (context, state) {
+        final match = state.extra as MatchResult?;
+        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        return _buildPage(context, state, BattleScreen(match: match));
+      },
     ),
     GoRoute(
       path: AppRoutes.result,
-      pageBuilder: (context, state) => _buildPage(
-        context,
-        state,
-        ResultScreen(battle: state.extra as Battle),
-      ),
+      pageBuilder: (context, state) {
+        final battle = state.extra as Battle?;
+        if (battle == null) return _buildPage(context, state, const LobbyScreen());
+        return _buildPage(context, state, ResultScreen(battle: battle));
+      },
     ),
     GoRoute(
       path: AppRoutes.rank,
