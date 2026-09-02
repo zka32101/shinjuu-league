@@ -248,6 +248,8 @@ class BuffIndicator extends Component {
         return const Color(0xFFFFD93D); // 黄：素早さ系
       case BuffType.healing:
         return const Color(0xFF90EE90); // 緑：回復
+      default:
+        return const Color(0xFFFFFFFF); // 白：デフォルト
     }
   }
 
