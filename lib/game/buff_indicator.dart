@@ -140,7 +140,6 @@ class BuffIndicator extends Component {
 
   Path _createArrowPath(bool up) {
     final path = Path();
-    const scale = 0.15;
 
     if (up) {
       // 上向き矢印

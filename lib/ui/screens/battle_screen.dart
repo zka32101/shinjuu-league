@@ -28,8 +28,17 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   final _game = BattlefieldGame();
 
   @override
+  void initState() {
+    super.initState();
+    // バトルBGMを開始
+    AudioService().playBgm('battle_bgm');
+  }
+
+  @override
   void dispose() {
     _game.attackTargetId.dispose();
+    // バトル画面を離れるときはBGMを停止
+    AudioService().stopBgm();
     super.dispose();
   }
 
@@ -39,9 +48,14 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     final viewModel = ref.read(battleViewModelProvider.notifier);
     viewModel.attemptManualSkill(targets);
 
-    // スキルの種別を取得して、視覚効果に反映
+    // スキルの種別を取得して、視覚効果＋音響効果に反映
     final skillDef = SkillSystemService.getSkillDefinition(skillId);
     _game.onSkillActivate(skillType: skillDef?.type);
+
+    // スキルタイプ別の効果音を再生
+    if (skillDef != null) {
+      AudioService().playSkillSe(skillDef.type);
+    }
   }
 
   @override
@@ -79,11 +93,16 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
-      // ダメージ数値表示
+      // ダメージ数値表示＋音響フィードバック
       final prevDamageCount = previous?.damageEvents.length ?? 0;
       if (next.damageEvents.length > prevDamageCount) {
         for (final event in next.damageEvents.sublist(prevDamageCount)) {
           _game.onDamageEvent(event.victimId, event.damage, event.isCritical);
+
+          // クリティカルヒット時は特殊音声、通常被弾は音声なし
+          if (event.isCritical) {
+            AudioService().playCriticalHitSe();
+          }
         }
       }
 
