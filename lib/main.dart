@@ -6,12 +6,16 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
+import 'package:shinjuu_league/services/remote_config_service.dart';
 import 'firebase_options.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+
+  // Firebase Remote Config を初期化（ABテスト・機能フラグ）
+  await RemoteConfigService().init();
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;

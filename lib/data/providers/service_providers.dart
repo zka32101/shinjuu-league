@@ -6,6 +6,7 @@ import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
+import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
@@ -27,6 +28,9 @@ final matchmakingServiceProvider = Provider<MatchmakingService>(
 final purchasesServiceProvider = Provider<PurchasesService>(
   (ref) => PurchasesService(),
 );
+final monetizationServiceProvider = Provider<MonetizationService>((ref) {
+  return MonetizationService();
+});
 final replayServiceProvider = Provider<ReplayService>((ref) {
   return ReplayService(firestoreService: ref.watch(firestoreServiceProvider));
 });
