@@ -6,6 +6,8 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
+import 'package:shinjuu_league/services/asset_service.dart';
+import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/remote_config_service.dart';
 import 'firebase_options.dart';
 
@@ -16,6 +18,11 @@ void main() async {
 
   // Firebase Remote Config を初期化（ABテスト・機能フラグ）
   await RemoteConfigService().init();
+
+  // 資産（Lottie・SE・BGM）をプリロード
+  // 実ファイルが無い場合でも安全に続行
+  await AssetService().init();
+  await BGMService().init();
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;

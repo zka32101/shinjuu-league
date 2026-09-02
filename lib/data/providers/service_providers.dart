@@ -3,7 +3,9 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
+import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
@@ -87,3 +89,11 @@ final guildViewModelProvider =
         firestoreService: ref.watch(firestoreServiceProvider),
       );
     });
+
+final assetServiceProvider = Provider<AssetService>((ref) {
+  return AssetService();
+});
+
+final bgmServiceProvider = Provider<BGMService>((ref) {
+  return BGMService();
+});
