@@ -78,11 +78,11 @@ class BattlefieldGame extends FlameGame {
     final joystick = JoystickComponent(
       knob: CircleComponent(
         radius: 14,
-        paint: Paint()..color = Colors.white.withValues(alpha: 0.75),
+        paint: Paint()..color = Colors.white.withOpacity(0.75),
       ),
       background: CircleComponent(
         radius: 36,
-        paint: Paint()..color = Colors.white.withValues(alpha: 0.2),
+        paint: Paint()..color = Colors.white.withOpacity(0.2),
       ),
       margin: const EdgeInsets.only(left: 24, bottom: 24),
     );
@@ -245,7 +245,7 @@ class BattlefieldGame extends FlameGame {
     if (_flashAlpha > 0) {
       canvas.drawRect(
         Rect.fromLTWH(0, 0, size.x, size.y),
-        Paint()..color = Colors.white.withValues(alpha: _flashAlpha * 0.35),
+        Paint()..color = Colors.white.withOpacity(_flashAlpha * 0.35),
       );
     }
   }

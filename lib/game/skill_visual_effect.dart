@@ -24,13 +24,13 @@ class SkillVisualEffect extends Component {
 
   @override
   Future<void> onLoad() async {
-    _startTime = game.clock.t;
+    _startTime = gameRef.clock.t;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = gameRef.clock.t - _startTime;
     if (elapsed > 0.4) {
       removeFromParent();
     }
@@ -38,7 +38,7 @@ class SkillVisualEffect extends Component {
 
   @override
   void render(Canvas canvas) {
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = gameRef.clock.t - _startTime;
     final progress = (elapsed / 0.4).clamp(0, 1);
 
     // スキルタイプ別カラー
@@ -96,7 +96,7 @@ class CriticalBurst extends Component {
 
   @override
   Future<void> onLoad() async {
-    _startTime = game.clock.t;
+    _startTime = gameRef.clock.t;
     final random = math.Random();
 
     particles = List.generate(burstCount, (i) {
@@ -118,7 +118,7 @@ class CriticalBurst extends Component {
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = gameRef.clock.t - _startTime;
     if (elapsed > 0.6) {
       removeFromParent();
     }
@@ -239,7 +239,7 @@ class BurstParticle extends Component {
 
   @override
   Future<void> onLoad() async {
-    _birthTime = game.clock.t;
+    _birthTime = gameRef.clock.t;
   }
 
   @override
@@ -247,7 +247,7 @@ class BurstParticle extends Component {
     super.update(dt);
     position += velocity * dt;
 
-    final age = game.clock.t - _birthTime;
+    final age = gameRef.clock.t - _birthTime;
     if (age > lifetime) {
       removeFromParent();
     }
@@ -255,7 +255,7 @@ class BurstParticle extends Component {
 
   @override
   void render(Canvas canvas) {
-    final age = game.clock.t - _birthTime;
+    final age = gameRef.clock.t - _birthTime;
     final progress = (age / lifetime).clamp(0, 1);
     final opacity = 1.0 - progress;
 

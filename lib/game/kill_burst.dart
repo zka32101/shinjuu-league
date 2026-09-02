@@ -39,7 +39,7 @@ class KillBurst extends PositionComponent {
       final dx = cos(particle.angle) * distance;
       final dy = sin(particle.angle) * distance * 0.6;
       final paint = Paint()
-        ..color = Colors.amberAccent.withValues(alpha: alpha)
+        ..color = Colors.amberAccent.withOpacity(alpha)
         ..strokeWidth = 2.5
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(

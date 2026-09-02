@@ -32,14 +32,14 @@ class SkillBurst extends PositionComponent {
       Offset.zero,
       currentRadius,
       Paint()
-        ..color = Colors.cyanAccent.withValues(alpha: alpha * 0.85)
+        ..color = Colors.cyanAccent.withOpacity(alpha * 0.85)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4,
     );
     canvas.drawCircle(
       Offset.zero,
       currentRadius,
-      Paint()..color = Colors.cyanAccent.withValues(alpha: alpha * 0.12),
+      Paint()..color = Colors.cyanAccent.withOpacity(alpha * 0.12),
     );
   }
 }
