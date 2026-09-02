@@ -129,8 +129,9 @@ class MechaToken extends PositionComponent {
 
     // 接地影：本体が高く浮くほど薄く・大きくして高さを感じさせる
     final heightFactor = (bob + 3) / 6; // 0..1
+    final shadowAlpha = (0.35 - heightFactor * 0.15) * _opacity;
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity((0.35 - heightFactor * 0.15) * _opacity)
+      ..color = Colors.black.withOpacity(shadowAlpha)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawOval(
       Rect.fromCenter(
