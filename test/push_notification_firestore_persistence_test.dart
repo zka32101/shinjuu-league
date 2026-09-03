@@ -2,17 +2,13 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
-import 'package:shinjuu_league/services/firestore_service.dart';
 
 void main() {
   group('FCM Token Firestore Persistence', () {
     late FakeFirebaseFirestore fakeDb;
-    late FirestoreService firestoreService;
 
     setUp(() {
       fakeDb = FakeFirebaseFirestore();
-      // Inject fake database via service
-      firestoreService = FirestoreService();
       // Note: In production, FirestoreService uses FirebaseFirestore.instance
       // For testing, we'd need to mock/inject it. For now, we test the persistence logic.
     });

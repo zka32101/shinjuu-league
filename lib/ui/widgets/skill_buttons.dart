@@ -13,6 +13,7 @@ class SkillButtons extends StatelessWidget {
   final Function(String skillId, List<String> targets) onSkillTap;
 
   const SkillButtons({
+    super.key,
     required this.skillBuild,
     required this.resources,
     required this.cooldowns,
@@ -24,7 +25,7 @@ class SkillButtons extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: AppColors.cardBackground.withOpacity(0.9),
+        color: AppColors.cardBackground.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(color: AppColors.borderColor),
       ),
@@ -92,12 +93,12 @@ class SkillButtons extends StatelessWidget {
             height: 70,
             decoration: BoxDecoration(
               color: isAvailable
-                  ? _getSkillTypeColor(skill.type).withOpacity(0.3)
-                  : Colors.grey.withOpacity(0.2),
+                  ? _getSkillTypeColor(skill.type).withValues(alpha: 0.3)
+                  : Colors.grey.withValues(alpha: 0.2),
               border: Border.all(
                 color: isAvailable
                     ? _getSkillTypeColor(skill.type)
-                    : Colors.grey.withOpacity(0.5),
+                    : Colors.grey.withValues(alpha: 0.5),
                 width: 2,
               ),
               borderRadius: BorderRadius.circular(8),
@@ -112,7 +113,7 @@ class SkillButtons extends StatelessWidget {
                     fontWeight: FontWeight.bold,
                     color: isAvailable
                         ? _getSkillTypeColor(skill.type)
-                        : Colors.grey.withOpacity(0.5),
+                        : Colors.grey.withValues(alpha: 0.5),
                   ),
                 ),
                 Text(
@@ -122,7 +123,7 @@ class SkillButtons extends StatelessWidget {
                     fontWeight: FontWeight.w600,
                     color: isAvailable
                         ? _getSkillTypeColor(skill.type)
-                        : Colors.grey.withOpacity(0.5),
+                        : Colors.grey.withValues(alpha: 0.5),
                   ),
                 ),
               ],
@@ -135,7 +136,7 @@ class SkillButtons extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
@@ -156,7 +157,7 @@ class SkillButtons extends StatelessWidget {
               width: 70,
               height: 70,
               decoration: BoxDecoration(
-                color: Colors.red.withOpacity(0.4),
+                color: Colors.red.withValues(alpha: 0.4),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Center(
@@ -181,7 +182,7 @@ class SkillButtons extends StatelessWidget {
                 vertical: 2,
               ),
               decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.5),
+                color: Colors.black.withValues(alpha: 0.5),
                 borderRadius: BorderRadius.circular(3),
               ),
               child: Text(
@@ -207,8 +208,6 @@ class SkillButtons extends StatelessWidget {
         return Colors.blue;
       case SkillType.utility:
         return Colors.green;
-      default:
-        return Colors.white;
     }
   }
 }

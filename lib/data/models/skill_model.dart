@@ -1,5 +1,5 @@
-/// スキルシステム
-/// 各神獣は3スキルを持ち、各スキルは3段階でレベルアップ可能
+// スキルシステム
+// 各神獣は3スキルを持ち、各スキルは3段階でレベルアップ可能
 
 enum SkillType {
   offensive,  // 攻撃スキル
@@ -14,8 +14,6 @@ enum SkillType {
         return '防御';
       case SkillType.utility:
         return '補助';
-      default:
-        return 'Unknown';
     }
   }
 }

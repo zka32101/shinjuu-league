@@ -1,5 +1,4 @@
 import 'package:flutter_test/flutter_test.dart';
-import 'package:flame/components.dart';
 import 'package:flame/game.dart';
 import 'package:shinjuu_league/game/skill_visual_effect.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -50,13 +49,13 @@ void main() {
       expect(effect.maxRadius, equals(100));
     });
 
-    test('default radius is zero', () {
+    test('default maxRadius is 90', () {
       final effect = SkillVisualEffect(
         position: Vector2(0, 0),
         skillType: SkillType.offensive,
       );
 
-      expect(effect.radius, equals(0));
+      expect(effect.maxRadius, equals(90));
     });
   });
 

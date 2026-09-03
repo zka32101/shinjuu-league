@@ -6,13 +6,11 @@ import 'package:shinjuu_league/data/models/skill_model.dart';
 /// 拡大するスキル効果リング（既存の SkillBurst を置き換える簡潔版）
 class SkillVisualEffect extends PositionComponent {
   final SkillType skillType;
-  final double radius;
   final double maxRadius;
 
   SkillVisualEffect({
     required Vector2 position,
     required this.skillType,
-    this.radius = 0,
     this.maxRadius = 90,
   }) : super(
     position: position,
@@ -69,8 +67,6 @@ class SkillVisualEffect extends PositionComponent {
         return const Color(0xFF4ECDC4); // 青緑：防御
       case SkillType.utility:
         return const Color(0xFFFFD93D); // 黄：ユーティリティ
-      default:
-        return const Color(0xFFFFFFFF); // 白：デフォルト
     }
   }
 }
@@ -138,11 +134,11 @@ class SkillAreaIndicator extends PositionComponent {
     anchor: Anchor.center,
   );
 
-  late double _pulseTime;
+  double _pulseTime = 0;
 
   @override
   Future<void> onLoad() async {
-    _pulseTime = 0;
+    // Pulse animation initialization (no additional setup needed)
   }
 
   @override
@@ -209,8 +205,6 @@ class SkillAreaIndicator extends PositionComponent {
         return const Color(0xFF4ECDC4);
       case SkillType.utility:
         return const Color(0xFFFFD93D);
-      default:
-        return const Color(0xFFFFFFFF);
     }
   }
 }

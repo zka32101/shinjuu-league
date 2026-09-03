@@ -3,7 +3,6 @@ import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'firestore_service.dart';
@@ -20,9 +19,6 @@ class PushNotificationService {
   late final FirebaseMessaging _messaging = FirebaseMessaging.instance;
   late final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
-
-  /// 通知受信ストリーム（フォアグラウンド）
-  late final Stream<RemoteMessage> _foregroundStream;
 
   /// 初期化
   Future<void> init() async {

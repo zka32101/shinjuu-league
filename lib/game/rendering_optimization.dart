@@ -13,11 +13,10 @@ class ComponentPool<T> {
 
   /// poolSize: 初期プール サイズ
   ComponentPool({
-    required T Function() factory,
-    required void Function(T) reset,
+    required this._factory,
+    required this._reset,
     int poolSize = 10,
-  })  : _factory = factory,
-        _reset = reset {
+  }) {
     for (int i = 0; i < poolSize; i++) {
       _available.add(_factory());
     }

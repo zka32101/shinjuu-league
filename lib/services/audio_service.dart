@@ -62,8 +62,6 @@ class AudioService {
         return 'skill_defensive.mp3'; // 深く重い防御音
       case SkillType.utility:
         return 'skill_utility.mp3'; // 軽い汎用効果音
-      default:
-        return 'skill_generic.mp3';
     }
   }
 
@@ -106,7 +104,6 @@ class AudioService {
     try {
       final steps = 10;
       final stepDuration = duration.inMilliseconds ~/ steps;
-      final volumeDecrement = _bgmVolume / steps;
 
       for (int i = 0; i < steps; i++) {
         await Future.delayed(Duration(milliseconds: stepDuration));

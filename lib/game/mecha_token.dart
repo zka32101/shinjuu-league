@@ -131,7 +131,7 @@ class MechaToken extends PositionComponent {
     final heightFactor = (bob + 3) / 6; // 0..1
     final shadowAlpha = (0.35 - heightFactor * 0.15) * _opacity;
     final shadowPaint = Paint()
-      ..color = Colors.black.withOpacity(shadowAlpha)
+      ..color = Colors.black.withValues(alpha: shadowAlpha)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 5);
     canvas.drawOval(
       Rect.fromCenter(
@@ -145,7 +145,7 @@ class MechaToken extends PositionComponent {
     // 被弾フラッシュ：本体の下地を赤く光らせて衝撃を伝える
     if (_hitFlash > 0) {
       final hitPaint = Paint()
-        ..color = Colors.red.withOpacity(_hitFlash * 0.9)
+        ..color = Colors.red.withValues(alpha: _hitFlash * 0.9)
         ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4);
       canvas.drawCircle(center, radius + 6, hitPaint);
     }
@@ -158,9 +158,9 @@ class MechaToken extends PositionComponent {
         Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
         radius * 1.3,
         [
-          lightColor.withOpacity(_opacity),
-          _teamColor.withOpacity(_opacity),
-          darkColor.withOpacity(_opacity),
+          lightColor.withValues(alpha: _opacity),
+          _teamColor.withValues(alpha: _opacity),
+          darkColor.withValues(alpha: _opacity),
         ],
         [0.0, 0.5, 1.0],
       );
@@ -168,7 +168,7 @@ class MechaToken extends PositionComponent {
 
     // リムライト：右下側の縁を暗く締めて球の丸みを強調
     final rimPaint = Paint()
-      ..color = darkColor.withOpacity(_opacity * 0.6)
+      ..color = darkColor.withValues(alpha: _opacity * 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     canvas.drawArc(
@@ -181,7 +181,7 @@ class MechaToken extends PositionComponent {
 
     // ハイライトスポット：光沢のある玉の質感
     final specPaint = Paint()
-      ..color = Colors.white.withOpacity(_opacity * 0.7)
+      ..color = Colors.white.withValues(alpha: _opacity * 0.7)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
     canvas.drawCircle(
       Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
@@ -191,7 +191,7 @@ class MechaToken extends PositionComponent {
 
     // 外周グロー（存在感を強調）
     final glowPaint = Paint()
-      ..color = _teamColor.withOpacity(_opacity * 0.5)
+      ..color = _teamColor.withValues(alpha: _opacity * 0.5)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
@@ -199,7 +199,7 @@ class MechaToken extends PositionComponent {
 
     if (isSelf) {
       final ringPaint = Paint()
-        ..color = Colors.amber.withOpacity(_opacity)
+        ..color = Colors.amber.withValues(alpha: _opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3;
       canvas.drawCircle(center, radius + 3, ringPaint);
@@ -208,13 +208,13 @@ class MechaToken extends PositionComponent {
     // キルフラッシュ：金色の衝撃波を二重リングで拡散
     if (_killFlash > 0) {
       final outerPaint = Paint()
-        ..color = Colors.amberAccent.withOpacity(_killFlash)
+        ..color = Colors.amberAccent.withValues(alpha: _killFlash)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 4;
       canvas.drawCircle(center, radius + (1 - _killFlash) * 34, outerPaint);
 
       final innerPaint = Paint()
-        ..color = Colors.white.withOpacity(_killFlash * 0.8)
+        ..color = Colors.white.withValues(alpha: _killFlash * 0.8)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2;
       canvas.drawCircle(center, radius + (1 - _killFlash) * 18, innerPaint);
@@ -227,7 +227,7 @@ class MechaToken extends PositionComponent {
           fontSize: radius,
           fontFamily: icon.fontFamily,
           package: icon.fontPackage,
-          color: Colors.white.withOpacity(_opacity),
+          color: Colors.white.withValues(alpha: _opacity),
         ),
       ),
       textDirection: TextDirection.ltr,
@@ -253,7 +253,7 @@ class MechaToken extends PositionComponent {
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(barRect, const Radius.circular(2)),
-        Paint()..color = Colors.black.withOpacity(0.5 * _opacity),
+        Paint()..color = Colors.black.withValues(alpha: 0.5 * _opacity),
       );
 
       final hpColor = _hpRatio > 0.5
@@ -267,7 +267,7 @@ class MechaToken extends PositionComponent {
       );
       canvas.drawRRect(
         RRect.fromRectAndRadius(filledRect, const Radius.circular(2)),
-        Paint()..color = hpColor.withOpacity(_opacity),
+        Paint()..color = hpColor.withValues(alpha: _opacity),
       );
     }
   }

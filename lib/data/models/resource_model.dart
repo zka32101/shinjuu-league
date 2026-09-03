@@ -1,4 +1,4 @@
-/// マナ/ゴールド/アイテムシステム
+// マナ/ゴールド/アイテムシステム
 
 class PlayerResources {
   final int currentMana;

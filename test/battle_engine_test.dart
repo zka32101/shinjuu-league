@@ -4,10 +4,8 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
-import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
-import 'package:shinjuu_league/services/skill_system_service.dart';
 
 BattleParticipantState _participant({
   required String userId,

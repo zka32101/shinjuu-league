@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
-import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/services/skill_system_service.dart';
 
 void main() {
