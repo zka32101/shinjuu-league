@@ -229,11 +229,11 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                             shape: BoxShape.circle,
                             color: canAttack
                                 ? Colors.redAccent
-                                : Colors.grey.withOpacity(0.4),
+                                : Colors.grey.withValues(alpha: 0.4),
                             boxShadow: canAttack
                                 ? [
                                     BoxShadow(
-                                      color: Colors.redAccent.withOpacity(0.6),
+                                      color: Colors.redAccent.withValues(alpha: 0.6),
                                       blurRadius: 12,
                                       spreadRadius: 2,
                                     ),
@@ -289,7 +289,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
             padding: const EdgeInsets.all(8),
             color: Theme.of(
               context,
-            ).colorScheme.surfaceContainerHighest.withOpacity(0.3),
+            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
             child: ListView.builder(
               reverse: true,
               itemCount: state.killFeed.length,

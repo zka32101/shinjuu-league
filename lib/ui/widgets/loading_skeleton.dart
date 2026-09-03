@@ -40,7 +40,7 @@ class _LoadingSkeletonState extends State<LoadingSkeleton>
           width: widget.width,
           height: widget.height,
           decoration: BoxDecoration(
-            color: baseColor.withOpacity(0.4 + _controller.value * 0.4),
+            color: baseColor.withValues(alpha: 0.4 + _controller.value * 0.4),
             borderRadius: BorderRadius.circular(widget.borderRadius),
           ),
         );

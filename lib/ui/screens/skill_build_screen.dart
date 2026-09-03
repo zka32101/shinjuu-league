@@ -114,8 +114,8 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
                   color: _countdownSeconds <= 5
-                      ? Colors.red.withOpacity(0.2)
-                      : Colors.blue.withOpacity(0.2),
+                      ? Colors.red.withValues(alpha: 0.2)
+                      : Colors.blue.withValues(alpha: 0.2),
                   borderRadius: BorderRadius.circular(8),
                   border: Border.all(
                     color: _countdownSeconds <= 5
@@ -284,7 +284,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                         Chip(
                           label: Text('コスト: ${selectedSkill.baseCost}'),
                           visualDensity: VisualDensity.compact,
-                          backgroundColor: Colors.blue.withOpacity(0.2),
+                          backgroundColor: Colors.blue.withValues(alpha: 0.2),
                         ),
                         const SizedBox(width: 8),
                         Chip(
@@ -292,7 +292,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                             'CD: ${selectedSkill.cooldownSeconds.toStringAsFixed(1)}s',
                           ),
                           visualDensity: VisualDensity.compact,
-                          backgroundColor: Colors.orange.withOpacity(0.2),
+                          backgroundColor: Colors.orange.withValues(alpha: 0.2),
                         ),
                       ],
                     ),
@@ -314,7 +314,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                 child: Container(
                   padding: const EdgeInsets.all(8),
                   decoration: BoxDecoration(
-                    color: AppColors.accentBlue.withOpacity(0.2),
+                    color: AppColors.accentBlue.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: const Icon(Icons.more_vert),

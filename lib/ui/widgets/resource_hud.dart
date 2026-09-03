@@ -74,7 +74,7 @@ class ResourceHUD extends StatelessWidget {
             child: LinearProgressIndicator(
               value: manaPercent,
               minHeight: 8,
-              backgroundColor: Colors.grey.withOpacity(0.3),
+              backgroundColor: Colors.grey.withValues(alpha: 0.3),
               valueColor: AlwaysStoppedAnimation<Color>(
                 manaPercent > 0.5
                     ? Colors.blue
@@ -93,9 +93,9 @@ class ResourceHUD extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
-        color: Colors.amber.withOpacity(0.15),
+        color: Colors.amber.withValues(alpha: 0.15),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.amber.withOpacity(0.5)),
+        border: Border.all(color: Colors.amber.withValues(alpha: 0.5)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -175,7 +175,7 @@ class ResourceHUD extends StatelessWidget {
                       child: Container(
                         width: 56,
                         decoration: BoxDecoration(
-                          color: AppColors.accentBlue.withOpacity(0.3),
+                          color: AppColors.accentBlue.withValues(alpha: 0.3),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
                             color: AppColors.accentBlue,
@@ -204,7 +204,7 @@ class ResourceHUD extends StatelessWidget {
       return Container(
         width: 56,
         decoration: BoxDecoration(
-          color: Colors.grey.withOpacity(0.2),
+          color: Colors.grey.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(6),
         ),
         child: const Center(
@@ -219,7 +219,7 @@ class ResourceHUD extends StatelessWidget {
     return Container(
       width: 56,
       decoration: BoxDecoration(
-        color: _getRarityColor(item.rarity).withOpacity(0.2),
+        color: _getRarityColor(item.rarity).withValues(alpha: 0.2),
         border: Border.all(
           color: _getRarityColor(item.rarity),
         ),
