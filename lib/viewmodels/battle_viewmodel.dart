@@ -291,9 +291,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     if (selfParticipant != null && state.playerResources != null) {
       final updated = state.playerResources!.copyWith(
-        currentMana: (selfParticipant.resources?.currentMana ?? 100).toInt(),
-        gold: selfParticipant.resources?.gold ?? 0,
-        ownedItemIds: selfParticipant.resources?.ownedItemIds ?? [],
+        currentMana: selfParticipant.resources.currentMana.toInt(),
+        gold: selfParticipant.resources.gold,
+        ownedItemIds: selfParticipant.resources.ownedItemIds,
       );
       state = state.copyWith(playerResources: updated);
     }
