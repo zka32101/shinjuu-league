@@ -103,12 +103,6 @@ void main() {
     });
 
     test('filterVisible removes off-screen objects', () {
-      final objects = [
-        (name: 'inside', bounds: const Rect.fromLTWH(100, 100, 50, 50)),
-        (name: 'outside', bounds: const Rect.fromLTWH(1000, 1000, 50, 50)),
-        (name: 'inside2', bounds: const Rect.fromLTWH(200, 200, 50, 50)),
-      ];
-
       final filtered = culler.filterVisible<_MockObject>(
         [
           _MockObject('inside', const Rect.fromLTWH(100, 100, 50, 50)),
