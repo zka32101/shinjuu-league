@@ -24,6 +24,7 @@ class SkillVisualEffect extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
     _startTime = game.clock.t;
   }
 
@@ -98,6 +99,7 @@ class CriticalBurst extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
     _startTime = game.clock.t;
     final random = math.Random();
 
@@ -243,6 +245,7 @@ class BurstParticle extends PositionComponent {
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
     _birthTime = game.clock.t;
   }
 

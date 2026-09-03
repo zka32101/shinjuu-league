@@ -101,7 +101,7 @@ class MonetizationService {
 
       // 商品 ID で Package を検索
       Package? targetPackage;
-      for (final offering in offerings.all) {
+      for (final offering in offerings.all.values) {
         for (final pkg in offering.availablePackages) {
           if (pkg.identifier == product.id) {
             targetPackage = pkg;

@@ -17,13 +17,15 @@ class DamageNumber extends PositionComponent {
     this.isCritical = false,
     this.color = Colors.white,
   }) : initialPosition = position,
-       super();
+       super(
+         position: position,
+         size: Vector2(60, 40),
+         anchor: Anchor.center,
+       );
 
   @override
   Future<void> onLoad() async {
-    position = initialPosition;
-    size = Vector2(60, 40);
-    anchor = Anchor.center;
+    await super.onLoad();
 
     final text = isCritical ? damage * 2 : damage;
     textComponent = TextComponent(
@@ -78,6 +80,7 @@ class ComboCounter extends Component {
 
   @override
   Future<void> onLoad() async {
+    await super.onLoad();
     textComponent = TextComponent(
       text: 'COMBO x$comboCount',
       textRenderer: TextPaint(
