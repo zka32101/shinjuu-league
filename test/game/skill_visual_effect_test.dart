@@ -50,13 +50,13 @@ void main() {
       expect(effect.maxRadius, equals(100));
     });
 
-    test('default radius is zero', () {
+    test('default maxRadius is 90', () {
       final effect = SkillVisualEffect(
         position: Vector2(0, 0),
         skillType: SkillType.offensive,
       );
 
-      expect(effect.radius, equals(0));
+      expect(effect.maxRadius, equals(90));
     });
   });
 

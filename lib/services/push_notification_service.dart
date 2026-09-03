@@ -21,9 +21,6 @@ class PushNotificationService {
   late final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
-  /// 通知受信ストリーム（フォアグラウンド）
-  late final Stream<RemoteMessage> _foregroundStream;
-
   /// 初期化
   Future<void> init() async {
     try {

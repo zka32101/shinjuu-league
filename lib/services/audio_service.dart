@@ -106,7 +106,6 @@ class AudioService {
     try {
       final steps = 10;
       final stepDuration = duration.inMilliseconds ~/ steps;
-      final volumeDecrement = _bgmVolume / steps;
 
       for (int i = 0; i < steps; i++) {
         await Future.delayed(Duration(milliseconds: stepDuration));

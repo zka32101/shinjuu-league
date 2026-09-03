@@ -158,9 +158,9 @@ class MechaToken extends PositionComponent {
         Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
         radius * 1.3,
         [
-          lightColor.withOpacity(_opacity),
-          _teamColor.withOpacity(_opacity),
-          darkColor.withOpacity(_opacity),
+          lightColor.withValues(alpha: _opacity),
+          _teamColor.withValues(alpha: _opacity),
+          darkColor.withValues(alpha: _opacity),
         ],
         [0.0, 0.5, 1.0],
       );
@@ -168,7 +168,7 @@ class MechaToken extends PositionComponent {
 
     // リムライト：右下側の縁を暗く締めて球の丸みを強調
     final rimPaint = Paint()
-      ..color = darkColor.withOpacity(_opacity * 0.6)
+      ..color = darkColor.withValues(alpha: _opacity * 0.6)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2;
     canvas.drawArc(
@@ -181,7 +181,7 @@ class MechaToken extends PositionComponent {
 
     // ハイライトスポット：光沢のある玉の質感
     final specPaint = Paint()
-      ..color = Colors.white.withOpacity(_opacity * 0.7)
+      ..color = Colors.white.withValues(alpha: _opacity * 0.7)
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
     canvas.drawCircle(
       Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
