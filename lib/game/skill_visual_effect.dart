@@ -8,29 +8,30 @@ class SkillVisualEffect extends Component {
   final SkillType skillType;
   final double radius;
   final double maxRadius;
+  final Vector2 initialPosition;
 
   SkillVisualEffect({
     required Vector2 position,
     required this.skillType,
     this.radius = 0,
     this.maxRadius = 90,
-  }) : super(
-    position: position,
-    size: Vector2.all(maxRadius * 2.5),
-    anchor: Anchor.center,
-  );
+  }) : initialPosition = position,
+       super();
 
   late double _startTime;
 
   @override
   Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
+    position = initialPosition;
+    size = Vector2.all(maxRadius * 2.5);
+    anchor = Anchor.center;
+    _startTime = game.clock.t;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
+    final elapsed = game.clock.t - _startTime;
     if (elapsed > 0.4) {
       removeFromParent();
     }
@@ -38,7 +39,7 @@ class SkillVisualEffect extends Component {
 
   @override
   void render(Canvas canvas) {
-    final elapsed = gameRef.clock.t - _startTime;
+    final elapsed = game.clock.t - _startTime;
     final progress = (elapsed / 0.4).clamp(0, 1);
 
     // スキルタイプ別カラー
@@ -49,7 +50,7 @@ class SkillVisualEffect extends Component {
       Offset.zero,
       maxRadius * progress,
       Paint()
-        ..color = color.withOpacity(0.7 * (1 - progress))
+        ..color = color.withValues(alpha: 0.7 * (1 - progress))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
@@ -60,7 +61,7 @@ class SkillVisualEffect extends Component {
         Offset.zero,
         maxRadius * (progress - 0.2) * 1.25,
         Paint()
-          ..color = color.withOpacity(0.5 * (1 - progress))
+          ..color = color.withValues(alpha: 0.5 * (1 - progress))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
@@ -84,21 +85,22 @@ class SkillVisualEffect extends Component {
 /// クリティカルヒット用の拡張バースト（既存パーティクルを補強）
 class CriticalBurst extends Component {
   final int burstCount;
+  final Vector2 initialPosition;
 
   CriticalBurst({
     required Vector2 position,
     this.burstCount = 12,
-  }) : super(
-    position: position,
-    anchor: Anchor.center,
-  );
+  }) : initialPosition = position,
+       super();
 
   late double _startTime;
   late List<BurstParticle> particles;
 
   @override
   Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
+    position = initialPosition;
+    anchor = Anchor.center;
+    _startTime = game.clock.t;
     final random = math.Random();
 
     particles = List.generate(burstCount, (i) {
@@ -120,7 +122,7 @@ class CriticalBurst extends Component {
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
+    final elapsed = game.clock.t - _startTime;
     if (elapsed > 0.6) {
       removeFromParent();
     }

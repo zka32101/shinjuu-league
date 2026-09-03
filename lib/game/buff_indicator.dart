@@ -25,13 +25,13 @@ class BuffIndicator extends Component {
     required this.buffType,
     required this.duration,
     required this.tokenPosition,
-  }) : super() {
-    position = tokenPosition;
-    anchor = Anchor.center;
-  }
+  }) : super();
 
   @override
-  Future<void> onLoad() async {
+  void onLoad() {
+    super.onLoad();
+    position = tokenPosition;
+    anchor = Anchor.center;
     _startTime = game.clock.t;
   }
 

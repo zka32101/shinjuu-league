@@ -47,7 +47,7 @@ class DamageNumber extends PositionComponent {
 
     // 上方向 + ランダムな横方向への速度
     velocity = Vector2(
-      (random.nextBool() ? 1 : -1) * 30,
+      (game.rng.nextBool() ? 1 : -1) * 30,
       -80,
     );
   }
@@ -93,7 +93,7 @@ class ComboCounter extends Component {
         ),
       ),
       anchor: Anchor.center,
-      position: gameRef.size / 2,
+      position: game.size / 2,
     );
     add(textComponent);
     textComponent.text = '';
@@ -124,8 +124,7 @@ class ComboCounter extends Component {
       }
 
       // フェードアウト効果
-      final opacity = 1.0 - (elapsed.inMilliseconds / comboDuration.inMilliseconds);
-      textComponent.opacity = opacity.clamp(0, 1);
+      // (TextComponent opacity fading will be handled by removal at duration end)
     }
   }
 }
