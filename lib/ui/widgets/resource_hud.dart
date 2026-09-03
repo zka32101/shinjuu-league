@@ -255,8 +255,6 @@ class ResourceHUD extends StatelessWidget {
         return Colors.blue;
       case ItemRarity.legendary:
         return Colors.orange;
-      default:
-        return Colors.white;
     }
   }
 

@@ -67,8 +67,6 @@ class SkillVisualEffect extends PositionComponent {
         return const Color(0xFF4ECDC4); // 青緑：防御
       case SkillType.utility:
         return const Color(0xFFFFD93D); // 黄：ユーティリティ
-      default:
-        return const Color(0xFFFFFFFF); // 白：デフォルト
     }
   }
 }
@@ -207,8 +205,6 @@ class SkillAreaIndicator extends PositionComponent {
         return const Color(0xFF4ECDC4);
       case SkillType.utility:
         return const Color(0xFFFFD93D);
-      default:
-        return const Color(0xFFFFFFFF);
     }
   }
 }

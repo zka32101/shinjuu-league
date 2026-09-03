@@ -408,8 +408,6 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
         return Colors.blue;
       case SkillType.utility:
         return Colors.green;
-      default:
-        return Colors.white;
     }
   }
 }
