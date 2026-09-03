@@ -2,7 +2,6 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
-import 'package:shinjuu_league/services/firestore_service.dart';
 
 void main() {
   group('FCM Token Firestore Persistence', () {
