@@ -156,7 +156,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
               team: mp.team,
               lane: mp.lane,
               baseStats: mechaById(mp.mechaId).baseStats,
-              resources: initialResources,
+              initialResources: initialResources,
             );
           },
         )
