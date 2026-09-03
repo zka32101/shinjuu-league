@@ -167,7 +167,7 @@ class SkillSystemService {
     required List<String> ownedItemIds,
   }) {
     int max = baseMax;
-    for (final itemId in ownedItemIds) {
+    for (final _ in ownedItemIds) {
       // 今後：アイテムがマナ最大値を増やす場合はここで追加
     }
     return max;
@@ -179,7 +179,6 @@ class SkillSystemService {
   }) {
     int totalHp = 0;
     int totalAtk = 0;
-    int totalDef = 0;
     int totalSpd = 0;
 
     for (final itemId in ownedItemIds) {
@@ -187,7 +186,6 @@ class SkillSystemService {
       if (item != null) {
         totalHp += item.hpBonus;
         totalAtk += item.atkBonus;
-        totalDef += item.defBonus;
         totalSpd += item.spdBonus;
       }
     }
