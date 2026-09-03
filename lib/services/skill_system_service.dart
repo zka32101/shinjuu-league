@@ -195,7 +195,6 @@ class SkillSystemService {
     return BaseStats(
       hp: totalHp,
       atk: totalAtk,
-      defense: totalDef,
       spd: totalSpd,
     );
   }

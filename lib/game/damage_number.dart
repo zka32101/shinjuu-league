@@ -10,6 +10,7 @@ class DamageNumber extends PositionComponent {
 
   late TextComponent textComponent;
   late Vector2 velocity;
+  late GameExtension _gameRef;
 
   DamageNumber({
     required Vector2 position,
@@ -26,6 +27,7 @@ class DamageNumber extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    _gameRef = game;
 
     final text = isCritical ? damage * 2 : damage;
     textComponent = TextComponent(
@@ -51,7 +53,7 @@ class DamageNumber extends PositionComponent {
 
     // 上方向 + ランダムな横方向への速度
     velocity = Vector2(
-      (game!.rng.nextBool() ? 1 : -1) * 30,
+      (_gameRef.rng.nextBool() ? 1 : -1) * 30,
       -80,
     );
   }
@@ -77,10 +79,12 @@ class ComboCounter extends Component {
 
   late TextComponent textComponent;
   bool isVisible = false;
+  late GameExtension _gameRef;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
+    _gameRef = game;
     textComponent = TextComponent(
       text: 'COMBO x$comboCount',
       textRenderer: TextPaint(
@@ -98,7 +102,7 @@ class ComboCounter extends Component {
         ),
       ),
       anchor: Anchor.center,
-      position: game!.size / 2,
+      position: _gameRef.size / 2,
     );
     add(textComponent);
     textComponent.text = '';
