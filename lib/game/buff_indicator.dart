@@ -25,20 +25,20 @@ class BuffIndicator extends Component {
     required this.buffType,
     required this.duration,
     required this.tokenPosition,
-  }) : super(
-    position: tokenPosition,
-    anchor: Anchor.center,
-  );
+  }) : super() {
+    position = tokenPosition;
+    anchor = Anchor.center;
+  }
 
   @override
   Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
+    _startTime = game.clock.t;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
+    final elapsed = game.clock.t - _startTime;
 
     // 上昇アニメーション（time-wise）
     position = Vector2(
@@ -53,7 +53,7 @@ class BuffIndicator extends Component {
 
   @override
   void render(Canvas canvas) {
-    final elapsed = gameRef.clock.t - _startTime;
+    final elapsed = game.clock.t - _startTime;
     final progress = (elapsed / duration).clamp(0, 1);
     final opacity = 1.0 - progress;
 
@@ -62,7 +62,7 @@ class BuffIndicator extends Component {
       Offset.zero,
       12,
       Paint()
-        ..color = _getBackgroundColor().withOpacity(opacity * 0.7)
+        ..color = _getBackgroundColor().withValues(alpha: opacity * 0.7)
         ..style = PaintingStyle.fill,
     );
 
@@ -71,7 +71,7 @@ class BuffIndicator extends Component {
       Offset.zero,
       12,
       Paint()
-        ..color = _getMainColor().withOpacity(opacity * 0.9)
+        ..color = _getMainColor().withValues(alpha: opacity * 0.9)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -82,7 +82,7 @@ class BuffIndicator extends Component {
 
   void _drawBuffIcon(Canvas canvas, double opacity) {
     final paint = Paint()
-      ..color = _getMainColor().withOpacity(opacity)
+      ..color = _getMainColor().withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
 
     switch (buffType) {
@@ -254,6 +254,6 @@ class BuffIndicator extends Component {
   }
 
   Color _getBackgroundColor() {
-    return _getMainColor().withOpacity(0.3);
+    return _getMainColor().withValues(alpha: 0.3);
   }
 }
