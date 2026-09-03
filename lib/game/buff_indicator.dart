@@ -14,7 +14,7 @@ enum BuffType {
 }
 
 /// トークン上に浮く複数のバフ/デバフインジケーター
-class BuffIndicator extends Component {
+class BuffIndicator extends PositionComponent {
   final BuffType buffType;
   final double duration;
   final Vector2 tokenPosition;
@@ -25,13 +25,11 @@ class BuffIndicator extends Component {
     required this.buffType,
     required this.duration,
     required this.tokenPosition,
-  }) : super();
+  }) : super(position: tokenPosition, anchor: Anchor.center);
 
   @override
-  void onLoad() {
-    super.onLoad();
-    position = tokenPosition;
-    anchor = Anchor.center;
+  Future<void> onLoad() async {
+    await super.onLoad();
     _startTime = game.clock.t;
   }
 

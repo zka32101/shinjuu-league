@@ -4,27 +4,26 @@ import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 
 /// 拡大するスキル効果リング（既存の SkillBurst を置き換える簡潔版）
-class SkillVisualEffect extends Component {
+class SkillVisualEffect extends PositionComponent {
   final SkillType skillType;
   final double radius;
   final double maxRadius;
-  final Vector2 initialPosition;
 
   SkillVisualEffect({
     required Vector2 position,
     required this.skillType,
     this.radius = 0,
     this.maxRadius = 90,
-  }) : initialPosition = position,
-       super();
+  }) : super(
+    position: position,
+    size: Vector2.all(90 * 2.5),
+    anchor: Anchor.center,
+  );
 
   late double _startTime;
 
   @override
   Future<void> onLoad() async {
-    position = initialPosition;
-    size = Vector2.all(maxRadius * 2.5);
-    anchor = Anchor.center;
     _startTime = game.clock.t;
   }
 
@@ -83,23 +82,22 @@ class SkillVisualEffect extends Component {
 }
 
 /// クリティカルヒット用の拡張バースト（既存パーティクルを補強）
-class CriticalBurst extends Component {
+class CriticalBurst extends PositionComponent {
   final int burstCount;
-  final Vector2 initialPosition;
 
   CriticalBurst({
     required Vector2 position,
     this.burstCount = 12,
-  }) : initialPosition = position,
-       super();
+  }) : super(
+    position: position,
+    anchor: Anchor.center,
+  );
 
   late double _startTime;
   late List<BurstParticle> particles;
 
   @override
   Future<void> onLoad() async {
-    position = initialPosition;
-    anchor = Anchor.center;
     _startTime = game.clock.t;
     final random = math.Random();
 
@@ -130,27 +128,26 @@ class CriticalBurst extends Component {
 }
 
 /// スキルエリアインジケーター（発動範囲の可視化）
-class SkillAreaIndicator extends Component {
+class SkillAreaIndicator extends PositionComponent {
   final double radius;
   final SkillType skillType;
   final bool isActive;
-  final Vector2 initialPosition;
 
   SkillAreaIndicator({
     required Vector2 position,
     required this.radius,
     required this.skillType,
     this.isActive = true,
-  }) : initialPosition = position,
-       super();
+  }) : super(
+    position: position,
+    size: Vector2.all(radius * 2),
+    anchor: Anchor.center,
+  );
 
   late double _pulseTime;
 
   @override
   Future<void> onLoad() async {
-    position = initialPosition;
-    size = Vector2.all(radius * 2);
-    anchor = Anchor.center;
     _pulseTime = 0;
   }
 
@@ -225,7 +222,7 @@ class SkillAreaIndicator extends Component {
 }
 
 /// バースト粒子（再利用可能な基本パーティクル）
-class BurstParticle extends Component {
+class BurstParticle extends PositionComponent {
   final Vector2 velocity;
   final double lifetime;
   final bool isGolden;
@@ -238,13 +235,14 @@ class BurstParticle extends Component {
     required this.velocity,
     required this.lifetime,
     required this.isGolden,
-  }) : super();
+  }) : super(
+    position: startPos,
+    size: Vector2.all(8),
+    anchor: Anchor.center,
+  );
 
   @override
   Future<void> onLoad() async {
-    position = startPos;
-    size = Vector2.all(8);
-    anchor = Anchor.center;
     _birthTime = game.clock.t;
   }
 
