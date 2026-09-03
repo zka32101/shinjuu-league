@@ -4,7 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 
 /// 拡大するスキル効果リング（既存の SkillBurst を置き換える簡潔版）
-class SkillVisualEffect extends Component {
+class SkillVisualEffect extends PositionComponent {
   final SkillType skillType;
   final double radius;
   final double maxRadius;
@@ -16,30 +16,24 @@ class SkillVisualEffect extends Component {
     this.maxRadius = 90,
   }) : super(
     position: position,
-    size: Vector2.all(maxRadius * 2.5),
+    size: Vector2.all(90 * 2.5),
     anchor: Anchor.center,
   );
 
-  late double _startTime;
-
-  @override
-  Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
-  }
+  double _elapsed = 0;
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
-    if (elapsed > 0.4) {
+    _elapsed += dt;
+    if (_elapsed > 0.4) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final elapsed = gameRef.clock.t - _startTime;
-    final progress = (elapsed / 0.4).clamp(0, 1);
+    final progress = (_elapsed / 0.4).clamp(0, 1);
 
     // スキルタイプ別カラー
     final color = _getColorForSkillType();
@@ -49,7 +43,7 @@ class SkillVisualEffect extends Component {
       Offset.zero,
       maxRadius * progress,
       Paint()
-        ..color = color.withOpacity(0.7 * (1 - progress))
+        ..color = color.withValues(alpha: 0.7 * (1 - progress))
         ..style = PaintingStyle.stroke
         ..strokeWidth = 3,
     );
@@ -60,7 +54,7 @@ class SkillVisualEffect extends Component {
         Offset.zero,
         maxRadius * (progress - 0.2) * 1.25,
         Paint()
-          ..color = color.withOpacity(0.5 * (1 - progress))
+          ..color = color.withValues(alpha: 0.5 * (1 - progress))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
       );
@@ -82,7 +76,7 @@ class SkillVisualEffect extends Component {
 }
 
 /// クリティカルヒット用の拡張バースト（既存パーティクルを補強）
-class CriticalBurst extends Component {
+class CriticalBurst extends PositionComponent {
   final int burstCount;
 
   CriticalBurst({
@@ -93,12 +87,12 @@ class CriticalBurst extends Component {
     anchor: Anchor.center,
   );
 
-  late double _startTime;
+  double _elapsed = 0;
   late List<BurstParticle> particles;
 
   @override
   Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
+    await super.onLoad();
     final random = math.Random();
 
     particles = List.generate(burstCount, (i) {
@@ -120,15 +114,15 @@ class CriticalBurst extends Component {
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
-    if (elapsed > 0.6) {
+    _elapsed += dt;
+    if (_elapsed > 0.6) {
       removeFromParent();
     }
   }
 }
 
 /// スキルエリアインジケーター（発動範囲の可視化）
-class SkillAreaIndicator extends Component {
+class SkillAreaIndicator extends PositionComponent {
   final double radius;
   final SkillType skillType;
   final bool isActive;
@@ -173,7 +167,7 @@ class SkillAreaIndicator extends Component {
       Offset.zero,
       radius,
       Paint()
-        ..color = color.withOpacity(opacity)
+        ..color = color.withValues(alpha: opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -182,7 +176,7 @@ class SkillAreaIndicator extends Component {
     canvas.drawCircle(
       Offset.zero,
       3,
-      Paint()..color = color.withOpacity(0.6),
+      Paint()..color = color.withValues(alpha: 0.6),
     );
   }
 
@@ -222,13 +216,13 @@ class SkillAreaIndicator extends Component {
 }
 
 /// バースト粒子（再利用可能な基本パーティクル）
-class BurstParticle extends Component {
+class BurstParticle extends PositionComponent {
   final Vector2 velocity;
   final double lifetime;
   final bool isGolden;
   final Vector2 startPos;
 
-  late double _birthTime;
+  double _age = 0;
 
   BurstParticle({
     required this.startPos,
@@ -242,30 +236,24 @@ class BurstParticle extends Component {
   );
 
   @override
-  Future<void> onLoad() async {
-    _birthTime = gameRef.clock.t;
-  }
-
-  @override
   void update(double dt) {
     super.update(dt);
     position += velocity * dt;
 
-    final age = gameRef.clock.t - _birthTime;
-    if (age > lifetime) {
+    _age += dt;
+    if (_age > lifetime) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final age = gameRef.clock.t - _birthTime;
-    final progress = (age / lifetime).clamp(0, 1);
+    final progress = (_age / lifetime).clamp(0, 1);
     final opacity = 1.0 - progress;
 
     final color = isGolden
-        ? Color(0xFFFFD700).withOpacity(opacity * 0.8)
-        : Color(0xFFFFAA00).withOpacity(opacity * 0.6);
+        ? Color(0xFFFFD700).withValues(alpha: opacity * 0.8)
+        : Color(0xFFFFAA00).withValues(alpha: opacity * 0.6);
 
     canvas.drawCircle(
       Offset.zero,

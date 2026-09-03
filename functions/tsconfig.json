@@ -1,0 +1,15 @@
+{
+  "compilerOptions": {
+    "module": "commonjs",
+    "noImplicitAny": true,
+    "outDir": "lib",
+    "resolveJsonModule": true,
+    "sourceMap": true,
+    "strict": true,
+    "target": "ES2020"
+  },
+  "compileOnSave": true,
+  "include": [
+    "src"
+  ]
+}

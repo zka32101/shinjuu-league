@@ -72,6 +72,21 @@ class PlayerResources {
     );
   }
 
+  /// copyWith - 指定されたフィールドだけを更新した新しいインスタンスを返す
+  PlayerResources copyWith({
+    int? currentMana,
+    int? maxMana,
+    int? gold,
+    List<String>? ownedItemIds,
+  }) {
+    return PlayerResources(
+      currentMana: currentMana ?? this.currentMana,
+      maxMana: maxMana ?? this.maxMana,
+      gold: gold ?? this.gold,
+      ownedItemIds: ownedItemIds ?? this.ownedItemIds,
+    );
+  }
+
   factory PlayerResources.fromJson(Map<String, dynamic> json) {
     return PlayerResources(
       currentMana: json['currentMana'] as int? ?? 50,

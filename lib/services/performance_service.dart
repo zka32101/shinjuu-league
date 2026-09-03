@@ -137,15 +137,10 @@ class _MemoryMonitor {
 
   void _startMonitoring() {
     Timer.periodic(const Duration(seconds: 5), (_) {
-      developer.Service.getVM().then((vm) {
-        // VM情報から推定メモリ使用量を計算
-        // （デバイスネイティブメモリの正確な計測は困難なため、ここでは推定）
-        _usageMB = vm.toString().contains('memory')
-            ? 150.0 // プレースホルダー（実際の値はプラットフォームによる）
-            : 100.0;
-      }).catchError((_) {
-        // エラーはログせず無視（計測失敗は非致命的）
-      });
+      // VM情報から推定メモリ使用量を計算
+      // （デバイスネイティブメモリの正確な計測は困難なため、ここでは推定値を使用）
+      // 実際の計測はプラットフォームネイティブコード側で実装予定
+      _usageMB = 150.0; // プレースホルダー値（実際の値はプラットフォームによる）
     });
   }
 

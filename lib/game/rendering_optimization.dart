@@ -1,5 +1,4 @@
-import 'package:flame/game.dart';
-import 'package:flutter/foundation.dart';
+import 'package:flutter/material.dart';
 
 /// Flame レンダリング最適化ユーティリティ
 /// オブジェクトプーリング・空間カリング・バッチ処理を統一管理

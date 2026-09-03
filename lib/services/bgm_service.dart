@@ -115,12 +115,11 @@ class BGMService {
     try {
       final stepCount = 20;
       final stepDuration = duration.inMilliseconds ~/ stepCount;
-      final currentVol = await _player.getVolume();
 
       for (int i = 0; i < stepCount; i++) {
         await Future.delayed(Duration(milliseconds: stepDuration));
         final progress = 1.0 - ((i + 1) / stepCount);
-        await _player.setVolume(currentVol * progress);
+        await _player.setVolume(_volume * progress);
       }
 
       await _player.setVolume(0.0);

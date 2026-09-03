@@ -193,10 +193,9 @@ class SkillSystemService {
     }
 
     return BaseStats(
-      hp: totalHp.toDouble(),
-      atk: totalAtk.toDouble(),
-      def: totalDef.toDouble(),
-      spd: totalSpd.toDouble(),
+      hp: totalHp,
+      atk: totalAtk,
+      spd: totalSpd,
     );
   }
 }

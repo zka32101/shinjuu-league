@@ -1,16 +1,18 @@
 # Known Issues & Limitations
 
-## Current Status: Phase 5 Sprint 3 Complete
+## Current Status: Phase 6 Sprint 2 In Progress
 
-As of 2026-09-02, the following systems are fully functional:
-- ✅ Firebase Core + Authentication + Firestore (basic)
-- ✅ Push Notifications (FCM + local fallback)
+As of 2026-09-03, the following systems are fully functional:
+- ✅ Firebase Core + Authentication + Firestore (with security rules)
+- ✅ Push Notifications (FCM persistence + Android 13+ permissions)
 - ✅ Achievement System (11 achievements, event-driven tracking)
-- ✅ Analytics (funnel + cohort tracking)
+- ✅ Analytics (funnel + cohort tracking + Firestore persistence)
+- ✅ Remote Config (ABtest infrastructure + 17 feature flags)
 - ✅ Monetization (shop UI, Remote Config pricing)
-- ✅ 2.5D Battle Engine (Flame-based rendering)
-- ✅ Elo System + Matchmaking
-- ✅ Joystick + Manual Combat
+- ✅ 2.5D Battle Engine (Flame-based rendering, full simulation)
+- ✅ Elo System + Matchmaking (client-side + server-side validation)
+- ✅ Joystick + Manual Combat (skill system + free-form movement)
+- ✅ Cloud Functions (server-side ELO validation + audit logging)
 
 The issues below represent known gaps or design decisions that will be resolved in future sprints.
 
@@ -20,7 +22,7 @@ The issues below represent known gaps or design decisions that will be resolved 
 
 ### 1. FCM Token Persistence to Firestore
 **Severity**: HIGH  
-**Status**: Design Complete, Implementation Pending  
+**Status**: ✅ Implementation Complete (Phase 6 Sprint 1)  
 **Description**: PushNotificationService retrieves FCM token and could subscribe to topics, but the token is not persisted to `User.fcmTokens[]` array in Firestore. This means:
 - Server cannot send targeted push notifications to specific users (only topics)
 - User push notification preferences cannot be retrieved after app restart
@@ -41,7 +43,7 @@ The issues below represent known gaps or design decisions that will be resolved 
 
 ### 2. Android 13+ Notification Permission Prompts Not Implemented
 **Severity**: HIGH (Android 13+ only)  
-**Status**: Design Complete, Implementation Pending  
+**Status**: ✅ Implementation Complete (Phase 6 Sprint 1)  
 **Description**: Android 13 introduced runtime permission for `POST_NOTIFICATIONS`. Current code doesn't request this permission at runtime; Android will simply not show notifications.
 
 **Workaround**: Users must manually enable notifications in Settings after install (invisible and often missed).
@@ -158,7 +160,7 @@ Actual `.mp3` files not in `assets/sounds/` (folder created but empty). AudioSer
 
 ### 6. Firestore Security Rules Not Finalized
 **Severity**: MEDIUM  
-**Status**: Default Allow Rules (Development Only)  
+**Status**: ✅ Implementation Complete (Phase 6 Sprint 1)  
 **Description**: Firestore currently runs in **test mode** (all reads/writes allowed). Production must implement security rules:
 - Users can read/write only own documents
 - Elo updates only via Cloud Functions (prevent client-side tampering)
@@ -197,36 +199,48 @@ service cloud.firestore {
 
 ### 7. Cloud Functions for Server-Side Elo Validation Not Deployed
 **Severity**: MEDIUM  
-**Status**: Design Documented, Not Implemented  
-**Description**: Elo calculation in BattleEngine is client-side for instant feedback. However, clients could theoretically tamper with Elo after sending battle result. Production requires Cloud Function:
+**Status**: ✅ Implementation Complete (Phase 6 Sprint 2)  
+**Description**: Elo calculation in BattleEngine is client-side for instant feedback. Cloud Function now validates server-side to prevent tampering.
 
+**Implementation Details**:
+- `functions/src/elo-validator.ts` — TypeScript Cloud Function
+  - Triggers on `battle_results/{resultId}` creation
+  - Fetches authoritative user ratings from Firestore
+  - Recalculates Elo server-side (ignores client-submitted values)
+  - Atomic batch update (User + audit log)
+  - Idempotency flag: `eloProcessed` prevents double-application
+  
+- `docs/CLOUD_FUNCTIONS_GUIDE.md` — Complete deployment & architecture guide
+  - ELO formula explanation with examples
+  - Firestore schema documentation
+  - Deployment procedures (local emulator + production)
+  - Client-side integration patterns
+  - Monitoring & debugging guidance
+  
+- `test/elo_validator_test.dart` — 40+ test cases
+  - Formula correctness (expectation, new rating, deltas)
+  - Symmetry & fairness properties
+  - Edge cases (minimum/maximum ratings)
+  - Tamper detection scenarios
+  - Convergence properties
+
+**Deployment**:
+```bash
+cd functions
+npm install
+npm run build
+firebase deploy --only functions
 ```
-BattleResult submitted to Firestore
-  ↓
-Cloud Function triggered (battle/result created)
-  ↓
-Validate participants (were they in matching lobby?)
-  ↓
-Recalculate Elo server-side
-  ↓
-Update User.eloPoints (server-authorized only)
-  ↓
-Update matchmaking leaderboard
-```
 
-**Workaround**: None; client-side Elo is vulnerable to tampering (low risk if players don't know).
+**Timeline**: ✅ Phase 6 Sprint 2
 
-**Solution**: Implement `battle-result-validator` Cloud Function (JavaScript/Python).
-
-**Timeline**: Phase 6 Sprint 2
-
-**Testing**: Simulate tampered BattleResult; verify Cloud Function rejects and recalculates.
+**Testing**: ✅ 40+ unit tests covering calculation, tamper scenarios, and edge cases. Local emulator testing via Firebase emulator suite.
 
 ---
 
 ### 8. Cohort Properties Not Persisted to Firestore
 **Severity**: MEDIUM  
-**Status**: Method Defined, Firestore Persistence Not Implemented  
+**Status**: ✅ Implementation Complete (Phase 6 Sprint 1)  
 **Description**: `AnalyticsService.setCohortProperties()` logs to Firebase Analytics but does not update `User.cohortProperties` in Firestore. This means:
 - Cohort data is only in Analytics dashboard (transient)
 - Cannot query users by cohort via Firestore (e.g., "send email to D1Payers")

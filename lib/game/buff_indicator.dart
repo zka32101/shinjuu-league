@@ -14,47 +14,38 @@ enum BuffType {
 }
 
 /// トークン上に浮く複数のバフ/デバフインジケーター
-class BuffIndicator extends Component {
+class BuffIndicator extends PositionComponent {
   final BuffType buffType;
   final double duration;
   final Vector2 tokenPosition;
 
-  late double _startTime;
+  double _elapsed = 0;
 
   BuffIndicator({
     required this.buffType,
     required this.duration,
     required this.tokenPosition,
-  }) : super(
-    position: tokenPosition,
-    anchor: Anchor.center,
-  );
-
-  @override
-  Future<void> onLoad() async {
-    _startTime = gameRef.clock.t;
-  }
+  }) : super(position: tokenPosition, anchor: Anchor.center);
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = gameRef.clock.t - _startTime;
+    _elapsed += dt;
 
     // 上昇アニメーション（time-wise）
     position = Vector2(
-      tokenPosition.x + math.sin(elapsed * 3) * 4, // 左右微動
-      tokenPosition.y - 30 - (elapsed * 20), // 上昇
+      tokenPosition.x + math.sin(_elapsed * 3) * 4, // 左右微動
+      tokenPosition.y - 30 - (_elapsed * 20), // 上昇
     );
 
-    if (elapsed > duration) {
+    if (_elapsed > duration) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final elapsed = gameRef.clock.t - _startTime;
-    final progress = (elapsed / duration).clamp(0, 1);
+    final progress = (_elapsed / duration).clamp(0, 1);
     final opacity = 1.0 - progress;
 
     // アイコン背景（半透明円）
@@ -62,7 +53,7 @@ class BuffIndicator extends Component {
       Offset.zero,
       12,
       Paint()
-        ..color = _getBackgroundColor().withOpacity(opacity * 0.7)
+        ..color = _getBackgroundColor().withValues(alpha: opacity * 0.7)
         ..style = PaintingStyle.fill,
     );
 
@@ -71,7 +62,7 @@ class BuffIndicator extends Component {
       Offset.zero,
       12,
       Paint()
-        ..color = _getMainColor().withOpacity(opacity * 0.9)
+        ..color = _getMainColor().withValues(alpha: opacity * 0.9)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -82,7 +73,7 @@ class BuffIndicator extends Component {
 
   void _drawBuffIcon(Canvas canvas, double opacity) {
     final paint = Paint()
-      ..color = _getMainColor().withOpacity(opacity)
+      ..color = _getMainColor().withValues(alpha: opacity)
       ..style = PaintingStyle.fill;
 
     switch (buffType) {
@@ -254,6 +245,6 @@ class BuffIndicator extends Component {
   }
 
   Color _getBackgroundColor() {
-    return _getMainColor().withOpacity(0.3);
+    return _getMainColor().withValues(alpha: 0.3);
   }
 }

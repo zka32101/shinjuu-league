@@ -156,7 +156,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
               team: mp.team,
               lane: mp.lane,
               baseStats: mechaById(mp.mechaId).baseStats,
-              resources: initialResources,
+              initialResources: initialResources,
             );
           },
         )
@@ -291,7 +291,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     if (selfParticipant != null && state.playerResources != null) {
       final updated = state.playerResources!.copyWith(
-        currentMana: selfParticipant.resources?.currentMana ?? 100.0,
+        currentMana: (selfParticipant.resources?.currentMana ?? 100).toInt(),
         gold: selfParticipant.resources?.gold ?? 0,
         ownedItemIds: selfParticipant.resources?.ownedItemIds ?? [],
       );

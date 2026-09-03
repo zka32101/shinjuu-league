@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
-import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
@@ -197,9 +196,8 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
 
               // 確定ボタン
               CustomButton(
-                text: 'ビルドを確定',
-                onTap: _confirmBuild,
-                isEnabled: true,
+                label: 'ビルドを確定',
+                onPressed: _confirmBuild,
               ),
             ],
           ),
