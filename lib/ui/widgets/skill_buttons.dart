@@ -13,6 +13,7 @@ class SkillButtons extends StatelessWidget {
   final Function(String skillId, List<String> targets) onSkillTap;
 
   const SkillButtons({
+    super.key,
     required this.skillBuild,
     required this.resources,
     required this.cooldowns,

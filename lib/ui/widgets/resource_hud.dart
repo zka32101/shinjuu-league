@@ -10,6 +10,7 @@ class ResourceHUD extends StatelessWidget {
   final Function(String) onItemPurchase;
 
   const ResourceHUD({
+    super.key,
     required this.resources,
     required this.elapsedSeconds,
     this.ownedItemIds = const [],
