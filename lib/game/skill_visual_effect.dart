@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 
@@ -21,7 +22,7 @@ class SkillVisualEffect extends PositionComponent {
   );
 
   late double _startTime;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   @override
   Future<void> onLoad() async {
@@ -98,7 +99,7 @@ class CriticalBurst extends PositionComponent {
 
   late double _startTime;
   late List<BurstParticle> particles;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   @override
   Future<void> onLoad() async {
@@ -235,7 +236,7 @@ class BurstParticle extends PositionComponent {
   final Vector2 startPos;
 
   late double _birthTime;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   BurstParticle({
     required this.startPos,

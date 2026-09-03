@@ -1,4 +1,5 @@
 import 'package:flame/components.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 /// ダメージ数値を画面上にフローティング表示する
@@ -10,7 +11,7 @@ class DamageNumber extends PositionComponent {
 
   late TextComponent textComponent;
   late Vector2 velocity;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   DamageNumber({
     required Vector2 position,
@@ -79,7 +80,7 @@ class ComboCounter extends Component {
 
   late TextComponent textComponent;
   bool isVisible = false;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   @override
   Future<void> onLoad() async {

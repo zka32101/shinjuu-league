@@ -1,5 +1,6 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
+import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 /// バフ/デバフの種類
@@ -20,7 +21,7 @@ class BuffIndicator extends PositionComponent {
   final Vector2 tokenPosition;
 
   late double _startTime;
-  late GameExtension _gameRef;
+  late Game _gameRef;
 
   BuffIndicator({
     required this.buffType,
