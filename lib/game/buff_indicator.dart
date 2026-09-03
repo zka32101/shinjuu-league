@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 /// バフ/デバフの種類
@@ -20,8 +19,7 @@ class BuffIndicator extends PositionComponent {
   final double duration;
   final Vector2 tokenPosition;
 
-  late double _startTime;
-  late Game _gameRef;
+  double _elapsed = 0;
 
   BuffIndicator({
     required this.buffType,
@@ -30,32 +28,24 @@ class BuffIndicator extends PositionComponent {
   }) : super(position: tokenPosition, anchor: Anchor.center);
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-    _gameRef = game;
-    _startTime = _gameRef.clock.t;
-  }
-
-  @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = _gameRef.clock.t - _startTime;
+    _elapsed += dt;
 
     // 上昇アニメーション（time-wise）
     position = Vector2(
-      tokenPosition.x + math.sin(elapsed * 3) * 4, // 左右微動
-      tokenPosition.y - 30 - (elapsed * 20), // 上昇
+      tokenPosition.x + math.sin(_elapsed * 3) * 4, // 左右微動
+      tokenPosition.y - 30 - (_elapsed * 20), // 上昇
     );
 
-    if (elapsed > duration) {
+    if (_elapsed > duration) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final elapsed = _gameRef.clock.t - _startTime;
-    final progress = (elapsed / duration).clamp(0, 1);
+    final progress = (_elapsed / duration).clamp(0, 1);
     final opacity = 1.0 - progress;
 
     // アイコン背景（半透明円）

@@ -1,6 +1,5 @@
 import 'dart:math' as math;
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 
@@ -21,29 +20,20 @@ class SkillVisualEffect extends PositionComponent {
     anchor: Anchor.center,
   );
 
-  late double _startTime;
-  late Game _gameRef;
-
-  @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-    _gameRef = game;
-    _startTime = _gameRef.clock.t;
-  }
+  double _elapsed = 0;
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = _gameRef.clock.t - _startTime;
-    if (elapsed > 0.4) {
+    _elapsed += dt;
+    if (_elapsed > 0.4) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final elapsed = _gameRef.clock.t - _startTime;
-    final progress = (elapsed / 0.4).clamp(0, 1);
+    final progress = (_elapsed / 0.4).clamp(0, 1);
 
     // スキルタイプ別カラー
     final color = _getColorForSkillType();
@@ -97,15 +87,12 @@ class CriticalBurst extends PositionComponent {
     anchor: Anchor.center,
   );
 
-  late double _startTime;
+  double _elapsed = 0;
   late List<BurstParticle> particles;
-  late Game _gameRef;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _gameRef = game;
-    _startTime = _gameRef.clock.t;
     final random = math.Random();
 
     particles = List.generate(burstCount, (i) {
@@ -127,8 +114,8 @@ class CriticalBurst extends PositionComponent {
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = _gameRef.clock.t - _startTime;
-    if (elapsed > 0.6) {
+    _elapsed += dt;
+    if (_elapsed > 0.6) {
       removeFromParent();
     }
   }
@@ -235,8 +222,7 @@ class BurstParticle extends PositionComponent {
   final bool isGolden;
   final Vector2 startPos;
 
-  late double _birthTime;
-  late Game _gameRef;
+  double _age = 0;
 
   BurstParticle({
     required this.startPos,
@@ -250,27 +236,19 @@ class BurstParticle extends PositionComponent {
   );
 
   @override
-  Future<void> onLoad() async {
-    await super.onLoad();
-    _gameRef = game;
-    _birthTime = _gameRef.clock.t;
-  }
-
-  @override
   void update(double dt) {
     super.update(dt);
     position += velocity * dt;
 
-    final age = _gameRef.clock.t - _birthTime;
-    if (age > lifetime) {
+    _age += dt;
+    if (_age > lifetime) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final age = _gameRef.clock.t - _birthTime;
-    final progress = (age / lifetime).clamp(0, 1);
+    final progress = (_age / lifetime).clamp(0, 1);
     final opacity = 1.0 - progress;
 
     final color = isGolden

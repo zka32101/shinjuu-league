@@ -1,5 +1,5 @@
+import 'dart:math' as math;
 import 'package:flame/components.dart';
-import 'package:flame/game.dart';
 import 'package:flutter/material.dart';
 
 /// ダメージ数値を画面上にフローティング表示する
@@ -11,7 +11,7 @@ class DamageNumber extends PositionComponent {
 
   late TextComponent textComponent;
   late Vector2 velocity;
-  late Game _gameRef;
+  final _random = math.Random();
 
   DamageNumber({
     required Vector2 position,
@@ -28,7 +28,6 @@ class DamageNumber extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _gameRef = game;
 
     final text = isCritical ? damage * 2 : damage;
     textComponent = TextComponent(
@@ -54,7 +53,7 @@ class DamageNumber extends PositionComponent {
 
     // 上方向 + ランダムな横方向への速度
     velocity = Vector2(
-      (_gameRef.rng.nextBool() ? 1 : -1) * 30,
+      (_random.nextBool() ? 1 : -1) * 30,
       -80,
     );
   }
@@ -80,12 +79,10 @@ class ComboCounter extends Component {
 
   late TextComponent textComponent;
   bool isVisible = false;
-  late Game _gameRef;
 
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _gameRef = game;
     textComponent = TextComponent(
       text: 'COMBO x$comboCount',
       textRenderer: TextPaint(
@@ -103,7 +100,7 @@ class ComboCounter extends Component {
         ),
       ),
       anchor: Anchor.center,
-      position: _gameRef.size / 2,
+      position: Vector2.zero(),
     );
     add(textComponent);
     textComponent.text = '';
