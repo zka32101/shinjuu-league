@@ -134,22 +134,23 @@ class SkillAreaIndicator extends Component {
   final double radius;
   final SkillType skillType;
   final bool isActive;
+  final Vector2 initialPosition;
 
   SkillAreaIndicator({
     required Vector2 position,
     required this.radius,
     required this.skillType,
     this.isActive = true,
-  }) : super(
-    position: position,
-    size: Vector2.all(radius * 2),
-    anchor: Anchor.center,
-  );
+  }) : initialPosition = position,
+       super();
 
   late double _pulseTime;
 
   @override
   Future<void> onLoad() async {
+    position = initialPosition;
+    size = Vector2.all(radius * 2);
+    anchor = Anchor.center;
     _pulseTime = 0;
   }
 
@@ -175,7 +176,7 @@ class SkillAreaIndicator extends Component {
       Offset.zero,
       radius,
       Paint()
-        ..color = color.withOpacity(opacity)
+        ..color = color.withValues(alpha: opacity)
         ..style = PaintingStyle.stroke
         ..strokeWidth = 2,
     );
@@ -184,7 +185,7 @@ class SkillAreaIndicator extends Component {
     canvas.drawCircle(
       Offset.zero,
       3,
-      Paint()..color = color.withOpacity(0.6),
+      Paint()..color = color.withValues(alpha: 0.6),
     );
   }
 
@@ -237,15 +238,14 @@ class BurstParticle extends Component {
     required this.velocity,
     required this.lifetime,
     required this.isGolden,
-  }) : super(
-    position: startPos,
-    size: Vector2.all(8),
-    anchor: Anchor.center,
-  );
+  }) : super();
 
   @override
   Future<void> onLoad() async {
-    _birthTime = gameRef.clock.t;
+    position = startPos;
+    size = Vector2.all(8);
+    anchor = Anchor.center;
+    _birthTime = game.clock.t;
   }
 
   @override
@@ -253,7 +253,7 @@ class BurstParticle extends Component {
     super.update(dt);
     position += velocity * dt;
 
-    final age = gameRef.clock.t - _birthTime;
+    final age = game.clock.t - _birthTime;
     if (age > lifetime) {
       removeFromParent();
     }
@@ -261,13 +261,13 @@ class BurstParticle extends Component {
 
   @override
   void render(Canvas canvas) {
-    final age = gameRef.clock.t - _birthTime;
+    final age = game.clock.t - _birthTime;
     final progress = (age / lifetime).clamp(0, 1);
     final opacity = 1.0 - progress;
 
     final color = isGolden
-        ? Color(0xFFFFD700).withOpacity(opacity * 0.8)
-        : Color(0xFFFFAA00).withOpacity(opacity * 0.6);
+        ? Color(0xFFFFD700).withValues(alpha: opacity * 0.8)
+        : Color(0xFFFFAA00).withValues(alpha: opacity * 0.6);
 
     canvas.drawCircle(
       Offset.zero,

@@ -6,6 +6,7 @@ class DamageNumber extends PositionComponent {
   final int damage;
   final bool isCritical;
   final Color color;
+  final Vector2 initialPosition;
 
   late TextComponent textComponent;
   late Vector2 velocity;
@@ -15,14 +16,15 @@ class DamageNumber extends PositionComponent {
     required this.damage,
     this.isCritical = false,
     this.color = Colors.white,
-  }) : super(
-    position: position,
-    size: Vector2(60, 40),
-    anchor: Anchor.center,
-  );
+  }) : initialPosition = position,
+       super();
 
   @override
   Future<void> onLoad() async {
+    position = initialPosition;
+    size = Vector2(60, 40);
+    anchor = Anchor.center;
+
     final text = isCritical ? damage * 2 : damage;
     textComponent = TextComponent(
       text: '$text',
@@ -134,6 +136,7 @@ class BuffIndicatorUI extends PositionComponent {
   final String buffName;
   final Duration duration;
   final Color color;
+  final Vector2 initialPosition;
   late DateTime startTime;
 
   BuffIndicatorUI({
@@ -141,14 +144,14 @@ class BuffIndicatorUI extends PositionComponent {
     required this.buffName,
     required this.duration,
     this.color = Colors.green,
-  }) : super(
-    position: position,
-    size: Vector2(40, 16),
-    anchor: Anchor.center,
-  );
+  }) : initialPosition = position,
+       super();
 
   @override
   Future<void> onLoad() async {
+    position = initialPosition;
+    size = Vector2(40, 16);
+    anchor = Anchor.center;
     startTime = DateTime.now();
 
     final textComponent = TextComponent(
@@ -167,7 +170,7 @@ class BuffIndicatorUI extends PositionComponent {
     add(
       RectangleComponent(
         size: size,
-        paint: Paint()..color = color.withOpacity(0.8),
+        paint: Paint()..color = color.withValues(alpha: 0.8),
       ),
     );
     add(textComponent);
