@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter_test/flutter_test.dart';
 
 /// ELO Calculator for server-side validation
@@ -14,7 +16,7 @@ class EloCalculator {
     int opponentRating,
   ) {
     final ratingDiff = opponentRating - playerRating;
-    return 1 / (1 + pow(10, ratingDiff / 400).toDouble());
+    return 1 / (1 + math.pow(10, ratingDiff / 400));
   }
 
   /// Calculate new ELO rating after a match
@@ -48,8 +50,6 @@ class EloCalculator {
   }
 }
 
-/// Utility for testing
-double pow(num x, num y) => (x as num).toDouble() * (1.0 * x as double);
 
 void main() {
   group('ELO Calculation', () {
@@ -277,7 +277,6 @@ void main() {
     test('Client reporting false win should be rejected by server', () {
       // Client claims: win (+50 ELO)
       // Server calculates: loss (actual -8 ELO)
-      const clientReportedResult = 'win';
       const actualResult = 'loss';
 
       final clientElo = 1600 + 50; // What tampered client might claim
@@ -341,9 +340,7 @@ void main() {
       const iterations = 1000;
       double totalChange = 0;
 
-      // Simulate 1000 random matches between ratings 1000-2000
-      final random = DateTime.now().millisecondsSinceEpoch;
-
+      // Simulate 1000 matches between various rating combinations
       for (int i = 0; i < iterations; i++) {
         final rating1 = 1000 + (i * 1000 / iterations).toInt();
         final rating2 = 2000 - (i * 1000 / iterations).toInt();
