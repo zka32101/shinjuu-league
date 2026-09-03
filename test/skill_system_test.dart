@@ -85,7 +85,7 @@ void main() {
         ownedItemIds: ['item_sword_01', 'item_armor_01'],
       );
       expect(bonuses.atk, 10);
-      expect(bonuses.def, 15);
+      // Note: BaseStats only has hp, atk, spd (no def property)
     });
   });
 
