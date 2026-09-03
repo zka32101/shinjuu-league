@@ -133,7 +133,7 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
                     ),
                     const SizedBox(width: 8),
                     Text(
-                      '${_countdownSeconds}秒でスキルビルドが確定します',
+                      '$_countdownSeconds秒でスキルビルドが確定します',
                       style: TextStyle(
                         fontSize: 14,
                         fontWeight: FontWeight.w600,

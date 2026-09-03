@@ -1,4 +1,5 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 
 /// Firebase Remote Config 統合
 /// ABテストと機能フラグの一元管理
@@ -65,7 +66,7 @@ class RemoteConfigService {
       await _remoteConfig.fetchAndActivate();
     } catch (e) {
       // ネットワークエラー時はデフォルト値を使用
-      print('Remote Config fetch failed: $e');
+      debugPrint('Remote Config fetch failed: $e');
     }
 
     _initialized = true;

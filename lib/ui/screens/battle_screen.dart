@@ -251,7 +251,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                   ),
                 ),
                 // スキルボタン表示（Q/W/E + クールタイム）
-                if (state.skillBuild != null && selfId != null)
+                if (state.skillBuild != null)
                   Positioned(
                     right: 24,
                     bottom: 120,
