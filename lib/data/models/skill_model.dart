@@ -1,6 +1,5 @@
 /// スキルシステム
 /// 各神獣は3スキルを持ち、各スキルは3段階でレベルアップ可能
-library skill_model;
 
 enum SkillType {
   offensive,  // 攻撃スキル

@@ -1,5 +1,4 @@
 /// マナ/ゴールド/アイテムシステム
-library resource_model;
 
 class PlayerResources {
   final int currentMana;
