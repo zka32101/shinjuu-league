@@ -30,13 +30,13 @@ class BuffIndicator extends PositionComponent {
   @override
   Future<void> onLoad() async {
     await super.onLoad();
-    _startTime = game.clock.t;
+    _startTime = game!.clock.t;
   }
 
   @override
   void update(double dt) {
     super.update(dt);
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = game!.clock.t - _startTime;
 
     // 上昇アニメーション（time-wise）
     position = Vector2(
@@ -51,7 +51,7 @@ class BuffIndicator extends PositionComponent {
 
   @override
   void render(Canvas canvas) {
-    final elapsed = game.clock.t - _startTime;
+    final elapsed = game!.clock.t - _startTime;
     final progress = (elapsed / duration).clamp(0, 1);
     final opacity = 1.0 - progress;
 

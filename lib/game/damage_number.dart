@@ -51,7 +51,7 @@ class DamageNumber extends PositionComponent {
 
     // 上方向 + ランダムな横方向への速度
     velocity = Vector2(
-      (game.rng.nextBool() ? 1 : -1) * 30,
+      (game!.rng.nextBool() ? 1 : -1) * 30,
       -80,
     );
   }
@@ -98,7 +98,7 @@ class ComboCounter extends Component {
         ),
       ),
       anchor: Anchor.center,
-      position: game.size / 2,
+      position: game!.size / 2,
     );
     add(textComponent);
     textComponent.text = '';
