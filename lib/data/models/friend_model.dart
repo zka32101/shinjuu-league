@@ -11,8 +11,6 @@ enum FriendRequestStatus {
         return 'フレンド';
       case FriendRequestStatus.rejected:
         return '拒否済み';
-      default:
-        return 'Unknown';
     }
   }
 }
