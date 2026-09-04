@@ -1,3 +1,4 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 
 /// Promotion/Demotion ceremony animation widget
@@ -331,8 +332,8 @@ class _PromotionParticles extends StatelessWidget {
     );
   }
 
-  double cos(double angle) => (angle).toDouble();
-  double sin(double angle) => (angle).toDouble();
+  double cos(double angle) => math.cos(angle);
+  double sin(double angle) => math.sin(angle);
 }
 
 /// Demotion particles animation (downward effect)
