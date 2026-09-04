@@ -124,7 +124,7 @@ class BattlefieldGame extends FlameGame {
     super.update(dt);
 
     // フレームレート計測
-    _performanceService.recordFrame(dt);
+    _performanceService.recordFrame();
 
     // カメラは自キャラの位置へ滑らかに追従する
     final followTarget = _selfToken?.position ?? Vector2.zero();
@@ -318,7 +318,10 @@ class BattlefieldGame extends FlameGame {
       token.updateHp(p.currentHp, p.effectiveHp);
 
       // フラスタムカリング：画面外のトークンをカウント
-      final tokenBounds = Rect.fromCircle(center: token.position, radius: 24);
+      final tokenBounds = Rect.fromCircle(
+        center: Offset(token.position.x, token.position.y),
+        radius: 24,
+      );
       if (_frustumCuller.isVisible(tokenBounds)) {
         visibleCount++;
       } else {
