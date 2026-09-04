@@ -447,26 +447,38 @@ class AnalyticsService {
 
   /// Day 1 アクティブセッション記録
   Future<void> logDay1Active(String userId) async {
-    await _analytics.logEvent(
-      name: 'day_1_active',
-      parameters: {'user_id': userId},
-    );
+    try {
+      await _analytics?.logEvent(
+        name: 'day_1_active',
+        parameters: {'user_id': userId},
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
   }
 
   /// Day 7 アクティブセッション記録
   Future<void> logDay7Active(String userId) async {
-    await _analytics.logEvent(
-      name: 'day_7_active',
-      parameters: {'user_id': userId},
-    );
+    try {
+      await _analytics?.logEvent(
+        name: 'day_7_active',
+        parameters: {'user_id': userId},
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
   }
 
   /// Day 30 アクティブセッション記録
   Future<void> logDay30Active(String userId) async {
-    await _analytics.logEvent(
-      name: 'day_30_active',
-      parameters: {'user_id': userId},
-    );
+    try {
+      await _analytics?.logEvent(
+        name: 'day_30_active',
+        parameters: {'user_id': userId},
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
   }
 
   /// Aha Moment までの時間（秒）を記録
@@ -475,13 +487,17 @@ class AnalyticsService {
     String userId,
     int secondsToFirstKill,
   ) async {
-    await _analytics.logEvent(
-      name: 'time_to_aha_moment',
-      parameters: {
-        'user_id': userId,
-        'seconds': secondsToFirstKill,
-      },
-    );
+    try {
+      await _analytics?.logEvent(
+        name: 'time_to_aha_moment',
+        parameters: {
+          'user_id': userId,
+          'seconds': secondsToFirstKill,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
   }
 
   // ============ Achievement Events ============
@@ -492,13 +508,17 @@ class AnalyticsService {
     String achievementId,
     String rarity, // common, rare, legendary
   ) async {
-    await _analytics.logEvent(
-      name: 'achievement_unlocked',
-      parameters: {
-        'user_id': userId,
-        'achievement_id': achievementId,
-        'rarity': rarity,
-      },
-    );
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_unlocked',
+        parameters: {
+          'user_id': userId,
+          'achievement_id': achievementId,
+          'rarity': rarity,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
   }
 }
