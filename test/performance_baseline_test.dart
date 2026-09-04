@@ -112,8 +112,8 @@ void main() {
         final dump = performanceService.debugDumpPerformance();
 
         expect(dump, isA<Map<String, dynamic>>());
-        expect(dump, containsPair('current_fps', isA<double>()));
-        expect(dump, containsPair('current_memory_mb', isA<double>()));
+        expect(dump, containsPair('frame_rate_fps', isA<double>()));
+        expect(dump, containsPair('memory_usage_mb', isA<double>()));
       });
 
       test('performance dump includes slow frame statistics', () async {
@@ -124,7 +124,7 @@ void main() {
 
         final dump = performanceService.debugDumpPerformance();
 
-        expect(dump, containsPair('slow_frames_count', isA<int>()));
+        expect(dump, containsPair('slow_frame_count', isA<int>()));
       });
 
       test('performance dump is complete and valid', () {
