@@ -19,8 +19,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Test User',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -35,6 +36,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 1),
           ),
+          createdAt: DateTime(2026, 9, 1),
+          lastBattleAt: DateTime(2026, 9, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -62,8 +65,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Repeat User',
-          eloRating: 1200,
-          rank: 'Silver',
+          rank: 1,
+          level: 5,
+          eloRating: 1200.0,
           winRate: 0.55,
           totalBattles: 20,
           ownedSkinIds: const ['skin_east_flame'],
@@ -78,6 +82,8 @@ void main() {
             purchaseCohort: 'D1Payer',
             assignedAt: DateTime(2026, 9, 1),
           ),
+          createdAt: DateTime(2026, 9, 1),
+          lastBattleAt: DateTime(2026, 9, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -103,8 +109,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Timestamp Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -119,6 +126,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 4),
           ),
+          createdAt: DateTime(2026, 9, 4),
+          lastBattleAt: DateTime(2026, 9, 4),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -154,8 +163,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Cohort Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -170,6 +180,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 8, 15),
           ),
+          createdAt: DateTime(2026, 8, 15),
+          lastBattleAt: DateTime(2026, 8, 15),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -197,8 +209,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Multi Buyer',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -213,6 +226,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 2),
           ),
+          createdAt: DateTime(2026, 9, 2),
+          lastBattleAt: DateTime(2026, 9, 2),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -255,8 +270,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'D1 Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -271,6 +287,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 4),
           ),
+          createdAt: DateTime(2026, 9, 4),
+          lastBattleAt: DateTime(2026, 9, 4),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -292,8 +310,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Whale Buyer',
-          eloRating: 2000,
-          rank: 'Legend',
+          rank: 5,
+          level: 20,
+          eloRating: 2000.0,
           winRate: 0.75,
           totalBattles: 500,
           ownedSkinIds: const ['skin_east_flame', 'skin_west_frost', 'skin_gold_dragon'],
@@ -308,6 +327,8 @@ void main() {
             purchaseCohort: 'D30Payer',
             assignedAt: DateTime(2026, 6, 1),
           ),
+          createdAt: DateTime(2026, 6, 1),
+          lastBattleAt: DateTime(2026, 6, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
