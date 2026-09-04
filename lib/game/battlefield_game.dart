@@ -20,6 +20,7 @@ import 'package:shinjuu_league/game/skill_visual_effect.dart';
 import 'package:shinjuu_league/game/buff_indicator.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
+import 'package:shinjuu_league/game/rendering_optimization.dart';
 
 /// 参加者の状態（位置・生死）だけを受け取って描画するレンダラー。
 /// 対戦のシミュレーションロジックは持たない（BattleEngine が唯一の正）。
@@ -48,6 +49,8 @@ class BattlefieldGame extends FlameGame {
   double _flashAlpha = 0.0;
   final Vector2 _cameraFollowPos = Vector2.zero();
   late final PerformanceService _performanceService = PerformanceService();
+  late final FrustumCuller _frustumCuller = FrustumCuller();
+  late final RenderingStats _renderingStats = RenderingStats();
 
   JoystickComponent? _joystick;
   MechaToken? _selfToken;
@@ -105,6 +108,15 @@ class BattlefieldGame extends FlameGame {
       size.y / viewWindowHeight,
     ).clamp(0.6, 2.5);
     camera.viewfinder.zoom = zoom;
+
+    // ビューポート（カメラ表示範囲）をフラスタムカラーに設定
+    _frustumCuller.setViewport(
+      Rect.fromCenter(
+        center: Offset(size.x / 2, size.y / 2),
+        width: size.x,
+        height: size.y,
+      ),
+    );
   }
 
   @override
@@ -257,7 +269,9 @@ class BattlefieldGame extends FlameGame {
 
   /// バトルエンジンの参加者一覧を反映する。tick 毎に呼んでよい（位置は初回のみ確定）。
   void sync(List<BattleParticipantState> participants) {
+    _renderingStats.reset(); // フレーム開始時に統計をリセット
     final slotIndexByLaneTeam = <String, int>{};
+    int visibleCount = 0;
 
     for (final p in participants) {
       final slotKey = '${p.lane}_${p.team}';
@@ -302,7 +316,17 @@ class BattlefieldGame extends FlameGame {
       }
 
       token.updateHp(p.currentHp, p.effectiveHp);
+
+      // フラスタムカリング：画面外のトークンをカウント
+      final tokenBounds = Rect.fromCircle(center: token.position, radius: 24);
+      if (_frustumCuller.isVisible(tokenBounds)) {
+        visibleCount++;
+      } else {
+        _renderingStats.culledObjectCount++;
+      }
     }
+
+    _renderingStats.visibleObjectCount = visibleCount;
   }
 
   /// 撃破に至らない被弾（HPが削れただけ）の軽い反応。キル演出ほど強くしない。
