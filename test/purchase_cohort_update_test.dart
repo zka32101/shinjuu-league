@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:shinjuu_league/data/models/cohort_properties.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 
@@ -41,9 +40,10 @@ void main() {
         await fakeDb.collection('users').doc(userId).set(user.toJson());
 
         // Simulate purchase: update cohort to D1Payer with lastPurchaseAt timestamp
+        final now = DateTime.now();
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D1Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': now.toIso8601String(),
         });
 
         // Verify cohort was updated
@@ -85,7 +85,7 @@ void main() {
         // Simulate upgrade to D7Payer
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D7Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         // Verify cohort was upgraded
@@ -128,7 +128,7 @@ void main() {
         // Update with purchase
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D1Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         final afterPurchase = DateTime.now();
@@ -177,7 +177,7 @@ void main() {
         // Update only purchase cohort (simulating real update)
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D1Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         // Verify other cohorts unchanged
@@ -220,7 +220,7 @@ void main() {
         // Purchase 1: F2P → D1Payer
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D1Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         var doc = await fakeDb.collection('users').doc(userId).get();
@@ -234,7 +234,7 @@ void main() {
         // Purchase 2: D1Payer → D7Payer
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': 'D7Payer',
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         doc = await fakeDb.collection('users').doc(userId).get();
@@ -277,7 +277,7 @@ void main() {
 
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': cohort,
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         final doc = await fakeDb.collection('users').doc(userId).get();
@@ -314,7 +314,7 @@ void main() {
 
         await fakeDb.collection('users').doc(userId).update({
           'cohortProperties.purchaseCohort': cohort,
-          'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+          'cohortProperties.lastPurchaseAt': DateTime.now().toIso8601String(),
         });
 
         final doc = await fakeDb.collection('users').doc(userId).get();
