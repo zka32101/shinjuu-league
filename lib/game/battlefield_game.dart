@@ -6,6 +6,7 @@ import 'package:flame/game.dart';
 import 'package:flutter/foundation.dart' show ValueNotifier;
 import 'package:flutter/material.dart' show Colors, EdgeInsets, Icons;
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/game/impact_line.dart';
 import 'package:shinjuu_league/game/isometric_projection.dart';
@@ -46,6 +47,7 @@ class BattlefieldGame extends FlameGame {
   double _shakeMagnitude = 0.0;
   double _flashAlpha = 0.0;
   final Vector2 _cameraFollowPos = Vector2.zero();
+  late final PerformanceService _performanceService = PerformanceService();
 
   JoystickComponent? _joystick;
   MechaToken? _selfToken;
@@ -108,6 +110,9 @@ class BattlefieldGame extends FlameGame {
   @override
   void update(double dt) {
     super.update(dt);
+
+    // フレームレート計測
+    _performanceService.recordFrame(dt);
 
     // カメラは自キャラの位置へ滑らかに追従する
     final followTarget = _selfToken?.position ?? Vector2.zero();
