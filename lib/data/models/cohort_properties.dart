@@ -28,12 +28,16 @@ class CohortProperties {
   /// Timestamp when cohorts were assigned
   final DateTime assignedAt;
 
+  /// Timestamp of last purchase (used for D1Payer/D7Payer/Whale tracking)
+  final DateTime? lastPurchaseAt;
+
   const CohortProperties({
     required this.installCohort,
     required this.platformCohort,
     required this.purchaseCohort,
     this.customCohorts = const {},
     required this.assignedAt,
+    this.lastPurchaseAt,
   });
 
   /// Create from JSON (for Firestore deserialization)
@@ -49,6 +53,9 @@ class CohortProperties {
           ? DateTime.parse(json['assignedAt'] as String)
           : (json['assignedAt'] as DateTime?)
           ?? DateTime.now(),
+      lastPurchaseAt: json['lastPurchaseAt'] is String
+          ? DateTime.parse(json['lastPurchaseAt'] as String)
+          : (json['lastPurchaseAt'] as DateTime?),
     );
   }
 
@@ -59,6 +66,7 @@ class CohortProperties {
         'purchaseCohort': purchaseCohort,
         'customCohorts': customCohorts,
         'assignedAt': assignedAt.toIso8601String(),
+        if (lastPurchaseAt != null) 'lastPurchaseAt': lastPurchaseAt!.toIso8601String(),
       };
 
   /// Create a copy with modifications
@@ -68,6 +76,7 @@ class CohortProperties {
     String? purchaseCohort,
     Map<String, String>? customCohorts,
     DateTime? assignedAt,
+    DateTime? lastPurchaseAt,
   }) {
     return CohortProperties(
       installCohort: installCohort ?? this.installCohort,
@@ -75,6 +84,7 @@ class CohortProperties {
       purchaseCohort: purchaseCohort ?? this.purchaseCohort,
       customCohorts: customCohorts ?? this.customCohorts,
       assignedAt: assignedAt ?? this.assignedAt,
+      lastPurchaseAt: lastPurchaseAt ?? this.lastPurchaseAt,
     );
   }
 
@@ -91,7 +101,8 @@ class CohortProperties {
           platformCohort == other.platformCohort &&
           purchaseCohort == other.purchaseCohort &&
           customCohorts == other.customCohorts &&
-          assignedAt == other.assignedAt;
+          assignedAt == other.assignedAt &&
+          lastPurchaseAt == other.lastPurchaseAt;
 
   @override
   int get hashCode =>
@@ -99,5 +110,6 @@ class CohortProperties {
       platformCohort.hashCode ^
       purchaseCohort.hashCode ^
       customCohorts.hashCode ^
-      assignedAt.hashCode;
+      assignedAt.hashCode ^
+      lastPurchaseAt.hashCode;
 }

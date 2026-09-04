@@ -114,6 +114,22 @@ class FirestoreService {
     }
   }
 
+  /// ユーザーの購入コホートを更新（初回購入時にF2P → D1Payerなど）
+  /// 購入成功後に呼び出す、LTV/リテンション分析の基盤
+  Future<void> updateUserPurchaseCohort(
+    String userId,
+    String newCohort, // 'D1Payer', 'D7Payer', 'D30Payer', 'Whale'
+  ) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'cohortProperties.purchaseCohort': newCohort,
+        'cohortProperties.lastPurchaseAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      throw 'Failed to update purchase cohort: $e';
+    }
+  }
+
   // ============ Mecha Methods ============
   Future<List<Mecha>> getAllMechas() async {
     try {
