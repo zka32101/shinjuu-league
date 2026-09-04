@@ -54,8 +54,8 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
-        expect(updatedUser.cohortProperties.lastPurchaseAt, isNotNull);
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
+        expect(updatedUser.cohortProperties!.lastPurchaseAt, isNotNull);
       });
 
       test('User cohort can transition from D1Payer to D7Payer', () async {
@@ -99,7 +99,7 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D7Payer'));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D7Payer'));
       });
 
       test('lastPurchaseAt timestamp is set on cohort update', () async {
@@ -147,7 +147,7 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        final lastPurchaseAt = updatedUser.cohortProperties.lastPurchaseAt;
+        final lastPurchaseAt = updatedUser.cohortProperties!.lastPurchaseAt;
         expect(lastPurchaseAt, isNotNull);
         expect(lastPurchaseAt!.isAfter(beforePurchase.subtract(Duration(seconds: 1))), isTrue);
         expect(lastPurchaseAt.isBefore(afterPurchase.add(Duration(seconds: 1))), isTrue);
@@ -197,9 +197,9 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.installCohort, equals(installCohort));
-        expect(updatedUser.cohortProperties.platformCohort, equals(platformCohort));
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
+        expect(updatedUser.cohortProperties!.installCohort, equals(installCohort));
+        expect(updatedUser.cohortProperties!.platformCohort, equals(platformCohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
       });
 
       test('Multiple purchase cohort updates create purchase history', () async {
@@ -240,8 +240,8 @@ void main() {
 
         var doc = await fakeDb.collection('users').doc(userId).get();
         var updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
-        final firstPurchaseTime = updatedUser.cohortProperties.lastPurchaseAt;
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
+        final firstPurchaseTime = updatedUser.cohortProperties!.lastPurchaseAt;
 
         // Wait a moment
         await Future.delayed(const Duration(milliseconds: 100));
@@ -254,8 +254,8 @@ void main() {
 
         doc = await fakeDb.collection('users').doc(userId).get();
         updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D7Payer'));
-        final secondPurchaseTime = updatedUser.cohortProperties.lastPurchaseAt;
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D7Payer'));
+        final secondPurchaseTime = updatedUser.cohortProperties!.lastPurchaseAt;
 
         // Verify timestamps are different (second is later)
         expect(secondPurchaseTime!.isAfter(firstPurchaseTime!), isTrue);
@@ -300,7 +300,7 @@ void main() {
 
         final doc = await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals(cohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals(cohort));
       });
 
       test('Whale cohort represents high-value repeat customer', () async {
@@ -340,7 +340,7 @@ void main() {
 
         final doc = await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals(cohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals(cohort));
       });
     });
   });
