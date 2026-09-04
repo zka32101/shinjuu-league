@@ -1,15 +1,9 @@
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
 
 void main() {
-  setUpAll(() async {
-    // Initialize Firebase for integration tests
-    await Firebase.initializeApp();
-  });
-
   group('Push Notification → Achievement → Analytics Funnel', () {
     late PushNotificationService notificationService;
     late AchievementService achievementService;
