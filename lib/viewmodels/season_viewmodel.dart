@@ -6,6 +6,7 @@ import '../services/season_service.dart';
 import '../services/ranking_service.dart';
 import '../services/rewards_service.dart';
 import '../services/firestore_service.dart';
+import '../data/providers/service_providers.dart';
 
 /// ViewModel for current season state
 ///
@@ -250,6 +251,3 @@ final currentSeasonViewModelProvider =
     userId: userId,
   );
 });
-
-// Import needed at top of file:
-// import 'package:shinjuu_league/data/providers/service_providers.dart';

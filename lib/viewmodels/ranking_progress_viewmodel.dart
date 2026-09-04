@@ -3,6 +3,7 @@ import '../data/models/season_model.dart';
 import '../data/models/user_model.dart';
 import '../services/ranking_service.dart';
 import '../services/firestore_service.dart';
+import '../data/providers/service_providers.dart';
 
 /// ViewModel for tier ladder and ranking progression UI
 ///
@@ -320,6 +321,3 @@ final rankingProgressViewModelProvider = StateNotifierProvider.autoDispose<
     tierThresholds: null, // TODO: wire from currentSeasonViewModelProvider
   );
 });
-
-// Service provider imports needed:
-// import 'package:shinjuu_league/data/providers/service_providers.dart';
