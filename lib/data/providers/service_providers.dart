@@ -12,7 +12,10 @@ import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
+import 'package:shinjuu_league/services/rewards_service.dart';
+import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/guild_viewmodel.dart';
@@ -106,4 +109,17 @@ final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) 
 
 final achievementServiceProvider = Provider<AchievementService>((ref) {
   return AchievementService();
+});
+
+// Phase 7 Sprint 1: Season & Ranking System
+final seasonServiceProvider = Provider<SeasonService>((ref) {
+  return SeasonService();
+});
+
+final rankingServiceProvider = Provider<RankingService>((ref) {
+  return RankingService();
+});
+
+final rewardsServiceProvider = Provider<RewardsService>((ref) {
+  return RewardsService();
 });
