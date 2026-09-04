@@ -98,6 +98,7 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
         AppConfig.battlePassProductId,
         outcome.errorMessage ?? '不明なエラー',
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
       );

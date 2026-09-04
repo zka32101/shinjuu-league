@@ -90,6 +90,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         AppConfig.skinGachaProductId,
         outcome.errorMessage ?? '不明なエラー',
       );
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
       );
