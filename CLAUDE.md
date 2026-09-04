@@ -626,6 +626,64 @@ assets/animations/
 - ✅ `skin_purchased` — スキンガチャ課金（本Sprint実装）
 - ⏳ `cohort_transitioned` — F2P→D1Payer等のコホート遷移（追跡のため Remote Config で定義予定）
 
+### Phase 6 Sprint 2: Server-Side Elo Validation + Cloud Functions（2026-09-03, Haiku実装完了）
+
+**方針**: クライアント側 ELO 計算の即座フィードバック利便性を保ちつつ、サーバー側で権威あるデータから ELO を再計算し、改ざん防止の二層防御を実装。決定的な ELO 更新はサーバー側のみが行い、リーダーボード信頼性を確保。
+
+- [functions/src/elo-validator.ts](functions/src/elo-validator.ts) (280行) — Firebase Cloud Function による Firestore トリガー
+  - **トリガー**: `/battle_results/{resultId}` が新規作成時に自動起動
+  - **検証**: 両参加者の Firestore 上のユーザードキュメント存在確認
+  - **再計算**: クライアント送信値を無視し、サーバー権威データのみから ELO 再計算
+    - 期待勝率（EA）= 1 / (1 + 10^((レート差) / 400))
+    - 新レート（RA'）= RA + K * (実結果 - EA)
+    - K 値 = 32（標準）、将来拡張で段階別調整対応
+  - **原子性**: ユーザー複数人の ELO 更新 + 監査ログをバッチ書き込み（all-or-nothing）
+  - **冪等性**: `eloProcessed` フラグで 1バトルにつき 1回のみ実行（重複計算防止）
+  - **監査ログ**: `/elo_validation_log/{logId}` へ全計算過程を記録（改ざん検知用）
+
+- [functions/src/index.ts](functions/src/index.ts) — Cloud Functions エクスポート
+  - `validateBattleResult()` 関数の公開
+
+- [functions/package.json](functions/package.json) + [functions/tsconfig.json](functions/tsconfig.json) — TypeScript 開発環境
+  - firebase-admin v11.11.0 + firebase-functions 統合
+  - `npm run build` で コンパイル、`npm run deploy` で本番投入
+  - `npm run serve` でローカル Firebase エミュレータ環境で検証
+
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart) (改変)
+  - 試合終了時に `BattleResult` ドキュメントを `/battle_results/{resultId}` に送信
+  - クライアント側 ELO 計算結果を `participant.eloRating` へ記録（監査・UI表示用のみ、権威性なし）
+  - 実権威 ELO は Cloud Function の再計算後に User ドキュメントへ反映
+
+- [docs/CLOUD_FUNCTIONS_GUIDE.md](docs/CLOUD_FUNCTIONS_GUIDE.md) (250+行) — デプロイ/運用ガイド
+  - セキュリティモデル概説（改ざん防止・冪等性・監査可能性）
+  - ELO 計算数式の詳細解説＋計算例（レート1600 vs 1400での新レート算出）
+  - Firestore スキーマ定義（BattleResult/User/EloValidationLog コレクション）
+  - ローカルエミュレータでの検証手順
+  - 本番投入チェックリスト（Firestore セキュリティルール確認、Cloud Functions 権限設定）
+
+- [functions/tests/elo-validator.test.ts](functions/tests/elo-validator.test.ts) （未実装、Sprint 3 予定）
+  - Cloud Function ロジックの単体テスト（Jest + firebase-functions-test）
+  - 正常系（複数 ELO ティア間の計算精度）・エラー系（不正な参加者・重複実行）
+
+**Security Properties** (実装済み):
+- ✅ **改ざん防止**: クライアント送信の ELO 値を完全無視、サーバー権威データのみ使用
+- ✅ **冪等性**: `eloProcessed` フラグで 1バトル 1回のみ実行、重複計算なし
+- ✅ **原子性**: User 複数人の更新 + 監査ログが all-or-nothing で成功
+- ✅ **監査可能性**: 全 ELO 変動を `elo_validation_log` へ記録、事後検証・不正検知対応可能
+
+**既知のTODO（Sprint 3以降で解消）**:
+- Cloud Function 単体テスト（Jest ベース、firebase-functions-test を使用）
+- Tier 別 K 値調整（新規プレイヤーは K=64 で高速収束、上級者は K=16 で安定性向上）
+- ELO 季節リセット機能（シーズンごとの周期的リセット、レート下限設定）
+- アナリティクス統合（ELO 分布・勝率分布の監視ダッシュボード）
+
+**デプロイ手順（本番化時）**:
+1. `functions/src/` に `.env` 追加（Firebase プロジェクト ID 等）
+2. `npm run build` で TypeScript コンパイル
+3. `firebase deploy --only functions` で本番投入
+4. Firestore Security Rules に Cloud Function 権限を付与
+5. `firebase functions:log` でリアルタイム実行ログ監視
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定
