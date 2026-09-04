@@ -6,7 +6,6 @@ import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
-import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
@@ -94,10 +93,6 @@ final guildViewModelProvider =
 
 final assetServiceProvider = Provider<AssetService>((ref) {
   return AssetService();
-});
-
-final bgmServiceProvider = Provider<BGMService>((ref) {
-  return BGMService();
 });
 
 final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
