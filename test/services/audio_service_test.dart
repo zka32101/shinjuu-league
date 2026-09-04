@@ -189,10 +189,10 @@ void main() {
       });
 
       test('複数インスタンスで設定が共有される', () async {
-        final service1 = AudioService();
         final service2 = AudioService();
 
         // TODO: Mock AudioPlayer for this test
+        // final service1 = AudioService();
         // await service1.setSeVolume(0.3);
         // expect(service2.seVolume, equals(0.3));
         expect(service2.seVolume, equals(0.7)); // Verify default unchanged
