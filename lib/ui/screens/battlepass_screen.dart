@@ -76,6 +76,11 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
         'battlepass',
         AppConfig.battlePassPrice,
       );
+      // Update user cohort to D1Payer after successful purchase
+      await ref.read(firestoreServiceProvider).updateUserPurchaseCohort(
+        userId,
+        'D1Payer',
+      );
       ref.invalidate(battlePassProvider);
 
       if (!mounted) return;

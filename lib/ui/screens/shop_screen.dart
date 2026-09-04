@@ -69,6 +69,11 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
         'skin_gacha',
         AppConfig.skinPrice,
       );
+      // Update user cohort to D1Payer after successful purchase
+      await ref.read(firestoreServiceProvider).updateUserPurchaseCohort(
+        userId,
+        'D1Payer',
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(
