@@ -19,8 +19,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Test User',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -35,6 +36,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 1),
           ),
+          createdAt: DateTime(2026, 9, 1),
+          lastBattleAt: DateTime(2026, 9, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -51,8 +54,8 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
-        expect(updatedUser.cohortProperties.lastPurchaseAt, isNotNull);
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
+        expect(updatedUser.cohortProperties!.lastPurchaseAt, isNotNull);
       });
 
       test('User cohort can transition from D1Payer to D7Payer', () async {
@@ -62,8 +65,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Repeat User',
-          eloRating: 1200,
-          rank: 'Silver',
+          rank: 1,
+          level: 5,
+          eloRating: 1200.0,
           winRate: 0.55,
           totalBattles: 20,
           ownedSkinIds: const ['skin_east_flame'],
@@ -78,6 +82,8 @@ void main() {
             purchaseCohort: 'D1Payer',
             assignedAt: DateTime(2026, 9, 1),
           ),
+          createdAt: DateTime(2026, 9, 1),
+          lastBattleAt: DateTime(2026, 9, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -93,7 +99,7 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D7Payer'));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D7Payer'));
       });
 
       test('lastPurchaseAt timestamp is set on cohort update', () async {
@@ -103,8 +109,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Timestamp Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -119,6 +126,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 4),
           ),
+          createdAt: DateTime(2026, 9, 4),
+          lastBattleAt: DateTime(2026, 9, 4),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -138,7 +147,7 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        final lastPurchaseAt = updatedUser.cohortProperties.lastPurchaseAt;
+        final lastPurchaseAt = updatedUser.cohortProperties!.lastPurchaseAt;
         expect(lastPurchaseAt, isNotNull);
         expect(lastPurchaseAt!.isAfter(beforePurchase.subtract(Duration(seconds: 1))), isTrue);
         expect(lastPurchaseAt.isBefore(afterPurchase.add(Duration(seconds: 1))), isTrue);
@@ -154,8 +163,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Cohort Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -170,6 +180,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 8, 15),
           ),
+          createdAt: DateTime(2026, 8, 15),
+          lastBattleAt: DateTime(2026, 8, 15),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -185,9 +197,9 @@ void main() {
             await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(updatedDoc.data()!);
 
-        expect(updatedUser.cohortProperties.installCohort, equals(installCohort));
-        expect(updatedUser.cohortProperties.platformCohort, equals(platformCohort));
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
+        expect(updatedUser.cohortProperties!.installCohort, equals(installCohort));
+        expect(updatedUser.cohortProperties!.platformCohort, equals(platformCohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
       });
 
       test('Multiple purchase cohort updates create purchase history', () async {
@@ -197,8 +209,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Multi Buyer',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -213,6 +226,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 2),
           ),
+          createdAt: DateTime(2026, 9, 2),
+          lastBattleAt: DateTime(2026, 9, 2),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -225,8 +240,8 @@ void main() {
 
         var doc = await fakeDb.collection('users').doc(userId).get();
         var updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D1Payer'));
-        final firstPurchaseTime = updatedUser.cohortProperties.lastPurchaseAt;
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D1Payer'));
+        final firstPurchaseTime = updatedUser.cohortProperties!.lastPurchaseAt;
 
         // Wait a moment
         await Future.delayed(const Duration(milliseconds: 100));
@@ -239,8 +254,8 @@ void main() {
 
         doc = await fakeDb.collection('users').doc(userId).get();
         updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals('D7Payer'));
-        final secondPurchaseTime = updatedUser.cohortProperties.lastPurchaseAt;
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals('D7Payer'));
+        final secondPurchaseTime = updatedUser.cohortProperties!.lastPurchaseAt;
 
         // Verify timestamps are different (second is later)
         expect(secondPurchaseTime!.isAfter(firstPurchaseTime!), isTrue);
@@ -255,8 +270,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'D1 Tester',
-          eloRating: 1000,
-          rank: 'Bronze',
+          rank: 0,
+          level: 1,
+          eloRating: 1000.0,
           winRate: 0.0,
           totalBattles: 0,
           ownedSkinIds: const [],
@@ -271,6 +287,8 @@ void main() {
             purchaseCohort: 'F2P',
             assignedAt: DateTime(2026, 9, 4),
           ),
+          createdAt: DateTime(2026, 9, 4),
+          lastBattleAt: DateTime(2026, 9, 4),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -282,7 +300,7 @@ void main() {
 
         final doc = await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals(cohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals(cohort));
       });
 
       test('Whale cohort represents high-value repeat customer', () async {
@@ -292,8 +310,9 @@ void main() {
         final user = User(
           uid: userId,
           name: 'Whale Buyer',
-          eloRating: 2000,
-          rank: 'Legend',
+          rank: 5,
+          level: 20,
+          eloRating: 2000.0,
           winRate: 0.75,
           totalBattles: 500,
           ownedSkinIds: const ['skin_east_flame', 'skin_west_frost', 'skin_gold_dragon'],
@@ -308,6 +327,8 @@ void main() {
             purchaseCohort: 'D30Payer',
             assignedAt: DateTime(2026, 6, 1),
           ),
+          createdAt: DateTime(2026, 6, 1),
+          lastBattleAt: DateTime(2026, 6, 1),
         );
 
         await fakeDb.collection('users').doc(userId).set(user.toJson());
@@ -319,7 +340,7 @@ void main() {
 
         final doc = await fakeDb.collection('users').doc(userId).get();
         final updatedUser = User.fromJson(doc.data()!);
-        expect(updatedUser.cohortProperties.purchaseCohort, equals(cohort));
+        expect(updatedUser.cohortProperties!.purchaseCohort, equals(cohort));
       });
     });
   });
