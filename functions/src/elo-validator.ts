@@ -40,9 +40,55 @@ interface User {
   updateAt: admin.firestore.FieldValue;
 }
 
-const K_FACTOR = 32; // Standard ELO K-factor, can be adjusted per tier
+const DEFAULT_K_FACTOR = 32; // Standard K-factor for intermediate players
 const MIN_ELO = 400;
 const MAX_ELO = 3000;
+
+/**
+ * ELO tier thresholds for K-factor adjustment
+ * - Bronze (400-1400): K=64 (new players, fast skill assessment)
+ * - Silver (1400-1800): K=32 (standard, balanced)
+ * - Gold (1800-2200): K=24 (advanced, slower changes)
+ * - Platinum (2200+): K=16 (elite, very stable)
+ */
+interface EloTier {
+  name: string;
+  minRating: number;
+  maxRating: number;
+  kFactor: number;
+}
+
+const ELO_TIERS: EloTier[] = [
+  { name: 'Bronze', minRating: MIN_ELO, maxRating: 1400, kFactor: 64 },
+  { name: 'Silver', minRating: 1400, maxRating: 1800, kFactor: 32 },
+  { name: 'Gold', minRating: 1800, maxRating: 2200, kFactor: 24 },
+  { name: 'Platinum', minRating: 2200, maxRating: MAX_ELO, kFactor: 16 },
+];
+
+/**
+ * Determine K-factor based on player's current ELO rating
+ * Higher tiers have lower K-factors for rating stability
+ */
+function getKFactorForRating(rating: number): number {
+  for (const tier of ELO_TIERS) {
+    if (rating >= tier.minRating && rating < tier.maxRating) {
+      return tier.kFactor;
+    }
+  }
+  return DEFAULT_K_FACTOR; // Fallback
+}
+
+/**
+ * Get ELO tier name from rating
+ */
+function getTierName(rating: number): string {
+  for (const tier of ELO_TIERS) {
+    if (rating >= tier.minRating && rating < tier.maxRating) {
+      return tier.name;
+    }
+  }
+  return 'Unknown';
+}
 
 /**
  * Calculate expected win probability for player A against player B
@@ -54,9 +100,10 @@ function calculateExpectation(playerRating: number, opponentRating: number): num
 }
 
 /**
- * Calculate new ELO rating after a match
- * New Rating = Old Rating + K * (Result - Expected)
+ * Calculate new ELO rating after a match with tier-based K-factor
+ * New Rating = Old Rating + K(tier) * (Result - Expected)
  * Result: 1 for win, 0.5 for draw, 0 for loss
+ * K-factor varies by tier to ensure fair progression and stability
  */
 function calculateNewRating(
   currentRating: number,
@@ -65,7 +112,8 @@ function calculateNewRating(
 ): number {
   const expected = calculateExpectation(currentRating, opponentRating);
   const actualResult = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
-  const delta = K_FACTOR * (actualResult - expected);
+  const kFactor = getKFactorForRating(currentRating);
+  const delta = kFactor * (actualResult - expected);
   const newRating = currentRating + delta;
 
   // Clamp to valid range
@@ -184,11 +232,16 @@ export const validateBattleResult = functions.firestore
       const eloChange = userNewRating - user.eloRating;
       const opponentEloChange = opponentNewRating - opponent.eloRating;
 
+      const userTier = getTierName(user.eloRating);
+      const opponentTier = getTierName(opponent.eloRating);
+      const userKFactor = getKFactorForRating(user.eloRating);
+      const opponentKFactor = getKFactorForRating(opponent.eloRating);
+
       console.log(
-        `[ELO Validator] ELO Update: User ${battleResult.userId} ${user.eloRating} → ${userNewRating} (${eloChange > 0 ? '+' : ''}${eloChange.toFixed(1)})`
+        `[ELO Validator] ELO Update: User ${battleResult.userId} (${userTier}, K=${userKFactor}) ${user.eloRating} → ${userNewRating} (${eloChange > 0 ? '+' : ''}${eloChange.toFixed(1)})`
       );
       console.log(
-        `[ELO Validator] ELO Update: Opponent ${battleResult.opponentUserId} ${opponent.eloRating} → ${opponentNewRating} (${opponentEloChange > 0 ? '+' : ''}${opponentEloChange.toFixed(1)})`
+        `[ELO Validator] ELO Update: Opponent ${battleResult.opponentUserId} (${opponentTier}, K=${opponentKFactor}) ${opponent.eloRating} → ${opponentNewRating} (${opponentEloChange > 0 ? '+' : ''}${opponentEloChange.toFixed(1)})`
       );
 
       // Step 4: Perform atomic batch write to update both users and mark battle as processed
@@ -216,7 +269,7 @@ export const validateBattleResult = functions.firestore
         eloProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
-      // Log successful validation
+      // Log successful validation with tier information
       batch.set(db.collection('elo_validation_log').doc(), {
         resultId,
         battleId: battleResult.battleId,
@@ -225,9 +278,13 @@ export const validateBattleResult = functions.firestore
         userOldRating: user.eloRating,
         userNewRating: Math.round(userNewRating),
         userEloChange: eloChange,
+        userTier: userTier,
+        userKFactor: userKFactor,
         opponentOldRating: opponent.eloRating,
         opponentNewRating: Math.round(opponentNewRating),
         opponentEloChange: opponentEloChange,
+        opponentTier: opponentTier,
+        opponentKFactor: opponentKFactor,
         clientSubmittedResult: battleResult.result,
         serverValidatedResult: userResult,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),
