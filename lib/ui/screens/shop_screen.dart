@@ -29,6 +29,8 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     setState(() => _isPurchasing = true);
 
     final purchasesService = ref.read(purchasesServiceProvider);
+    final analyticsService = ref.read(analyticsServiceProvider);
+
     final offerings = await purchasesService.getOfferings();
     final package = offerings?.current?.availablePackages
         .where((p) => p.storeProduct.identifier == AppConfig.skinGachaProductId)
@@ -43,6 +45,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
       return;
     }
 
+    // Log purchase start
+    await analyticsService.logPurchaseStart(
+      userId,
+      AppConfig.skinGachaProductId,
+    );
+
     final outcome = await purchasesService.purchasePackage(package);
 
     if (!mounted) return;
@@ -54,15 +62,29 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
       final userViewModel = ref.read(userViewModelProvider.notifier);
       await userViewModel.updateOwnedSkins(updatedSkins);
-      await ref
-          .read(analyticsServiceProvider)
-          .logSkinPurchased(userId, skinId, AppConfig.skinPrice);
+      await analyticsService.logSkinPurchased(userId, skinId, AppConfig.skinPrice);
+      // Log detailed purchase completion
+      await analyticsService.logPurchaseComplete(
+        userId,
+        'skin_gacha',
+        AppConfig.skinPrice,
+      );
 
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('「$skinName」を獲得しました！')));
+    } else if (outcome.isCancelled) {
+      await analyticsService.logPurchaseCancelled(
+        userId,
+        AppConfig.skinGachaProductId,
+      );
     } else if (outcome.isFailure) {
+      await analyticsService.logPurchaseFailed(
+        userId,
+        AppConfig.skinGachaProductId,
+        outcome.errorMessage ?? '不明なエラー',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
       );

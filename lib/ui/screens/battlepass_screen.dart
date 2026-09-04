@@ -24,6 +24,8 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
     setState(() => _isPurchasing = true);
 
     final purchasesService = ref.read(purchasesServiceProvider);
+    final analyticsService = ref.read(analyticsServiceProvider);
+
     final offerings = await purchasesService.getOfferings();
     final package = offerings?.current?.availablePackages
         .where(
@@ -39,6 +41,12 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
       ).showSnackBar(const SnackBar(content: Text('現在準備中です。今しばらくお待ちください。')));
       return;
     }
+
+    // Log purchase start
+    await analyticsService.logPurchaseStart(
+      userId,
+      AppConfig.battlePassProductId,
+    );
 
     final outcome = await purchasesService.purchasePackage(package);
 
@@ -58,16 +66,33 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
         endDate: now.add(const Duration(days: 90)),
       );
       await ref.read(firestoreServiceProvider).saveBattlePass(battlePass);
-      await ref
-          .read(analyticsServiceProvider)
-          .logBattlePassPurchased(userId, AppConfig.battlePassPrice);
+      await analyticsService.logBattlePassPurchased(
+        userId,
+        AppConfig.battlePassPrice,
+      );
+      // Log detailed purchase completion
+      await analyticsService.logPurchaseComplete(
+        userId,
+        'battlepass',
+        AppConfig.battlePassPrice,
+      );
       ref.invalidate(battlePassProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(const SnackBar(content: Text('プレミアムパスを購入しました！')));
+    } else if (outcome.isCancelled) {
+      await analyticsService.logPurchaseCancelled(
+        userId,
+        AppConfig.battlePassProductId,
+      );
     } else if (outcome.isFailure) {
+      await analyticsService.logPurchaseFailed(
+        userId,
+        AppConfig.battlePassProductId,
+        outcome.errorMessage ?? '不明なエラー',
+      );
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text(outcome.errorMessage ?? '購入に失敗しました')),
       );

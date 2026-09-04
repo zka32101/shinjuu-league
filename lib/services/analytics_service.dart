@@ -180,6 +180,20 @@ class AnalyticsService {
     );
   }
 
+  /// 購入開始（ユーザーが購入ボタンをタップ）
+  Future<void> logPurchaseStart(
+    String userId,
+    String productId, // 'battlepass_season' or 'skin_gacha_single'
+  ) async {
+    await _analytics.logEvent(
+      name: 'purchase_start',
+      parameters: {
+        'user_id': userId,
+        'product_id': productId,
+      },
+    );
+  }
+
   /// 購入完了（BattlePass または Skin Gacha）
   Future<void> logPurchaseComplete(
     String userId,
@@ -192,6 +206,50 @@ class AnalyticsService {
         'user_id': userId,
         'product_type': productType,
         'price': price,
+      },
+    );
+  }
+
+  /// 購入失敗
+  Future<void> logPurchaseFailed(
+    String userId,
+    String productId,
+    String reason,
+  ) async {
+    await _analytics.logEvent(
+      name: 'purchase_failed',
+      parameters: {
+        'user_id': userId,
+        'product_id': productId,
+        'reason': reason,
+      },
+    );
+  }
+
+  /// 購入キャンセル
+  Future<void> logPurchaseCancelled(
+    String userId,
+    String productId,
+  ) async {
+    await _analytics.logEvent(
+      name: 'purchase_cancelled',
+      parameters: {
+        'user_id': userId,
+        'product_id': productId,
+      },
+    );
+  }
+
+  /// 購入復元（restore purchases）
+  Future<void> logPurchasesRestored(
+    String userId,
+    int count,
+  ) async {
+    await _analytics.logEvent(
+      name: 'purchases_restored',
+      parameters: {
+        'user_id': userId,
+        'restored_count': count,
       },
     );
   }
