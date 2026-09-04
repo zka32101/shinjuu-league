@@ -108,7 +108,10 @@ void main() {
         final upsetWin = EloCalculator.calculateNewRating(1400, 1600, 'win');
         final expectedWin = EloCalculator.calculateNewRating(1600, 1400, 'win');
 
-        expect(upsetWin, greaterThan(expectedWin));
+        // Upset player gains more than expected player
+        final upsetGain = upsetWin - 1400;
+        final expectedGain = expectedWin - 1600;
+        expect(upsetGain, greaterThan(expectedGain));
       });
 
       test('Expected win (higher vs lower) yields smaller gains', () {
@@ -241,8 +244,9 @@ void main() {
         'win',
       );
 
-      // Upset should yield significant gain
-      expect(newPlayerGain, greaterThan(32)); // More than typical win
+      // Upset should yield significant gain (700-rating gap upset)
+      // With K=32, typical win = 16, this extreme upset gains ~31
+      expect(newPlayerGain, greaterThanOrEqualTo(30));
     });
 
     test('Minimum rating player winning vs maximum rating player', () {
@@ -268,7 +272,8 @@ void main() {
       for (final (rating1, rating2) in scenarios) {
         final change =
             EloCalculator.calculateEloChange(rating1, rating2, 'draw');
-        expect(change.abs(), lessThan(10), reason: 'Draw @ $rating1 vs $rating2');
+        // Draw change is bounded by K/2 (16 with K=32)
+        expect(change.abs(), lessThanOrEqualTo(20), reason: 'Draw @ $rating1 vs $rating2');
       }
     });
   });

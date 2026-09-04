@@ -1,8 +1,17 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/config/feature_flags.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
+import 'package:shinjuu_league/services/remote_config_service.dart';
 
 void main() {
+  setUpAll(() async {
+    // Initialize Firebase for tests
+    await Firebase.initializeApp();
+    // Initialize RemoteConfig
+    await RemoteConfigService().init();
+  });
+
   group('MonetizationService', () {
     late MonetizationService monetization;
 
