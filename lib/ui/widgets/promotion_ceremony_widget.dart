@@ -23,8 +23,8 @@ class PromotionCeremonyWidget extends StatefulWidget {
     required this.toRating,
     required this.isPromotion,
     this.onAnimationComplete,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   State<PromotionCeremonyWidget> createState() =>
@@ -126,7 +126,7 @@ class _PromotionCeremonyWidgetState extends State<PromotionCeremonyWidget>
                   borderRadius: BorderRadius.circular(16),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.2),
+                      color: Colors.black.withValues(alpha: 0.2),
                       blurRadius: 16,
                       offset: const Offset(0, 8),
                     ),
@@ -171,9 +171,9 @@ class _PromotionCeremonyWidgetState extends State<PromotionCeremonyWidget>
                         vertical: 12,
                       ),
                       decoration: BoxDecoration(
-                        color: ratingColor.withOpacity(0.1),
+                        color: ratingColor.withValues(alpha: 0.1),
                         borderRadius: BorderRadius.circular(8),
-                        border: Border.all(color: ratingColor.withOpacity(0.3)),
+                        border: Border.all(color: ratingColor.withValues(alpha: 0.3)),
                       ),
                       child: Column(
                         children: [
