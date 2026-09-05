@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import '../data/models/season_model.dart';
 
 /// Service for detecting tier promotions/demotions
 ///
