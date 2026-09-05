@@ -56,6 +56,11 @@ class BattleParticipantState {
   SkillBuild? skillBuild;
   final Map<String, double> skillCooldowns = {}; // skillId -> 残りクールダウン秒数
 
+  // スキルツリー修正倍率（デフォルト: 修正なし）
+  double skillTreeAtkMultiplier = 1.0;
+  double skillTreeDefMultiplier = 1.0;
+  double skillTreeSpdMultiplier = 1.0;
+
   int kills = 0;
   int deaths = 0;
   int assists = 0;
@@ -101,7 +106,8 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseStats.hp, atk: baseAtk.toInt(), spd: baseStats.spd),
     );
-    return baseAtk + itemBonuses.atk;
+    // スキルツリー修正倍率を適用（ベースATK + アイテムボーナス）に対して
+    return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier;
   }
 
   double get effectiveHp {
@@ -110,7 +116,9 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseHp.toInt(), atk: baseStats.atk, spd: baseStats.spd),
     );
-    return baseHp + itemBonuses.hp;
+    // スキルツリー修正倍率を適用（ベースHP + アイテムボーナス）に対して
+    // 防御ツリーのボーナスは有効HPに影響する（体力の多さで防御力を高める）
+    return (baseHp + itemBonuses.hp) * skillTreeDefMultiplier;
   }
 
   double get effectiveSpd {
@@ -119,7 +127,8 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseStats.hp, atk: baseStats.atk, spd: baseSpd.toInt()),
     );
-    return baseSpd + itemBonuses.spd;
+    // スキルツリー修正倍率を適用（ベースSPD + アイテムボーナス）に対して
+    return (baseSpd + itemBonuses.spd) * skillTreeSpdMultiplier;
   }
 
   int get score => kills * 3 + assists - deaths;
@@ -211,6 +220,29 @@ class BattleEngine {
     participant.evolution = evolution;
     // 進化ボーナスでHP上限が変わるため、交戦開始前に満タンへ再計算する
     participant.currentHp = participant.effectiveHp;
+  }
+
+  /// スキルツリー修正倍率を設定（マップ上の戦闘開始前に呼び出す）
+  /// 攻撃/防御/速度ツリーの現在の割り当てから乗算倍率を算出
+  void setSkillTreeModifiers(
+    String userId, {
+    required double atkMultiplier,
+    required double defMultiplier,
+    required double spdMultiplier,
+  }) {
+    final participant = participants
+        .where((p) => p.userId == userId)
+        .firstOrNull;
+    if (participant == null) return;
+
+    participant.skillTreeAtkMultiplier = atkMultiplier;
+    participant.skillTreeDefMultiplier = defMultiplier;
+    participant.skillTreeSpdMultiplier = spdMultiplier;
+
+    // HP上限が変わるため、現在HPを再計算する
+    if (participant.currentHp > participant.effectiveHp) {
+      participant.currentHp = participant.effectiveHp;
+    }
   }
 
   void start() {
