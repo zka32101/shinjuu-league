@@ -8,6 +8,7 @@ import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
+import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/remote_config_service.dart';
@@ -24,6 +25,9 @@ void main() async {
   // 資産（Lottie・SE・BGM）をプリロード
   // 実ファイルが無い場合でも安全に続行
   await AssetService().init();
+
+  // BGM音楽管理を初期化（フェードイン/アウト、ボリューム制御）
+  await BGMService().init();
 
   // パフォーマンス計測を初期化（デバッグモード時のみ有効）
   await PerformanceService().init();
