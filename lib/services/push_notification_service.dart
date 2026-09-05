@@ -16,13 +16,16 @@ class PushNotificationService {
   factory PushNotificationService() => _instance;
   PushNotificationService._internal();
 
-  late final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  FirebaseMessaging? _messaging;
   late final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
 
   /// 初期化
   Future<void> init() async {
     try {
+      // Firebase Messagingを初期化
+      _messaging = FirebaseMessaging.instance;
+
       // Android 13+ の POST_NOTIFICATIONS 許可をリクエスト
       await _requestAndroid13NotificationPermission();
 
@@ -258,7 +261,14 @@ class PushNotificationService {
   /// トピックをサブスクライブ
   Future<void> subscribeToTopic(String topic) async {
     try {
-      await _messaging.subscribeToTopic(topic);
+      // Firebase未初期化の場合（テスト環境など）は安全にスキップ
+      if (_messaging == null) {
+        if (kDebugMode) {
+          debugPrint('PushNotificationService not initialized, skipping topic subscription: $topic');
+        }
+        return;
+      }
+      await _messaging!.subscribeToTopic(topic);
       if (kDebugMode) {
         debugPrint('Subscribed to topic: $topic');
       }
@@ -272,7 +282,14 @@ class PushNotificationService {
   /// トピックをアンサブスクライブ
   Future<void> unsubscribeFromTopic(String topic) async {
     try {
-      await _messaging.unsubscribeFromTopic(topic);
+      // Firebase未初期化の場合（テスト環境など）は安全にスキップ
+      if (_messaging == null) {
+        if (kDebugMode) {
+          debugPrint('PushNotificationService not initialized, skipping topic unsubscription: $topic');
+        }
+        return;
+      }
+      await _messaging!.unsubscribeFromTopic(topic);
       if (kDebugMode) {
         debugPrint('Unsubscribed from topic: $topic');
       }
@@ -286,8 +303,15 @@ class PushNotificationService {
   /// デバッグ用: 通知許可状態をダンプ
   Future<Map<String, dynamic>> debugDumpNotificationSettings() async {
     try {
-      final settings = await _messaging.getNotificationSettings();
-      final token = await _messaging.getToken();
+      // Firebase未初期化の場合（テスト環境など）はエラーを返す
+      if (_messaging == null) {
+        return {
+          'error': 'PushNotificationService not initialized',
+        };
+      }
+
+      final settings = await _messaging!.getNotificationSettings();
+      final token = await _messaging!.getToken();
 
       return {
         'authorization_status':
