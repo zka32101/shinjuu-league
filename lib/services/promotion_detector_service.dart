@@ -71,7 +71,7 @@ class PromotionEvent {
     if (isPromotion) {
       return 'Congratulations on reaching $toTier!';
     } else {
-      return 'You've been demoted to $toTier. Keep improving!';
+      return "You've been demoted to $toTier. Keep improving!";
     }
   }
 
