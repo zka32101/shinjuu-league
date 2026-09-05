@@ -1,6 +1,4 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../data/models/season_model.dart';
-import '../data/models/user_model.dart';
 
 /// Service for managing user ranking progression within a season
 ///

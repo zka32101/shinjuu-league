@@ -1,5 +1,3 @@
-import 'package:flutter/material.dart';
-
 /// Service for detecting tier promotions/demotions
 ///
 /// Compares before/after tier states to determine if a transition occurred
