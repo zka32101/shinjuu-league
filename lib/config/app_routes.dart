@@ -15,9 +15,6 @@ import 'package:shinjuu_league/ui/screens/result_screen.dart';
 import 'package:shinjuu_league/ui/screens/shop_screen.dart';
 import 'package:shinjuu_league/ui/screens/skill_build_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
-import 'package:shinjuu_league/ui/screens/season_progress_screen.dart';
-import 'package:shinjuu_league/ui/screens/season_rewards_screen.dart';
-import 'package:shinjuu_league/ui/widgets/ranking_history_widget.dart';
 
 abstract class AppRoutes {
   static const splash = '/';
@@ -33,10 +30,6 @@ abstract class AppRoutes {
   static const shop = '/shop';
   static const battlePass = '/battlepass';
   static const mechaSelect = '/mecha-select';
-  // Phase 7 Sprint 1: Season & Ranking System
-  static const seasonProgress = '/season-progress';
-  static const seasonalRewards = '/seasonal-rewards';
-  static const rankingHistory = '/ranking-history';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -143,28 +136,6 @@ final appRouter = GoRouter(
       path: AppRoutes.mechaSelect,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const MechaSelectScreen()),
-    ),
-    // Phase 7 Sprint 1: Season & Ranking System Routes
-    GoRoute(
-      path: AppRoutes.seasonProgress,
-      pageBuilder: (context, state) =>
-          _buildPage(context, state, const SeasonProgressScreen()),
-    ),
-    GoRoute(
-      path: AppRoutes.seasonalRewards,
-      pageBuilder: (context, state) =>
-          _buildPage(context, state, const SeasonRewardsScreen()),
-    ),
-    GoRoute(
-      path: AppRoutes.rankingHistory,
-      pageBuilder: (context, state) {
-        final transitions = state.extra as List<TierTransitionEntry>? ?? [];
-        return _buildPage(
-          context,
-          state,
-          RankingHistoryScreen(transitions: transitions),
-        );
-      },
     ),
   ],
 );
