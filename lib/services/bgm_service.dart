@@ -126,8 +126,8 @@ class BGMService {
     const stepDuration = Duration(milliseconds: 25);
 
     for (int i = 0; i <= steps; i++) {
-      final progress = i / steps;
-      // In production, calculate and set: fadeVolume = _volume * progress
+      // In production, calculate: progress = i / steps
+      // Then: fadeVolume = _volume * progress
       // Then: await _audioPlayer.setVolume(fadeVolume);
       await Future.delayed(stepDuration);
     }
@@ -141,8 +141,8 @@ class BGMService {
     const stepDuration = Duration(milliseconds: 25);
 
     for (int i = steps; i >= 0; i--) {
-      final progress = i / steps;
-      // In production, calculate and set: fadeVolume = _volume * progress
+      // In production, calculate: progress = i / steps
+      // Then: fadeVolume = _volume * progress
       // Then: await _audioPlayer.setVolume(fadeVolume);
       await Future.delayed(stepDuration);
     }

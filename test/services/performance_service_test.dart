@@ -23,8 +23,6 @@ void main() {
       });
 
       test('recordFrame updates frame rate', () {
-        final initialFps = service.getFrameRate();
-
         // Record multiple frames
         for (int i = 0; i < 60; i++) {
           service.recordFrame();
