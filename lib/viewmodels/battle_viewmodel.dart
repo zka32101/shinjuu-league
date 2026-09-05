@@ -11,6 +11,7 @@ import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/skill_tree_service.dart';
 
 class BattleState {
   const BattleState({
@@ -103,12 +104,15 @@ class BattleViewModel extends StateNotifier<BattleState> {
   BattleViewModel({
     FirestoreService? firestoreService,
     AnalyticsService? analyticsService,
+    SkillTreeService? skillTreeService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _analyticsService = analyticsService ?? AnalyticsService(),
+       _skillTreeService = skillTreeService ?? SkillTreeService(),
        super(BattleState.initial());
 
   final FirestoreService _firestoreService;
   final AnalyticsService _analyticsService;
+  final SkillTreeService _skillTreeService;
 
   StreamSubscription<CombatEvent>? _combatSub;
   StreamSubscription<CombatEvent>? _hitSub;
@@ -169,6 +173,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
       participants: participants,
     );
 
+    // スキルツリーの修正倍率をロードして適用
+    await _applySkillTreeModifiers(engine, selfUserId);
+
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
     _hitSub = engine.hitEvents.listen(_onHitEvent);
     _damageSub = engine.damageEvents.listen(_onDamageEvent);
@@ -204,6 +211,30 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     await _firestoreService.createBattle(battle);
     await _analyticsService.logBattleStart(selfUserId, match.mode.name);
+  }
+
+  /// スキルツリーの修正倍率をロードしてエンジンに適用する
+  /// 交戦開始前に呼び出されることで、全ダメージ計算に修正倍率が確実に反映される。
+  /// スキルツリーロード失敗時は修正なし（デフォルト1.0倍）で継続。
+  Future<void> _applySkillTreeModifiers(
+    BattleEngine engine,
+    String userId,
+  ) async {
+    try {
+      final skillTree = await _skillTreeService.getSkillTree(userId);
+      if (skillTree == null) return;
+
+      final modifiers = _skillTreeService.calculateStatModifiers(skillTree);
+      engine.setSkillTreeModifiers(
+        userId,
+        atkMultiplier: modifiers['atk'] ?? 1.0,
+        defMultiplier: modifiers['def'] ?? 1.0,
+        spdMultiplier: modifiers['spd'] ?? 1.0,
+      );
+    } catch (e) {
+      // スキルツリーロード失敗時は修正倍率を適用しない（デフォルト1.0倍で継続）
+      // エラーログの詳細はAnalyticsで送信済みのため、ここでは無言で続行
+    }
   }
 
   /// 試合前進化選択：ロック後は変更不可（リアルタイム選択は廃止済み仕様）
