@@ -79,9 +79,9 @@ void main() {
 
     test('releaseAll returns all in-use items to pool', () {
       resetCalls = 0;
-      final item1 = pool.acquire();
-      final item2 = pool.acquire();
-      final item3 = pool.acquire();
+      pool.acquire();
+      pool.acquire();
+      pool.acquire();
 
       pool.releaseAll();
 

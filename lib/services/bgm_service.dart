@@ -124,12 +124,11 @@ class BGMService {
   Future<void> _fadeIn() async {
     const steps = 20;
     const stepDuration = Duration(milliseconds: 25);
-    const totalDuration = Duration(milliseconds: 500);
 
     for (int i = 0; i <= steps; i++) {
       final progress = i / steps;
-      final fadeVolume = _volume * progress;
-      // In production: await _audioPlayer.setVolume(fadeVolume);
+      // In production, calculate and set: fadeVolume = _volume * progress
+      // Then: await _audioPlayer.setVolume(fadeVolume);
       await Future.delayed(stepDuration);
     }
   }
@@ -143,8 +142,8 @@ class BGMService {
 
     for (int i = steps; i >= 0; i--) {
       final progress = i / steps;
-      final fadeVolume = _volume * progress;
-      // In production: await _audioPlayer.setVolume(fadeVolume);
+      // In production, calculate and set: fadeVolume = _volume * progress
+      // Then: await _audioPlayer.setVolume(fadeVolume);
       await Future.delayed(stepDuration);
     }
   }

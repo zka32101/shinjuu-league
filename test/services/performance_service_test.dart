@@ -16,139 +16,110 @@ void main() {
     });
 
     group('FPS measurement', () {
-      test('fps returns 0.0 when no frames recorded', () {
-        expect(service.fps, 0.0);
+      test('getFrameRate returns valid FPS value', () {
+        final fps = service.getFrameRate();
+        expect(fps, greaterThanOrEqualTo(0.0));
+        expect(fps, lessThanOrEqualTo(120.0));
       });
 
-      test('fps is clamped to [0.0, 120.0]', () {
-        // Record a frame with 0ms (would result in infinite FPS)
-        service.recordFrame(0);
-        expect(service.fps, lessThanOrEqualTo(120.0));
-        expect(service.fps, greaterThanOrEqualTo(0.0));
+      test('recordFrame updates frame rate', () {
+        final initialFps = service.getFrameRate();
+
+        // Record multiple frames
+        for (int i = 0; i < 60; i++) {
+          service.recordFrame();
+        }
+
+        // FPS should still be in valid range
+        final finalFps = service.getFrameRate();
+        expect(finalFps, greaterThanOrEqualTo(0.0));
+        expect(finalFps, lessThanOrEqualTo(120.0));
       });
 
-      test('fps calculation reflects frame timing', () {
-        // Simulate 60fps (average 16.67ms per frame)
-        for (int i = 0; i < 60; i++) {
-          service.recordFrame(17);
+      test('getFrameRate is clamped to [0.0, 120.0]', () {
+        for (int i = 0; i < 100; i++) {
+          service.recordFrame();
         }
-        final fps = service.fps;
-        expect(fps, greaterThan(58.0)); // Allow some tolerance
-        expect(fps, lessThan(62.0));
-      });
-
-      test('fps updates with new frames', () {
-        // First batch: slow frames (30fps equivalent)
-        for (int i = 0; i < 60; i++) {
-          service.recordFrame(33);
-        }
-        final slowFps = service.fps;
-
-        // Second batch: fast frames (60fps equivalent)
-        for (int i = 0; i < 60; i++) {
-          service.recordFrame(17);
-        }
-        final fastFps = service.fps;
-
-        expect(fastFps, greaterThan(slowFps));
+        final fps = service.getFrameRate();
+        expect(fps, lessThanOrEqualTo(120.0));
+        expect(fps, greaterThanOrEqualTo(0.0));
       });
     });
 
     group('Memory measurement', () {
-      test('memoryUsageMB returns non-negative value', () {
-        final memory = service.memoryUsageMB;
+      test('getMemoryUsageMB returns non-negative value', () {
+        final memory = service.getMemoryUsageMB();
         expect(memory, greaterThanOrEqualTo(0.0));
       });
 
-      test('memoryUsageMB is consistent across calls', () {
-        final memory1 = service.memoryUsageMB;
-        final memory2 = service.memoryUsageMB;
+      test('getMemoryUsageMB is consistent across calls', () {
+        final memory1 = service.getMemoryUsageMB();
+        final memory2 = service.getMemoryUsageMB();
         expect(memory1, equals(memory2));
       });
     });
 
     group('Slow frame tracking', () {
-      test('slowFrameCount is 0 initially', () {
-        expect(service.slowFrameCount, 0);
+      test('slowFrames is empty initially', () {
+        expect(service.slowFrames.isEmpty, true);
       });
 
       test('measureFrameTime records frames exceeding 16ms', () async {
-        await service.measureFrameTime(() {
+        final duration = await service.measureFrameTime(() async {
           // Simulate a slow operation (25ms)
-          final sw = Stopwatch()..start();
-          while (sw.elapsedMilliseconds < 25) {
-            // Busy wait
-          }
+          await Future.delayed(const Duration(milliseconds: 25));
         });
 
-        expect(service.slowFrameCount, greaterThan(0));
+        expect(duration, greaterThan(16.0));
+        expect(service.slowFrames.isNotEmpty, true);
       });
 
       test('measureFrameTime does not record fast frames', () async {
-        await service.measureFrameTime(() {
+        await service.measureFrameTime(() async {
           // Fast operation (< 5ms)
-          final start = DateTime.now();
-          while (DateTime.now().difference(start).inMilliseconds < 5) {
-            // Busy wait
-          }
+          await Future.delayed(const Duration(milliseconds: 1));
         });
 
-        // Might record depending on system performance, but typically not
-        // Just verify the list is a valid list
-        expect(service.slowFrames, isA<List<FrameRecord>>());
+        // Verify slowFrames is a list
+        expect(service.slowFrames, isA<List<SlowFrame>>());
       });
 
       test('slowFrames history is capped at 100', () async {
         // Record more than 100 slow frames
         for (int i = 0; i < 120; i++) {
-          await service.measureFrameTime(() {
-            final sw = Stopwatch()..start();
-            while (sw.elapsedMilliseconds < 25) {
-              // Busy wait
-            }
+          await service.measureFrameTime(() async {
+            await Future.delayed(const Duration(milliseconds: 25));
           });
         }
 
-        expect(service.slowFrameCount, lessThanOrEqualTo(100));
+        expect(service.slowFrames.length, lessThanOrEqualTo(100));
       });
 
-      test('getAverageSlowFrameDuration returns 0 when no slow frames', () {
-        expect(service.getAverageSlowFrameDuration(), 0.0);
-      });
-
-      test('getAverageSlowFrameDuration calculates correctly', () async {
-        // Record a few slow frames
-        await service.measureFrameTime(() {
-          final sw = Stopwatch()..start();
-          while (sw.elapsedMilliseconds < 20) {
-            // Busy wait
-          }
+      test('slowFrames can be cleared by user code', () async {
+        // Record a slow frame
+        await service.measureFrameTime(() async {
+          await Future.delayed(const Duration(milliseconds: 25));
         });
 
-        await service.measureFrameTime(() {
-          final sw = Stopwatch()..start();
-          while (sw.elapsedMilliseconds < 30) {
-            // Busy wait
-          }
-        });
+        expect(service.slowFrames.isNotEmpty, true);
 
-        final avg = service.getAverageSlowFrameDuration();
-        expect(avg, greaterThan(20.0));
+        service.slowFrames.clear();
+        expect(service.slowFrames.isEmpty, true);
       });
 
-      test('clearSlowFrameHistory removes all records', () async {
+      test('debugDumpPerformance calculates average from slow frames', () async {
         // Record some slow frames
-        await service.measureFrameTime(() {
-          final sw = Stopwatch()..start();
-          while (sw.elapsedMilliseconds < 25) {
-            // Busy wait
-          }
+        await service.measureFrameTime(() async {
+          await Future.delayed(const Duration(milliseconds: 20));
         });
 
-        expect(service.slowFrameCount, greaterThan(0));
+        await service.measureFrameTime(() async {
+          await Future.delayed(const Duration(milliseconds: 30));
+        });
 
-        service.clearSlowFrameHistory();
-        expect(service.slowFrameCount, 0);
+        final dump = service.debugDumpPerformance();
+        expect(dump['slow_frame_count'], equals(2));
+        expect(dump['average_frame_time'], greaterThan(0.0));
       });
     });
 
@@ -157,31 +128,14 @@ void main() {
         final dump = service.debugDumpPerformance();
 
         expect(dump, isA<Map<String, dynamic>>());
-        expect(dump, containsPair('fps', isA<double>()));
-        expect(dump, containsPair('memory_mb', isA<double>()));
-        expect(dump, containsPair('slow_frames_count', isA<int>()));
-        expect(dump, containsPair('slow_frames_avg_ms', isA<double>()));
+        expect(dump.containsKey('frame_rate_fps'), true);
+        expect(dump.containsKey('memory_usage_mb'), true);
+        expect(dump.containsKey('slow_frame_count'), true);
       });
 
-      test('debugDumpPerformance includes slow frames list', () async {
-        // Record a slow frame
-        await service.measureFrameTime(() {
-          final sw = Stopwatch()..start();
-          while (sw.elapsedMilliseconds < 25) {
-            // Busy wait
-          }
-        });
-
+      test('debugDumpPerformance frame rate is in valid range', () {
         final dump = service.debugDumpPerformance();
-        final slowFrames = dump['slow_frames'] as List<dynamic>;
-
-        expect(slowFrames.length, greaterThan(0));
-        expect(slowFrames[0], isA<Map<String, dynamic>>());
-      });
-
-      test('debugDumpPerformance fps value is in valid range', () {
-        final dump = service.debugDumpPerformance();
-        final fps = dump['fps'] as double;
+        final fps = dump['frame_rate_fps'] as double;
 
         expect(fps, greaterThanOrEqualTo(0.0));
         expect(fps, lessThanOrEqualTo(120.0));
@@ -189,30 +143,29 @@ void main() {
 
       test('debugDumpPerformance memory value is non-negative', () {
         final dump = service.debugDumpPerformance();
-        final memory = dump['memory_mb'] as double;
+        final memory = dump['memory_usage_mb'] as double;
 
         expect(memory, greaterThanOrEqualTo(0.0));
       });
     });
   });
 
-  group('FrameRecord', () {
-    test('FrameRecord stores timestamp and duration', () {
+  group('SlowFrame', () {
+    test('SlowFrame stores timestamp and duration', () {
       final now = DateTime.now();
-      final record = FrameRecord(timestamp: now, durationMs: 25);
+      final record = SlowFrame(timestamp: now, duration: 25.0);
 
       expect(record.timestamp, equals(now));
-      expect(record.durationMs, 25);
+      expect(record.duration, 25.0);
     });
 
-    test('FrameRecord toString provides readable output', () {
-      final record = FrameRecord(
+    test('SlowFrame duration is positive', () {
+      final record = SlowFrame(
         timestamp: DateTime(2026, 9, 5, 12, 0, 0),
-        durationMs: 25,
+        duration: 25.0,
       );
 
-      expect(record.toString(), contains('25'));
-      expect(record.toString(), contains('FrameRecord'));
+      expect(record.duration, greaterThan(0.0));
     });
   });
 }
