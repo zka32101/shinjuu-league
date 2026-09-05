@@ -8,6 +8,7 @@ import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
@@ -123,3 +124,8 @@ final seasonServiceProvider = Provider<SeasonService>((ref) {
 final rankingServiceProvider = Provider<RankingService>((ref) {
   return RankingService();
 });
+
+// Phase 8: Item System
+final itemServiceProvider = Provider<ItemService>((ref) {
+  return ItemService();
+}););
