@@ -6,7 +6,6 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
-import 'package:shinjuu_league/data/models/season_model.dart';
 
 class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   UserViewModel({
@@ -79,6 +78,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
       final activeSeason = await _seasonService.getActiveSeason();
       if (activeSeason == null) return; // シーズンが無い場合はスキップ
 
+      // Record seasonal progress (non-blocking)
       await _rankingService.updateSeasonalProgress(
         userId: userId,
         seasonId: activeSeason.seasonId,
@@ -87,7 +87,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
         tierThresholds: activeSeason.tierThresholds,
       );
     } catch (e) {
-      // 季節進行記録は非ブロッキング（ログのみ）
+      // Season progress recording is non-blocking (logging only)
       print('[UserViewModel] Error updating seasonal progress: $e');
     }
   }
