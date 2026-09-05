@@ -183,5 +183,5 @@ class RemoteConfigService {
   /// すべての設定値を取得
   /// 初期化前は空の Map を返す
   Map<String, RemoteConfigValue> getAll() =>
-      _initialized ? _remoteConfig.getAll() : {};
+      _initialized ? _remoteConfig.getAll() : <String, RemoteConfigValue>{};
 }
