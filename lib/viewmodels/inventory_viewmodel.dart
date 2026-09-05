@@ -64,7 +64,7 @@ class InventoryViewModel extends StateNotifier<AsyncValue<List<Item>>> {
   }
 
   /// インベントリを初期化
-  void _init() async {
+  Future<void> _init() async {
     final userId = _currentUserId;
     if (userId == null) {
       state = const AsyncValue.data([]);
@@ -199,38 +199,40 @@ final inventoryViewModelProvider =
 
 /// Equipped items provider
 final equippedItemsProvider =
-    Provider.autoDispose<AsyncValue<List<Item>>>((ref) {
+    Provider.autoDispose<List<Item>>((ref) {
   final inventory = ref.watch(inventoryViewModelProvider);
-  return inventory.whenData((items) => items.where((item) => item.isEquipped).toList());
+  final items = inventory.value ?? [];
+  return items.where((item) => item.isEquipped).toList();
 });
 
 /// Unequipped items provider
 final unequippedItemsProvider =
-    Provider.autoDispose<AsyncValue<List<Item>>>((ref) {
+    Provider.autoDispose<List<Item>>((ref) {
   final inventory = ref.watch(inventoryViewModelProvider);
-  return inventory.whenData((items) => items.where((item) => !item.isEquipped).toList());
+  final items = inventory.value ?? [];
+  return items.where((item) => !item.isEquipped).toList();
 });
 
 /// Total equipped bonus provider
-final totalEquippedBonusProvider = Provider.autoDispose<ItemBonus>((ref) {
+final totalEquippedBonusProvider = Provider.autoDispose<AsyncValue<ItemBonus>>((ref) {
   final inventory = ref.watch(inventoryViewModelProvider);
-  final items = inventory.value ?? [];
+  return inventory.whenData((items) {
+    double totalAttack = 0;
+    double totalDefense = 0;
+    double totalHp = 0;
 
-  double totalAttack = 0;
-  double totalDefense = 0;
-  double totalHp = 0;
-
-  for (final item in items) {
-    if (item.isEquipped && item.bonus != null) {
-      totalAttack += item.bonus!.attackBonus ?? 0;
-      totalDefense += item.bonus!.defenseBonus ?? 0;
-      totalHp += item.bonus!.hpBonus ?? 0;
+    for (final item in items) {
+      if (item.isEquipped && item.bonus != null) {
+        totalAttack += item.bonus!.attackBonus ?? 0;
+        totalDefense += item.bonus!.defenseBonus ?? 0;
+        totalHp += item.bonus!.hpBonus ?? 0;
+      }
     }
-  }
 
-  return ItemBonus(
-    attackBonus: totalAttack > 0 ? totalAttack : null,
-    defenseBonus: totalDefense > 0 ? totalDefense : null,
-    hpBonus: totalHp > 0 ? totalHp : null,
-  );
+    return ItemBonus(
+      attackBonus: totalAttack > 0 ? totalAttack : null,
+      defenseBonus: totalDefense > 0 ? totalDefense : null,
+      hpBonus: totalHp > 0 ? totalHp : null,
+    );
+  });
 });
