@@ -14,7 +14,6 @@ import 'package:shinjuu_league/services/purchases_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
-import 'package:shinjuu_league/services/rewards_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
@@ -118,8 +117,4 @@ final seasonServiceProvider = Provider<SeasonService>((ref) {
 
 final rankingServiceProvider = Provider<RankingService>((ref) {
   return RankingService();
-});
-
-final rewardsServiceProvider = Provider<RewardsService>((ref) {
-  return RewardsService();
 });
