@@ -702,7 +702,7 @@ assets/animations/
     - `updateTierTransition(userId, seasonId, fromTier, toTier)` — Tier遷移記録
 
 - **Step 2: ViewModels**（59b0f50）
-  - [lib/viewmodels/season_viewmodel.dart](lib/viewmodels/season_viewmodel.dart) (220行)
+  - [lib/viewmodels/season_viewmodel.dart](lib/viewmodels/season_viewmodel.dart) (253行)
     - `CurrentSeasonViewModel extends StateNotifier<AsyncValue<SeasonalProgress?>>`
     - Riverpod autoDispose provider で複数ユーザーセッション対応
     - `_buildSeasonalProgress()` で progress% 計算（currentRating / tierRatingRange 範囲クランプ）
@@ -715,13 +715,13 @@ assets/animations/
     - `getPromotionMessage()`/`getDemotionWarning()` で motivational テキスト生成
 
 - **Step 3: UI Components**（02f556a）
-  - [lib/ui/screens/season_progress_screen.dart](lib/ui/screens/season_progress_screen.dart) (280行)
+  - [lib/ui/screens/season_progress_screen.dart](lib/ui/screens/season_progress_screen.dart) (645行)
     - 季節タイムラインおよびカウントダウン表示
     - 現在のTierカード（demotionリスク警告付き）
     - 0-100% の AnimatedBuilder プログレスバー（色分け: 赤<25% 黄<50% 緑<75% 青 100%）
     - 全Tierの視覚的ラダー表示（自分をハイライト）
     - 獲得済み報酬グリッド + 1-tap Claim ボタン
-  - [lib/ui/widgets/promotion_ceremony_widget.dart](lib/ui/widgets/promotion_ceremony_widget.dart) (250行)
+  - [lib/ui/widgets/promotion_ceremony_widget.dart](lib/ui/widgets/promotion_ceremony_widget.dart) (260行)
     - `showPromotionCeremony()` ダイアログファンクション
     - Scale/Opacity/SlideAnimation を 2秒かけて合成（AnimationController）
     - Tier emoji 表示（from 🥉 → to 🥇 等）
@@ -769,17 +769,17 @@ assets/animations/
   - [test/viewmodels/ranking_progress_viewmodel_test.dart](test/viewmodels/ranking_progress_viewmodel_test.dart) (270行, 10テスト)
     - Tier ladder 構築・位置計算・ゲーム数推定
     - 異なる win rate/K-factor での挙動検証
-  - [test/ui/widgets/promotion_ceremony_widget_test.dart](test/ui/widgets/promotion_ceremony_widget_test.dart) (250行, 8テスト)
+  - [test/ui/widgets/promotion_ceremony_widget_test.dart](test/ui/widgets/promotion_ceremony_widget_test.dart) (267行, 7テスト)
     - Dialog rendering・tier emoji・message・animation completion
     - Rapid rebuild への耐性検証
-  - [test/ui/screens/result_screen_with_promotion_test.dart](test/ui/screens/result_screen_with_promotion_test.dart) (200行, 10テスト)
+  - [test/ui/screens/result_screen_with_promotion_test.dart](test/ui/screens/result_screen_with_promotion_test.dart) (252行, 9テスト)
     - Widget factory・state management・data integrity
   - [test/services/promotion_detector_service_test.dart](test/services/promotion_detector_service_test.dart) (300行, 15テスト)
     - Promotion/Demotion検出・default thresholds・edge cases
 
 **テスト統計**:
-- 合計: **51+ テスト** (Model 0 + ViewModel 18 + Widget 18 + Service 15)
-- Test-to-Code Ratio: **1.7:1**（業界標準 1:1 を超過）
+- 合計: **49 テスト** (Model 0 + ViewModel 18 + Widget 16 + Service 15)
+- Test-to-Code Ratio: **1.65:1**（業界標準 1:1 を超過）
 - Firebase initialization: Mock service で CI 安定性を優先
 
 **既知のTODO（Sprint 2以降で解消）**:
@@ -790,9 +790,13 @@ assets/animations/
 - Tier decay system（非アクティブユーザーの rating 下落ペナルティ）
 
 **Integration Points**:
-- BattleEngine → UserViewModel.applyBattleResult() → CurrentSeasonViewModel tier detection → ResultScreenWithPromotion
-- SeasonService → CurrentSeasonViewModel → SeasonProgressScreen
-- RewardsService → CurrentSeasonViewModel → SeasonRewardsScreen
+- **🔴 CRITICAL（実装完了）**: BattleEngine → UserViewModel.applyBattleResult() → RankingService.updateSeasonalProgress() → Firestore `/users/{userId}/season_data/{seasonId}`
+  - 試合終了後の ELO 更新と同時に、アクティブシーズンの進捗を記録
+  - RankingService が季節ランク統計を管理し、Tier 昇降判定をトリガー
+  - 非ブロッキング例外処理（季節進行記録失敗時もゲーム流れを止めない）
+- CurrentSeasonViewModel（取得） → SeasonProgressScreen（表示）
+- CurrentSeasonViewModel（取得） → SeasonRewardsScreen（表示）
+- PromotionDetectorService（検知） → ResultScreenWithPromotion（祝賀/警告演出）
 
 ## 参考リンク
 

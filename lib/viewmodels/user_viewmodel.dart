@@ -4,18 +4,33 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
+import 'package:shinjuu_league/services/season_service.dart';
+import 'package:shinjuu_league/data/models/season_model.dart';
 
 class UserViewModel extends StateNotifier<AsyncValue<User?>> {
-  UserViewModel({FirestoreService? firestoreService, AuthService? authService})
+  UserViewModel({
+    FirestoreService? firestoreService,
+    AuthService? authService,
+    RankingService? rankingService,
+    SeasonService? seasonService,
+  })
     : _firestoreService = firestoreService ?? FirestoreService(),
       _authService = authService ?? AuthService(),
+      _rankingService = rankingService ?? RankingService(),
+      _seasonService = seasonService ?? SeasonService(),
       super(const AsyncValue.loading()) {
     _init();
   }
 
   final FirestoreService _firestoreService;
   final AuthService _authService;
+  final RankingService _rankingService;
+  final SeasonService _seasonService;
   StreamSubscription<User?>? _userSub;
+
+  /// Get current user ID for seasonal tracking
+  String? get _currentUserId => _authService.currentUser?.uid;
 
   void _init() {
     final uid = _authService.currentUser?.uid;
@@ -33,6 +48,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   }
 
   /// 試合終了後にELO・勝率・戦績を反映（サーバー側検証済みの eloChange を前提）
+  /// また、アクティブシーズンがあれば季節進行も同時に更新する
   Future<void> applyBattleResult(Battle battle) async {
     final current = state.value;
     if (current == null) return;
@@ -52,6 +68,28 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     );
 
     await _firestoreService.updateUser(updated);
+
+    // 【CRITICAL INTEGRATION】 季節進行を更新
+    // BattleEngine から提供された eloChange を反映後、
+    // 季節ランク進捗・Tier昇降判定を記録する
+    try {
+      final userId = _currentUserId;
+      if (userId == null) return;
+
+      final activeSeason = await _seasonService.getActiveSeason();
+      if (activeSeason == null) return; // シーズンが無い場合はスキップ
+
+      await _rankingService.updateSeasonalProgress(
+        userId: userId,
+        seasonId: activeSeason.seasonId,
+        newRating: newElo.toInt(),
+        isWin: isWin,
+        tierThresholds: activeSeason.tierThresholds,
+      );
+    } catch (e) {
+      // 季節進行記録は非ブロッキング（ログのみ）
+      print('[UserViewModel] Error updating seasonal progress: $e');
+    }
   }
 
   /// スキンガチャ購入後に所持スキンを反映
