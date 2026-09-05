@@ -1,5 +1,5 @@
 import 'package:shinjuu_league/data/models/skill_model.dart';
-import 'package:shinjuu_league/data/item_catalog.dart';
+import 'package:shinjuu_league/data/models/item_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 
@@ -174,26 +174,43 @@ class SkillSystemService {
   }
 
   /// ステータスボーナスを計算（購入済みアイテムから）
+  /// 新しいItemモデルは percentage-based なので、baseStatsを渡して計算
   static BaseStats calculateItemBonuses({
     required List<String> ownedItemIds,
+    BaseStats? baseStats,
   }) {
-    int totalHp = 0;
-    int totalAtk = 0;
-    int totalSpd = 0;
+    // デフォルトベース（アイテムのみから計算する場合）
+    baseStats ??= BaseStats(hp: 100, atk: 50, spd: 50);
+
+    double totalHpPercent = 0.0;
+    double totalAtkPercent = 0.0;
+    double totalSpdPercent = 0.0;
 
     for (final itemId in ownedItemIds) {
-      final item = getItemDefinition(itemId);
-      if (item != null) {
-        totalHp += item.hpBonus;
-        totalAtk += item.atkBonus;
-        totalSpd += item.spdBonus;
+      final item = ItemCatalog.itemById(itemId);
+      if (item != null && item.bonus != null) {
+        if (item.bonus!.hpBonus != null) {
+          totalHpPercent += item.bonus!.hpBonus!;
+        }
+        if (item.bonus!.attackBonus != null) {
+          totalAtkPercent += item.bonus!.attackBonus!;
+        }
+        if (item.bonus!.defenseBonus != null) {
+          // defenseBonus は def の別スキルだが、一旦 hpBonus と同じ扱いで
+          totalHpPercent += item.bonus!.defenseBonus! / 2;
+        }
       }
     }
 
+    // percentage から absolute 値に変換
+    final hpBonus = (baseStats.hp * (totalHpPercent / 100.0)).toInt();
+    final atkBonus = (baseStats.atk * (totalAtkPercent / 100.0)).toInt();
+    final spdBonus = (baseStats.spd * (totalSpdPercent / 100.0)).toInt();
+
     return BaseStats(
-      hp: totalHp,
-      atk: totalAtk,
-      spd: totalSpd,
+      hp: hpBonus,
+      atk: atkBonus,
+      spd: spdBonus,
     );
   }
 }

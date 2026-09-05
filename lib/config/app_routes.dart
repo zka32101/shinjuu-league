@@ -6,6 +6,7 @@ import 'package:shinjuu_league/ui/screens/battle_screen.dart';
 import 'package:shinjuu_league/ui/screens/battlepass_screen.dart';
 import 'package:shinjuu_league/ui/screens/evolution_select_screen.dart';
 import 'package:shinjuu_league/ui/screens/friends_screen.dart';
+import 'package:shinjuu_league/ui/screens/inventory_screen.dart';
 import 'package:shinjuu_league/ui/screens/lobby_screen.dart';
 import 'package:shinjuu_league/ui/screens/matching_screen.dart';
 import 'package:shinjuu_league/ui/screens/mecha_select_screen.dart';
@@ -30,6 +31,7 @@ abstract class AppRoutes {
   static const shop = '/shop';
   static const battlePass = '/battlepass';
   static const mechaSelect = '/mecha-select';
+  static const inventory = '/inventory';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -136,6 +138,11 @@ final appRouter = GoRouter(
       path: AppRoutes.mechaSelect,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const MechaSelectScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.inventory,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const InventoryScreen()),
     ),
   ],
 );
