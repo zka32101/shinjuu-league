@@ -15,6 +15,7 @@ import 'package:shinjuu_league/ui/screens/rank_screen.dart';
 import 'package:shinjuu_league/ui/screens/result_screen.dart';
 import 'package:shinjuu_league/ui/screens/shop_screen.dart';
 import 'package:shinjuu_league/ui/screens/skill_build_screen.dart';
+import 'package:shinjuu_league/ui/screens/skill_tree_progression_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 
 abstract class AppRoutes {
@@ -32,6 +33,7 @@ abstract class AppRoutes {
   static const battlePass = '/battlepass';
   static const mechaSelect = '/mecha-select';
   static const inventory = '/inventory';
+  static const skillTreeProgression = '/skill-tree-progression';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -143,6 +145,11 @@ final appRouter = GoRouter(
       path: AppRoutes.inventory,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const InventoryScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.skillTreeProgression,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const SkillTreeProgressionScreen()),
     ),
   ],
 );
