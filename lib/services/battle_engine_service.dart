@@ -99,6 +99,7 @@ class BattleParticipantState {
     final baseAtk = baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
+      baseStats: BaseStats(hp: baseStats.hp, atk: baseAtk.toInt(), spd: baseStats.spd),
     );
     return baseAtk + itemBonuses.atk;
   }
@@ -107,6 +108,7 @@ class BattleParticipantState {
     final baseHp = baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
+      baseStats: BaseStats(hp: baseHp.toInt(), atk: baseStats.atk, spd: baseStats.spd),
     );
     return baseHp + itemBonuses.hp;
   }
@@ -115,6 +117,7 @@ class BattleParticipantState {
     final baseSpd = baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
+      baseStats: BaseStats(hp: baseStats.hp, atk: baseStats.atk, spd: baseSpd.toInt()),
     );
     return baseSpd + itemBonuses.spd;
   }
