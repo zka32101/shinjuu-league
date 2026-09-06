@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
+import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
 
 /// State for achievement operations
 class AchievementState {
@@ -42,12 +44,15 @@ class AchievementState {
 /// ViewModel for managing achievements
 class AchievementViewModel extends StateNotifier<AchievementState> {
   final AchievementService _achievementService;
+  final AchievementAnalyticsIntegration? _analyticsIntegration;
   final String _userId;
 
   AchievementViewModel(
     this._achievementService,
-    this._userId,
-  ) : super(AchievementState());
+    this._userId, {
+    AchievementAnalyticsIntegration? analyticsIntegration,
+  })  : _analyticsIntegration = analyticsIntegration,
+        super(AchievementState());
 
   /// Load all achievements for the current player
   Future<void> loadPlayerAchievements() async {
@@ -61,6 +66,9 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
         unlockedAchievements: unlocked,
         isLoading: false,
       );
+
+      // Track completion stats for analytics
+      _analyticsIntegration?.trackCompletionStats(_userId);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -176,6 +184,30 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
       return [];
     }
   }
+
+  /// Track achievement unlock event (for analytics)
+  Future<void> trackAchievementUnlock(
+    Achievement achievement,
+    PlayerAchievement playerAchievement,
+  ) async {
+    await _analyticsIntegration?.trackAchievementUnlock(
+      _userId,
+      achievement,
+      playerAchievement,
+    );
+  }
+
+  /// Track achievement progress event (for analytics)
+  Future<void> trackAchievementProgress(
+    Achievement achievement,
+    PlayerAchievement? playerAchievement,
+  ) async {
+    await _analyticsIntegration?.trackAchievementProgress(
+      _userId,
+      achievement,
+      playerAchievement,
+    );
+  }
 }
 
 /// Riverpod provider for achievement service
@@ -191,7 +223,12 @@ final achievementViewModelProvider = StateNotifierProvider.family.autoDispose<
     AchievementState,
     String>((ref, userId) {
   final achievementService = ref.watch(achievementServiceProvider);
-  return AchievementViewModel(achievementService, userId);
+  final analyticsIntegration = ref.watch(achievementAnalyticsIntegrationProvider);
+  return AchievementViewModel(
+    achievementService,
+    userId,
+    analyticsIntegration: analyticsIntegration,
+  );
 });
 
 /// Provider to get all achievements with progress
