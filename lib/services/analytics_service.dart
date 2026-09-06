@@ -611,4 +611,24 @@ class AnalyticsService {
       // Firebase not initialized
     }
   }
+
+  /// 実績近完了通知送信
+  Future<void> logAchievementNotificationSent(
+    String userId,
+    String achievementId,
+    int progressPercentage,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_notification_sent',
+        parameters: {
+          'user_id': userId,
+          'achievement_id': achievementId,
+          'progress_percentage': progressPercentage,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
 }
