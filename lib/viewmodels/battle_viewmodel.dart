@@ -2,12 +2,15 @@ import 'dart:async';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
+import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
@@ -29,6 +32,7 @@ class BattleState {
     required this.isLoading,
     required this.isFinished,
     required this.error,
+    required this.newlyUnlockedAchievements,
   });
 
   factory BattleState.initial() => const BattleState(
@@ -46,6 +50,7 @@ class BattleState {
     isLoading: false,
     isFinished: false,
     error: null,
+    newlyUnlockedAchievements: const [],
   );
 
   final Battle? battle;
@@ -62,6 +67,7 @@ class BattleState {
   final bool isLoading;
   final bool isFinished;
   final String? error;
+  final List<Achievement> newlyUnlockedAchievements;
 
   BattleState copyWith({
     Battle? battle,
@@ -78,6 +84,7 @@ class BattleState {
     bool? isLoading,
     bool? isFinished,
     String? error,
+    List<Achievement>? newlyUnlockedAchievements,
   }) {
     return BattleState(
       battle: battle ?? this.battle,
@@ -94,6 +101,7 @@ class BattleState {
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
+      newlyUnlockedAchievements: newlyUnlockedAchievements ?? this.newlyUnlockedAchievements,
     );
   }
 }
@@ -105,14 +113,21 @@ class BattleViewModel extends StateNotifier<BattleState> {
     FirestoreService? firestoreService,
     AnalyticsService? analyticsService,
     SkillTreeService? skillTreeService,
+    AchievementService? achievementService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _analyticsService = analyticsService ?? AnalyticsService(),
        _skillTreeService = skillTreeService ?? SkillTreeService(),
+       _achievementService = achievementService ?? AchievementService(),
+       _triggerDetector = AchievementTriggerDetector(
+         achievementService: achievementService ?? AchievementService(),
+       ),
        super(BattleState.initial());
 
   final FirestoreService _firestoreService;
   final AnalyticsService _analyticsService;
   final SkillTreeService _skillTreeService;
+  final AchievementService _achievementService;
+  final AchievementTriggerDetector _triggerDetector;
 
   StreamSubscription<CombatEvent>? _combatSub;
   StreamSubscription<CombatEvent>? _hitSub;
@@ -412,6 +427,75 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     if (battle.mode == BattleMode.ranked) {
       await _analyticsService.logFirstRankedEntry(_selfUserId);
+    }
+
+    // Check for achievement unlocks after battle result is processed
+    await _checkAchievementTriggers(finishedBattle, engine);
+  }
+
+  Future<void> _checkAchievementTriggers(
+    Battle finishedBattle,
+    BattleEngine engine,
+  ) async {
+    try {
+      // Gather battle data for trigger detection
+      final kills = finishedBattle.kills;
+      final deaths = finishedBattle.deaths;
+      final assists = finishedBattle.assists;
+      final damageDealt = finishedBattle.damageDealt;
+      final totalBattles = 1; // This will be updated by UserViewModel
+      final winCount = finishedBattle.result == BattleResult.win ? 1 : 0;
+
+      // Get player's current stats for progress-based achievements
+      final userData = await _firestoreService.getUser(_selfUserId);
+      final statPoints = userData?.statPoints ?? 0;
+      final pathDiversity = userData?.pathDiversity ?? 0;
+      final seasonsParticipated = userData?.seasonsParticipated ?? 0;
+      final consistentSeasons = userData?.consistentSeasons ?? 0;
+      final currentTier = userData?.currentTier ?? 'Bronze';
+
+      // Check all achievement triggers
+      final unlockedAchievements =
+          await _triggerDetector.checkAllTriggersForBattle(
+        _selfUserId,
+        kills: kills,
+        totalKills: kills,
+        won: finishedBattle.result == BattleResult.win,
+        deaths: deaths,
+        assists: assists,
+        damageDealt: damageDealt,
+        totalBattles: totalBattles,
+        winCount: winCount,
+        statPoints: statPoints,
+        pathDiversity: pathDiversity,
+        seasonsParticipated: seasonsParticipated,
+        consistentSeasons: consistentSeasons,
+        currentTier: currentTier,
+      );
+
+      if (unlockedAchievements.isNotEmpty) {
+        // Update state with newly unlocked achievements
+        state = state.copyWith(
+          newlyUnlockedAchievements: unlockedAchievements,
+        );
+
+        // Emit analytics events for each unlocked achievement
+        for (final achievement in unlockedAchievements) {
+          await _analyticsService.logAchievementUnlocked(
+            _selfUserId,
+            achievement.achievementId,
+            achievement.name,
+          );
+        }
+      }
+    } catch (e) {
+      // Log error but don't fail the battle result
+      await _analyticsService.recordError(
+        e,
+        null,
+        reason: 'Achievement trigger detection failed',
+        information: 'userId: $_selfUserId',
+      );
     }
   }
 
