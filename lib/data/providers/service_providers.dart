@@ -3,6 +3,7 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
+import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
@@ -128,4 +129,12 @@ final rankingServiceProvider = Provider<RankingService>((ref) {
 // Phase 8: Item System
 final itemServiceProvider = Provider<ItemService>((ref) {
   return ItemService();
-}););
+});
+
+// Phase 10 Step 6: Achievement Analytics Integration
+final achievementAnalyticsIntegrationProvider = Provider<AchievementAnalyticsIntegration>((ref) {
+  return AchievementAnalyticsIntegration(
+    achievementService: ref.watch(achievementServiceProvider),
+    analyticsService: ref.watch(analyticsServiceProvider),
+  );
+});

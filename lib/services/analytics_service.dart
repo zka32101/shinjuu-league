@@ -521,4 +521,114 @@ class AnalyticsService {
       // Firebase not initialized
     }
   }
+
+  /// 実績進捗（進行系の実績）
+  Future<void> logAchievementProgress(
+    String userId,
+    String achievementId,
+    int currentProgress,
+    int targetProgress,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_progress',
+        parameters: {
+          'user_id': userId,
+          'achievement_id': achievementId,
+          'current': currentProgress,
+          'target': targetProgress,
+          'percentage': ((currentProgress / targetProgress) * 100).toInt(),
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
+
+  /// 実績カテゴリーごとのアンロック
+  Future<void> logAchievementCategoryProgress(
+    String userId,
+    String category,
+    int unlockedCount,
+    int totalCount,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_category_progress',
+        parameters: {
+          'user_id': userId,
+          'category': category,
+          'unlocked': unlockedCount,
+          'total': totalCount,
+          'completion_percentage': ((unlockedCount / totalCount) * 100).toInt(),
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
+
+  /// 全実績完了率
+  Future<void> logAchievementCompletion(
+    String userId,
+    double completionPercentage,
+    int totalUnlocked,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_completion',
+        parameters: {
+          'user_id': userId,
+          'completion_percentage': completionPercentage.toInt(),
+          'total_unlocked': totalUnlocked,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
+
+  /// 実績報酬受け取り
+  Future<void> logAchievementRewardClaimed(
+    String userId,
+    String achievementId,
+    String rewardTier,
+    int currencyAmount,
+    int badgeCount,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_reward_claimed',
+        parameters: {
+          'user_id': userId,
+          'achievement_id': achievementId,
+          'reward_tier': rewardTier,
+          'currency_amount': currencyAmount,
+          'badge_count': badgeCount,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
+
+  /// 実績近完了通知送信
+  Future<void> logAchievementNotificationSent(
+    String userId,
+    String achievementId,
+    int progressPercentage,
+  ) async {
+    try {
+      await _analytics?.logEvent(
+        name: 'achievement_notification_sent',
+        parameters: {
+          'user_id': userId,
+          'achievement_id': achievementId,
+          'progress_percentage': progressPercentage,
+        },
+      );
+    } catch (_) {
+      // Firebase not initialized
+    }
+  }
 }
