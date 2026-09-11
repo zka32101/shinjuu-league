@@ -1,6 +1,7 @@
 // バトル進行時にスキル進行と進化選択を調整するコーディネーター
 
 import 'dart:async';
+import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
@@ -66,6 +67,7 @@ class SkillCooldownChangedEvent extends BattleSkillEvent {
 /// バトル進行中のスキル進行を調整するコーディネーター
 class BattleSkillProgressionCoordinator {
   final SkillProgressionBattleService _skillService;
+  final SkillProgressionConfig _progressionConfig;
 
   final _skillEventController = StreamController<BattleSkillEvent>.broadcast();
   final Map<String, DateTime> _lastEvolutionSelectionTime = {};
@@ -74,7 +76,9 @@ class BattleSkillProgressionCoordinator {
 
   BattleSkillProgressionCoordinator({
     SkillProgressionBattleService? skillService,
-  }) : _skillService = skillService ?? SkillProgressionBattleService();
+    SkillProgressionConfig? progressionConfig,
+  }) : _skillService = skillService ?? SkillProgressionBattleService(),
+       _progressionConfig = progressionConfig ?? SkillProgressionConfig();
 
   /// プレイヤーを初期化
   void initializePlayer({
@@ -91,6 +95,7 @@ class BattleSkillProgressionCoordinator {
   }
 
   /// プレイヤーをレベルアップ（キル獲得時等）
+  /// Remote Config に基づいて進化レベル判定を実施
   void levelUpPlayer(String playerId) {
     final progressBefore = _skillService.getProgress(playerId);
     if (progressBefore == null) return;
@@ -106,12 +111,20 @@ class BattleSkillProgressionCoordinator {
       newLevel: progressAfter.state.currentLevel,
     ));
 
-    // 進化選択が必要な場合は通知
+    // 進化選択が必要な場合は通知（Remote Config の進化レベル設定を使用）
     if (progressAfter.isEvolutionLocked) {
       final level = progressAfter.state.currentLevel;
-      final selectionType = level == 3
-          ? EvolutionSelectionType.first
-          : EvolutionSelectionType.second;
+      final firstEvolutionLevel = _progressionConfig.firstEvolutionLevel;
+      final secondEvolutionLevel = _progressionConfig.secondEvolutionLevel;
+
+      late EvolutionSelectionType selectionType;
+      if (level == firstEvolutionLevel) {
+        selectionType = EvolutionSelectionType.first;
+      } else if (level == secondEvolutionLevel) {
+        selectionType = EvolutionSelectionType.second;
+      } else {
+        return; // 進化レベルに該当しない
+      }
 
       final availableChoices = _getAvailableEvolutions(playerId, selectionType);
 
@@ -145,7 +158,11 @@ class BattleSkillProgressionCoordinator {
     _skillService.useSkill(playerId, slot);
 
     // 進化ボーナスを含む有効ダメージを計算
-    final effectiveDamage = progress.getEffectiveSkillDamage(slot);
+    var effectiveDamage = progress.getEffectiveSkillDamage(slot);
+
+    // Remote Config の難易度プリセット倍率を適用
+    final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
+    effectiveDamage = (effectiveDamage * difficultyModifiers.skillDamageMultiplier).toInt();
 
     // スキル使用イベント発火
     _skillEventController.add(SkillUsedEvent(
@@ -172,9 +189,12 @@ class BattleSkillProgressionCoordinator {
     final progress = _skillService.getProgress(playerId);
     if (progress == null || !progress.isEvolutionLocked) return;
 
-    if (progress.state.currentLevel == 3) {
+    final firstEvolutionLevel = _progressionConfig.firstEvolutionLevel;
+    final secondEvolutionLevel = _progressionConfig.secondEvolutionLevel;
+
+    if (progress.state.currentLevel == firstEvolutionLevel) {
       _skillService.confirmEvolution(playerId, EvolutionType.offensive);
-    } else if (progress.state.currentLevel == 6) {
+    } else if (progress.state.currentLevel == secondEvolutionLevel) {
       _skillService.switchEvolution(playerId, EvolutionType.offensive);
     }
   }
