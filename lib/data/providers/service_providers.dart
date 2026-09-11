@@ -7,6 +7,7 @@ import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
 import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
 import 'package:shinjuu_league/services/achievement_detector_service.dart';
 import 'package:shinjuu_league/services/achievement_reward_service.dart';
+import 'package:shinjuu_league/services/achievement_integration_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
@@ -162,5 +163,14 @@ final achievementDetectorServiceProvider = Provider.autoDispose<AchievementDetec
 final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref) {
   return AchievementRewardService(
     firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+final achievementIntegrationServiceProvider = Provider.autoDispose<AchievementIntegrationService>((ref) {
+  return AchievementIntegrationService(
+    detector: ref.watch(achievementDetectorServiceProvider),
+    rewardService: ref.watch(achievementRewardServiceProvider),
+    toastService: ref.watch(achievementToastNotificationServiceProvider),
+    analyticsService: ref.watch(analyticsServiceProvider),
   );
 });
