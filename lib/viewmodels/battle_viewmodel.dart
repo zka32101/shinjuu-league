@@ -16,6 +16,7 @@ import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
+import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 
 class BattleState {
   const BattleState({
@@ -137,13 +138,18 @@ class BattleViewModel extends StateNotifier<BattleState> {
        _triggerDetector = AchievementTriggerDetector(
          achievementService: achievementService ?? AchievementService(),
        ),
-       super(BattleState.initial());
+       super(BattleState.initial()) {
+    _skillProgressionAnalytics = SkillProgressionAnalyticsService(
+      analyticsService: _analyticsService,
+    );
+  }
 
   final FirestoreService _firestoreService;
   final AnalyticsService _analyticsService;
   final SkillTreeService _skillTreeService;
   final AchievementService _achievementService;
   final AchievementTriggerDetector _triggerDetector;
+  late final SkillProgressionAnalyticsService _skillProgressionAnalytics;
 
   StreamSubscription<CombatEvent>? _combatSub;
   StreamSubscription<CombatEvent>? _hitSub;
@@ -154,8 +160,19 @@ class BattleViewModel extends StateNotifier<BattleState> {
   late String _selfUserId;
   late double _selfEloAtStart;
   late double _opponentAvgElo;
+  late DateTime _battleStartTime;
 
   late BattleSkillProgressionCoordinator _skillCoordinator;
+
+  // Track skill progression statistics for battle summary
+  int _totalSkillsUsed = 0;
+  int _totalDamageDealt = 0;
+
+  // Track evolution event timestamps for analytics
+  final Map<String, DateTime> _evolutionEventTimestamps = {};
+
+  // Track evolution switch counts per player
+  final Map<String, int> _evolutionSwitchCounts = {};
 
   /// 進化選択画面で呼び出す：エンジンとバトル記録を用意するが、まだ交戦は開始しない。
   /// evolution ロック（[lockEvolution]）→ [beginCombat] の順で呼び出すことで、
@@ -172,6 +189,11 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _opponentAvgElo = EloService.averageRating(
       match.teamB.map((p) => p.eloRating).toList(),
     );
+    _battleStartTime = DateTime.now();
+
+    // Reset skill progression statistics for new battle
+    _totalSkillsUsed = 0;
+    _totalDamageDealt = 0;
 
     final participants = match.allParticipants
         .map(
@@ -398,12 +420,41 @@ class BattleViewModel extends StateNotifier<BattleState> {
       Future.delayed(const Duration(milliseconds: 2000), () {
         state = state.copyWith(showLevelUpAnimation: false);
       });
+
+      // Log level-up analytics
+      unawaited(
+        _skillProgressionAnalytics.logLevelUp(
+          event.playerId,
+          event.newLevel,
+          event.newLevel == 3 || event.newLevel == 6,
+        ),
+      );
     } else if (event is EvolutionSelectionRequiredEvent) {
       // 進化選択画面を表示する必要があることを記録
       state = state.copyWith(pendingEvolutionSelectEvent: event);
+      // Track the timestamp when evolution selection is triggered
+      _evolutionEventTimestamps[event.playerId] = DateTime.now();
     } else if (event is SkillUsedEvent) {
       // スキル使用イベント（必要に応じて UI 更新）
       _updateSkillProgressionUI();
+
+      // Track skill usage for battle summary
+      _totalSkillsUsed++;
+      if (event.playerId == _selfUserId) {
+        _totalDamageDealt += event.damageDealt;
+      }
+
+      // Log skill used analytics
+      unawaited(
+        _skillProgressionAnalytics.logSkillUsed(
+          event.playerId,
+          event.skillSlot,
+          event.currentLevel,
+          event.damageDealt,
+          event.hasEvolutionBonus,
+          event.isCritical,
+        ),
+      );
     }
   }
 
@@ -488,6 +539,24 @@ class BattleViewModel extends StateNotifier<BattleState> {
       await _analyticsService.logFirstRankedEntry(_selfUserId);
     }
 
+    // Log skill progression battle summary
+    final skillState = _skillCoordinator.getPlayerSkillState(_selfUserId);
+    if (skillState != null) {
+      final battleDuration = DateTime.now().difference(_battleStartTime).inSeconds;
+
+      unawaited(
+        _skillProgressionAnalytics.logBattleSkillProgressionSummary(
+          userId: _selfUserId,
+          finalLevel: skillState.currentLevel,
+          totalSkillsUsed: _totalSkillsUsed,
+          totalDamageDealt: _totalDamageDealt,
+          battleDurationSeconds: battleDuration,
+          won: result == BattleResult.win,
+          finalEvolution: skillState.currentEvolution,
+        ),
+      );
+    }
+
     // Check for achievement unlocks after battle result is processed
     await _checkAchievementTriggers(finishedBattle, engine);
   }
@@ -563,13 +632,54 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _skillCoordinator.confirmEvolution(playerId, evolution);
     // 進化選択イベントをクリア
     state = state.copyWith(pendingEvolutionSelectEvent: null);
+
+    // Calculate selection time and log analytics
+    final eventTimestamp = _evolutionEventTimestamps[playerId];
+    if (eventTimestamp != null) {
+      final selectionTimeMs = DateTime.now().difference(eventTimestamp).inMilliseconds;
+      final skillState = _skillCoordinator.getPlayerSkillState(playerId);
+      final level = skillState?.currentLevel ?? 1;
+
+      unawaited(
+        _skillProgressionAnalytics.logEvolutionConfirmed(
+          playerId,
+          level,
+          evolution,
+          selectionTimeMs,
+          false, // Manual selection
+        ),
+      );
+
+      _evolutionEventTimestamps.remove(playerId);
+    }
+
     // UI 状態を更新
     _updateSkillProgressionUI();
   }
 
   /// Lv6 で進化を切り替える（攻撃 → 防御/支援など）
   void switchEvolution(String playerId, EvolutionType evolution) {
+    final skillState = _skillCoordinator.getPlayerSkillState(playerId);
+    final previousEvolution = skillState?.currentEvolution;
+
     _skillCoordinator.switchEvolution(playerId, evolution);
+
+    // Track and log evolution switch analytics
+    if (previousEvolution != null) {
+      // Increment switch count for this player
+      _evolutionSwitchCounts[playerId] = (_evolutionSwitchCounts[playerId] ?? 0) + 1;
+      final switchCount = _evolutionSwitchCounts[playerId]!;
+
+      unawaited(
+        _skillProgressionAnalytics.logEvolutionSwitched(
+          playerId,
+          previousEvolution,
+          evolution,
+          switchCount,
+        ),
+      );
+    }
+
     // UI 状態を更新
     _updateSkillProgressionUI();
   }
@@ -577,6 +687,27 @@ class BattleViewModel extends StateNotifier<BattleState> {
   /// 進化選択のタイムアウト時に自動確認（攻撃に自動選択）
   void autoConfirmEvolution(String playerId) {
     _skillCoordinator.autoConfirmEvolution(playerId);
+
+    // Calculate selection time and log analytics for auto-selected evolution
+    final eventTimestamp = _evolutionEventTimestamps[playerId];
+    if (eventTimestamp != null) {
+      final selectionTimeMs = DateTime.now().difference(eventTimestamp).inMilliseconds;
+      final skillState = _skillCoordinator.getPlayerSkillState(playerId);
+      final level = skillState?.currentLevel ?? 1;
+
+      unawaited(
+        _skillProgressionAnalytics.logEvolutionConfirmed(
+          playerId,
+          level,
+          EvolutionType.offensive, // Auto-select defaults to offensive
+          selectionTimeMs,
+          true, // Auto-selected flag
+        ),
+      );
+
+      _evolutionEventTimestamps.remove(playerId);
+    }
+
     // 進化選択イベントをクリア
     state = state.copyWith(pendingEvolutionSelectEvent: null);
     // UI 状態を更新
