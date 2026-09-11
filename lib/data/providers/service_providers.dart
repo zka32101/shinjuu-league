@@ -5,9 +5,12 @@ import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
 import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
+import 'package:shinjuu_league/services/achievement_detector_service.dart';
+import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
+import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
@@ -143,4 +146,21 @@ final achievementAnalyticsIntegrationProvider = Provider<AchievementAnalyticsInt
 // Phase 10 Step 9: Achievement Toast Notifications
 final achievementToastNotificationServiceProvider = Provider<AchievementToastNotificationService>((ref) {
   return AchievementToastNotificationService();
+});
+
+// Phase 10 Step 11: Achievement Unlock Detection & Reward Distribution
+final battleEngineServiceProvider = Provider<BattleEngineService>((ref) {
+  return BattleEngineService();
+});
+
+final achievementDetectorServiceProvider = Provider.autoDispose<AchievementDetectorService>((ref) {
+  return AchievementDetectorService(
+    battleEngine: ref.watch(battleEngineServiceProvider),
+  );
+});
+
+final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref) {
+  return AchievementRewardService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+  );
 });

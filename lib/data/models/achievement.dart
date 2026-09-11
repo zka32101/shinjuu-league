@@ -146,6 +146,17 @@ class AchievementsCatalog {
     isProgressBased: false,
   );
 
+  static const Achievement firstBlood = Achievement(
+    achievementId: 'first_blood',
+    category: AchievementCategory.milestone,
+    name: 'ファーストブラッド',
+    description: 'バトルで最初のキルを獲得',
+    iconUrl: 'assets/achievements/first_blood.png',
+    rewardTier: AchievementRewardTier.bronze,
+    maxProgress: 1,
+    isProgressBased: false,
+  );
+
   static const Achievement statMaster = Achievement(
     achievementId: 'stat_master',
     category: AchievementCategory.skill,
@@ -215,6 +226,7 @@ class AchievementsCatalog {
   /// All available achievements
   static const List<Achievement> all = [
     risingStar,
+    firstBlood,
     statMaster,
     balancedFighter,
     seasonWarrior,

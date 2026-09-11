@@ -445,4 +445,70 @@ class FirestoreService {
       throw 'Failed to log event: $e';
     }
   }
+
+  // ============ Achievement Methods ============
+  /// Mark an achievement as unlocked for a user
+  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .doc(achievementId)
+          .set({
+        'achievementId': achievementId,
+        'unlockedAt': FieldValue.serverTimestamp(),
+        'isHidden': false,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to mark achievement unlocked: $e';
+    }
+  }
+
+  /// Increment user currency (earned from achievements or other sources)
+  Future<void> incrementUserCurrency(String userId, int amount) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'currency': FieldValue.increment(amount),
+      });
+    } catch (e) {
+      throw 'Failed to increment currency: $e';
+    }
+  }
+
+  /// Increment user achievement badges (cosmetic reward)
+  Future<void> incrementUserAchievementBadges(String userId, int count) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'achievementBadges': FieldValue.increment(count),
+      });
+    } catch (e) {
+      throw 'Failed to increment achievement badges: $e';
+    }
+  }
+
+  /// Add a cosmetic item to user's collection
+  Future<void> addUserCosmetic(String userId, String cosmeticId) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'ownedCosmetics': FieldValue.arrayUnion([cosmeticId]),
+      });
+    } catch (e) {
+      throw 'Failed to add cosmetic: $e';
+    }
+  }
+
+  /// Get user achievement history
+  Future<List<Map<String, dynamic>>> getUserAchievements(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch achievements: $e';
+    }
+  }
 }
