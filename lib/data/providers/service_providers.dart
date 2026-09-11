@@ -16,6 +16,7 @@ import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
+import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
@@ -172,5 +173,12 @@ final achievementIntegrationServiceProvider = Provider.autoDispose<AchievementIn
     rewardService: ref.watch(achievementRewardServiceProvider),
     toastService: ref.watch(achievementToastNotificationServiceProvider),
     analyticsService: ref.watch(analyticsServiceProvider),
+  );
+});
+
+// Phase 11: Daily Quests & Mission System
+final questServiceProvider = Provider<QuestService>((ref) {
+  return QuestService(
+    firestoreService: ref.watch(firestoreServiceProvider),
   );
 });
