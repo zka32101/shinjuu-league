@@ -4,6 +4,7 @@ import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
+import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
@@ -137,4 +138,9 @@ final achievementAnalyticsIntegrationProvider = Provider<AchievementAnalyticsInt
     achievementService: ref.watch(achievementServiceProvider),
     analyticsService: ref.watch(analyticsServiceProvider),
   );
+});
+
+// Phase 10 Step 9: Achievement Toast Notifications
+final achievementToastNotificationServiceProvider = Provider<AchievementToastNotificationService>((ref) {
+  return AchievementToastNotificationService();
 });

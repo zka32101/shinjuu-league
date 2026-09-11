@@ -8,6 +8,8 @@ class HapticService {
 
   static void onAhaMoment() => HapticFeedback.mediumImpact();
 
+  static void onAchievementUnlock() => HapticFeedback.mediumImpact();
+
   static Future<void> onWin() async {
     HapticFeedback.heavyImpact();
     await Future.delayed(const Duration(milliseconds: 150));
