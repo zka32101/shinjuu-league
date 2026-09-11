@@ -511,4 +511,70 @@ class FirestoreService {
       throw 'Failed to fetch achievements: $e';
     }
   }
+
+  // ============ Quest Methods ============
+  /// Save player quest progress to Firestore
+  Future<void> savePlayerQuest(String userId, dynamic playerQuest) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(playerQuest.questId)
+          .set(playerQuest.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to save quest: $e';
+    }
+  }
+
+  /// Get a specific player quest
+  Future<dynamic> getPlayerQuest(String userId, String questId) async {
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(questId)
+          .get();
+      if (doc.exists) {
+        // Return raw data - caller handles deserialization
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to fetch quest: $e';
+    }
+  }
+
+  /// Get player quests by frequency
+  Future<List<Map<String, dynamic>>> getPlayerQuestsByFrequency(
+    String userId,
+    dynamic frequency,
+  ) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .where('frequency', isEqualTo: frequency.toString())
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch quests by frequency: $e';
+    }
+  }
+
+  /// Get all player quests
+  Future<List<Map<String, dynamic>>> getAllPlayerQuests(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch all quests: $e';
+    }
+  }
 }
