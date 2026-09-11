@@ -538,4 +538,57 @@ class SkillProgressionAnalyticsService {
       // エラーは無言で処理
     }
   }
+
+  /// A/B テスト バリアント割り当てをログ
+  ///
+  /// Parameters:
+  /// - userId: プレイヤーID
+  /// - experimentId: 実験ID
+  /// - variantName: バリアント名
+  /// - isControl: コントロール群か
+  Future<void> logABTestVariantAssignment(
+    String userId,
+    String experimentId,
+    String variantName,
+    bool isControl,
+  ) async {
+    try {
+      final params = _addCohortParameters({
+        'user_id': userId,
+        'experiment_id': experimentId,
+        'variant_name': variantName,
+        'is_control': isControl,
+      });
+
+      await _analyticsService.logEvent(
+        'ab_test_variant_assigned',
+        parameters: params,
+      );
+    } catch (e) {
+      // エラーは無言で処理
+    }
+  }
+
+  /// カスタムイベントをログ（A/B テストコンテキスト付き）
+  ///
+  /// Parameters:
+  /// - userId: プレイヤーID
+  /// - eventName: イベント名
+  /// - parameters: イベントパラメータ
+  Future<void> logCustomEvent(
+    String userId,
+    String eventName,
+    Map<String, dynamic> parameters,
+  ) async {
+    try {
+      final params = _addCohortParameters({
+        'user_id': userId,
+        ...parameters,
+      });
+
+      await _analyticsService.logEvent(eventName, parameters: params);
+    } catch (e) {
+      // エラーは無言で処理
+    }
+  }
 }
