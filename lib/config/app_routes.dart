@@ -19,6 +19,7 @@ import 'package:shinjuu_league/ui/screens/skill_tree_progression_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_dashboard_screen.dart';
 
 abstract class AppRoutes {
   static const splash = '/';
@@ -38,6 +39,7 @@ abstract class AppRoutes {
   static const skillTreeProgression = '/skill-tree-progression';
   static const achievements = '/achievements';
   static const quests = '/quests';
+  static const adminDashboard = '/admin-dashboard';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -164,6 +166,11 @@ final appRouter = GoRouter(
       path: AppRoutes.quests,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const QuestsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.adminDashboard,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const AdminDashboardScreen()),
     ),
   ],
 );
