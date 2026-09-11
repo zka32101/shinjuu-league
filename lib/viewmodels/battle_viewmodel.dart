@@ -15,6 +15,7 @@ import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
+import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 
 class BattleState {
   const BattleState({
@@ -33,6 +34,9 @@ class BattleState {
     required this.isFinished,
     required this.error,
     required this.newlyUnlockedAchievements,
+    required this.skillProgressionStates,
+    required this.pendingEvolutionSelectEvent,
+    required this.showLevelUpAnimation,
   });
 
   factory BattleState.initial() => const BattleState(
@@ -51,6 +55,9 @@ class BattleState {
     isFinished: false,
     error: null,
     newlyUnlockedAchievements: const [],
+    skillProgressionStates: const {},
+    pendingEvolutionSelectEvent: null,
+    showLevelUpAnimation: false,
   );
 
   final Battle? battle;
@@ -68,6 +75,9 @@ class BattleState {
   final bool isFinished;
   final String? error;
   final List<Achievement> newlyUnlockedAchievements;
+  final Map<String, PlayerSkillStateSnapshot> skillProgressionStates;
+  final EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent;
+  final bool showLevelUpAnimation;
 
   BattleState copyWith({
     Battle? battle,
@@ -85,6 +95,9 @@ class BattleState {
     bool? isFinished,
     String? error,
     List<Achievement>? newlyUnlockedAchievements,
+    Map<String, PlayerSkillStateSnapshot>? skillProgressionStates,
+    EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent,
+    bool? showLevelUpAnimation,
   }) {
     return BattleState(
       battle: battle ?? this.battle,
@@ -102,6 +115,9 @@ class BattleState {
       isFinished: isFinished ?? this.isFinished,
       error: error,
       newlyUnlockedAchievements: newlyUnlockedAchievements ?? this.newlyUnlockedAchievements,
+      skillProgressionStates: skillProgressionStates ?? this.skillProgressionStates,
+      pendingEvolutionSelectEvent: pendingEvolutionSelectEvent ?? this.pendingEvolutionSelectEvent,
+      showLevelUpAnimation: showLevelUpAnimation ?? this.showLevelUpAnimation,
     );
   }
 }
@@ -133,10 +149,13 @@ class BattleViewModel extends StateNotifier<BattleState> {
   StreamSubscription<CombatEvent>? _hitSub;
   StreamSubscription<int>? _tickSub;
   StreamSubscription<DamageEvent>? _damageSub;
+  StreamSubscription<BattleSkillEvent>? _skillEventSub;
 
   late String _selfUserId;
   late double _selfEloAtStart;
   late double _opponentAvgElo;
+
+  late BattleSkillProgressionCoordinator _skillCoordinator;
 
   /// 進化選択画面で呼び出す：エンジンとバトル記録を用意するが、まだ交戦は開始しない。
   /// evolution ロック（[lockEvolution]）→ [beginCombat] の順で呼び出すことで、
@@ -191,10 +210,17 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // スキルツリーの修正倍率をロードして適用
     await _applySkillTreeModifiers(engine, selfUserId);
 
+    // スキル進行システムを初期化
+    _skillCoordinator = BattleSkillProgressionCoordinator();
+    for (final mp in match.allParticipants) {
+      _skillCoordinator.initializePlayer(playerId: mp.userId, mechaId: mp.mechaId);
+    }
+
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
     _hitSub = engine.hitEvents.listen(_onHitEvent);
     _damageSub = engine.damageEvents.listen(_onDamageEvent);
     _tickSub = engine.onTick.listen((second) => _onTick(second, engine));
+    _skillEventSub = _skillCoordinator.skillEvents.listen(_onSkillEvent);
 
     final battle = Battle(
       battleId: match.matchId,
@@ -363,6 +389,36 @@ class BattleViewModel extends StateNotifier<BattleState> {
     engine.purchaseItem(_selfUserId, itemId);
   }
 
+  void _onSkillEvent(BattleSkillEvent event) {
+    // スキル進行イベントを UI 状態に反映
+    if (event is PlayerLevelUpEvent) {
+      // レベルアップアニメーションをトリガー
+      state = state.copyWith(showLevelUpAnimation: true);
+      // アニメーション表示後、自動的にリセット
+      Future.delayed(const Duration(milliseconds: 2000), () {
+        state = state.copyWith(showLevelUpAnimation: false);
+      });
+    } else if (event is EvolutionSelectionRequiredEvent) {
+      // 進化選択画面を表示する必要があることを記録
+      state = state.copyWith(pendingEvolutionSelectEvent: event);
+    } else if (event is SkillUsedEvent) {
+      // スキル使用イベント（必要に応じて UI 更新）
+      _updateSkillProgressionUI();
+    }
+  }
+
+  /// スキル進行 UI 状態を更新する（全プレイヤーの最新スキル状態を取得）
+  void _updateSkillProgressionUI() {
+    final states = <String, PlayerSkillStateSnapshot>{};
+    for (final participant in (state.engine?.participants ?? [])) {
+      final skillState = _skillCoordinator.getPlayerSkillState(participant.userId);
+      if (skillState != null) {
+        states[participant.userId] = skillState;
+      }
+    }
+    state = state.copyWith(skillProgressionStates: states);
+  }
+
   void _onCombatEvent(CombatEvent event) {
     state = state.copyWith(killFeed: [...state.killFeed, event]);
 
@@ -383,6 +439,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
   void _onTick(int second, BattleEngine engine) {
     state = state.copyWith(elapsedSeconds: second);
     _updatePlayerResources();
+
+    // スキル進行システムのクールダウン減速を更新
+    _skillCoordinator.onGameTick(1.0);
 
     if (!engine.isRunning && !state.isFinished) {
       unawaited(_finishBattle(engine));
@@ -499,13 +558,40 @@ class BattleViewModel extends StateNotifier<BattleState> {
     }
   }
 
+  /// ユーザーが進化を確認した時に呼ぶ
+  void confirmEvolution(String playerId, EvolutionType evolution) {
+    _skillCoordinator.confirmEvolution(playerId, evolution);
+    // 進化選択イベントをクリア
+    state = state.copyWith(pendingEvolutionSelectEvent: null);
+    // UI 状態を更新
+    _updateSkillProgressionUI();
+  }
+
+  /// Lv6 で進化を切り替える（攻撃 → 防御/支援など）
+  void switchEvolution(String playerId, EvolutionType evolution) {
+    _skillCoordinator.switchEvolution(playerId, evolution);
+    // UI 状態を更新
+    _updateSkillProgressionUI();
+  }
+
+  /// 進化選択のタイムアウト時に自動確認（攻撃に自動選択）
+  void autoConfirmEvolution(String playerId) {
+    _skillCoordinator.autoConfirmEvolution(playerId);
+    // 進化選択イベントをクリア
+    state = state.copyWith(pendingEvolutionSelectEvent: null);
+    // UI 状態を更新
+    _updateSkillProgressionUI();
+  }
+
   @override
   void dispose() {
     _combatSub?.cancel();
     _hitSub?.cancel();
     _tickSub?.cancel();
     _damageSub?.cancel();
+    _skillEventSub?.cancel();
     state.engine?.dispose();
+    _skillCoordinator.dispose();
     super.dispose();
   }
 }
