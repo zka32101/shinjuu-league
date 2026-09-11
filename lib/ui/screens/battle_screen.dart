@@ -4,8 +4,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
+import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
+import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
@@ -14,6 +16,7 @@ import 'package:shinjuu_league/services/haptic_service.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 import 'package:shinjuu_league/ui/widgets/resource_hud.dart';
 import 'package:shinjuu_league/ui/widgets/skill_buttons.dart';
+import 'package:shinjuu_league/ui/widgets/skill_progression_display.dart';
 import 'package:shinjuu_league/services/skill_system_service.dart';
 
 class BattleScreen extends ConsumerStatefulWidget {
@@ -55,6 +58,129 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     // スキルタイプ別の効果音を再生
     if (skillDef != null) {
       AudioService().playSkillSe(skillDef.type);
+    }
+  }
+
+  Widget _buildSkillProgressionAndKillFeed(
+    BuildContext context,
+    BattleState state,
+    String? selfId,
+  ) {
+    final selfSkillState = selfId != null
+        ? state.skillProgressionStates[selfId]
+        : null;
+
+    return Container(
+      height: 200,
+      padding: const EdgeInsets.all(12),
+      color: Theme.of(context)
+          .colorScheme.surfaceContainerHighest
+          .withValues(alpha: 0.3),
+      child: Column(
+        children: [
+          // スキル進行パネル
+          if (selfSkillState != null)
+            Expanded(
+              child: SingleChildScrollView(
+                child: SkillProgressionPanel(
+                  currentLevel: selfSkillState.currentLevel,
+                  skillCooldowns: selfSkillState.skillCooldowns,
+                  skillDamages: {
+                    SkillSlot.q: 200,
+                    SkillSlot.r: 180,
+                    SkillSlot.e: 150,
+                    SkillSlot.ult: selfSkillState.isUltUnlocked ? 500 : 0,
+                  },
+                  currentEvolution: selfSkillState.currentEvolution,
+                  evolutionBonuses: selfSkillState.evolutionBonuses,
+                  isUltAvailable: selfSkillState.isUltUnlocked,
+                  isUltCharging: selfSkillState.isUltCharging,
+                  onSkillTap: (slot) {
+                    // スキルタップハンドラ（将来の拡張用）
+                  },
+                ),
+              ),
+            ),
+          const SizedBox(height: 8),
+          // キルフィード
+          Expanded(
+            child: ListView.builder(
+              reverse: true,
+              itemCount: state.killFeed.length,
+              itemBuilder: (context, i) {
+                final event = state.killFeed[state.killFeed.length - 1 - i];
+                final isSelfKill = event.attackerId == selfId;
+                return Text(
+                  '${event.attackerId} が ${event.victimId} を撃破',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: isSelfKill
+                        ? FontWeight.bold
+                        : FontWeight.normal,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showEvolutionSelectionDialog(
+    BuildContext context,
+    EvolutionSelectionRequiredEvent event,
+    String selfId,
+  ) {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        title: const Text('進化を選択'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Text('Lv${event.level}に達しました！進化を選択してください。'),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 12,
+              children: [
+                for (final choice in event.availableChoices)
+                  ElevatedButton(
+                    onPressed: () {
+                      ref
+                          .read(battleViewModelProvider.notifier)
+                          .confirmEvolution(selfId, choice);
+                      Navigator.pop(context);
+                    },
+                    child: Text(_getEvolutionLabel(choice)),
+                  ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+
+    // 10秒後に自動確認（オフェンシブを自動選択）
+    Future.delayed(const Duration(seconds: 10), () {
+      if (context.mounted) {
+        Navigator.pop(context);
+        ref
+            .read(battleViewModelProvider.notifier)
+            .autoConfirmEvolution(selfId);
+      }
+    });
+  }
+
+  String _getEvolutionLabel(EvolutionType evolution) {
+    switch (evolution) {
+      case EvolutionType.offensive:
+        return '⚔️ 攻撃';
+      case EvolutionType.defensive:
+        return '🛡️ 防御';
+      case EvolutionType.support:
+        return '🤝 支援';
     }
   }
 
@@ -110,6 +236,13 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
           !(previous?.isFinished ?? false) &&
           next.battle != null) {
         context.pushReplacement(AppRoutes.result, extra: next.battle);
+      }
+
+      // スキル進行イベント処理：進化選択画面が必要な場合
+      final prevEvolutionEvent = previous?.pendingEvolutionSelectEvent;
+      final nextEvolutionEvent = next.pendingEvolutionSelectEvent;
+      if (prevEvolutionEvent == null && nextEvolutionEvent != null) {
+        _showEvolutionSelectionDialog(context, nextEvolutionEvent, selfId!);
       }
     });
 
@@ -208,6 +341,20 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
             child: Stack(
               children: [
                 GameWidget(game: _game),
+                // レベルアップアニメーション（画面上部）
+                if (state.showLevelUpAnimation)
+                  Positioned(
+                    top: 100,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: CharacterLevelDisplay(
+                        currentLevel: state.skillProgressionStates[selfId]?.currentLevel ?? 1,
+                        showAnimation: true,
+                        currentEvolution: state.skillProgressionStates[selfId]?.currentEvolution,
+                      ),
+                    ),
+                  ),
                 Positioned(
                   right: 24,
                   bottom: 24,
@@ -284,30 +431,8 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
               ],
             ),
           ),
-          Container(
-            height: 140,
-            padding: const EdgeInsets.all(8),
-            color: Theme.of(
-              context,
-            ).colorScheme.surfaceContainerHighest.withValues(alpha: 0.3),
-            child: ListView.builder(
-              reverse: true,
-              itemCount: state.killFeed.length,
-              itemBuilder: (context, i) {
-                final event = state.killFeed[state.killFeed.length - 1 - i];
-                final isSelfKill = event.attackerId == selfId;
-                return Text(
-                  '${event.attackerId} が ${event.victimId} を撃破',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelfKill
-                        ? FontWeight.bold
-                        : FontWeight.normal,
-                  ),
-                );
-              },
-            ),
-          ),
+          // スキル進行パネル＆キルフィードを表示
+          _buildSkillProgressionAndKillFeed(context, state, selfId),
         ],
       ),
     );
