@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
@@ -180,6 +181,7 @@ class BattleEngine {
   final String mapId;
   final List<BattleParticipantState> participants;
   final int durationSeconds;
+  final SkillProgressionConfig _progressionConfig;
 
   BattleEngine({
     required this.battleId,
@@ -188,7 +190,9 @@ class BattleEngine {
     required this.participants,
     this.durationSeconds = AppConfig.battleDurationSeconds,
     Random? random,
-  }) : _random = random ?? Random();
+    SkillProgressionConfig? progressionConfig,
+  }) : _progressionConfig = progressionConfig ?? SkillProgressionConfig(),
+       _random = random ?? Random();
 
   final Random _random;
   Timer? _timer;
@@ -290,10 +294,12 @@ class BattleEngine {
       p.resources = p.resources.addGold(GoldRewards.passiveGoldPerSecond);
       p.totalGoldEarned += GoldRewards.passiveGoldPerSecond;
 
-      // スキルクールダウン減少
+      // スキルクールダウン減少（Remote Config の難易度プリセット倍率を適用）
+      final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
+      final cooldownReduction = 1.0 * difficultyModifiers.skillCooldownMultiplier;
       p.skillCooldowns.forEach((skillId, cooldown) {
         if (cooldown > 0) {
-          p.skillCooldowns[skillId] = cooldown - 1.0;
+          p.skillCooldowns[skillId] = cooldown - cooldownReduction;
         }
       });
     }
@@ -424,6 +430,7 @@ class BattleEngine {
 
   /// 素早さが高いほど被弾を軽減する（回避寄りの簡易ミティゲーション）
   /// 攻撃力が高いほどクリティカル確率が上がる
+  /// Remote Config の難易度プリセット倍率を適用
   ({double damage, bool isCritical}) _computeDamage(
     BattleParticipantState attacker,
     BattleParticipantState defender,
@@ -432,11 +439,15 @@ class BattleEngine {
         1.0 - (defender.effectiveSpd / (defender.effectiveSpd + 200));
     final baseDamage = attacker.effectiveAtk * _hitDamageFactor * mitigation;
 
+    // Remote Config の難易度プリセット倍率を適用
+    final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
+    final effectiveDamage = baseDamage * difficultyModifiers.skillDamageMultiplier;
+
     // クリティカル判定：攻撃力 / 600 が基本確率（最大25%）
     final critChance = (attacker.effectiveAtk / 600).clamp(0, 0.25);
     final isCritical = _random.nextDouble() < critChance;
 
-    final finalDamage = isCritical ? baseDamage * 2.0 : baseDamage;
+    final finalDamage = isCritical ? effectiveDamage * 2.0 : effectiveDamage;
 
     return (damage: finalDamage, isCritical: isCritical);
   }
