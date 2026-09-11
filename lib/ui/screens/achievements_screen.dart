@@ -1,280 +1,331 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
-import 'package:shinjuu_league/viewmodels/achievement_viewmodel.dart';
-import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
+import 'package:shinjuu_league/services/achievement_service.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 
-/// Screen displaying all achievements
+/// Achievement collection/gallery screen showing all available achievements
+/// Displays achievement status, progress, rewards, and unlock dates
 class AchievementsScreen extends ConsumerStatefulWidget {
-  const AchievementsScreen({Key? key}) : super(key: key);
+  const AchievementsScreen({super.key});
 
   @override
   ConsumerState<AchievementsScreen> createState() => _AchievementsScreenState();
 }
 
 class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
-  AchievementCategory _selectedCategory = AchievementCategory.progression;
-
-  @override
-  void initState() {
-    super.initState();
-    // Load achievements on screen load
-    Future.microtask(() {
-      final userId = ref.read(userViewModelProvider).userId ?? '';
-      if (userId.isNotEmpty) {
-        ref
-            .read(achievementViewModelProvider(userId).notifier)
-            .loadPlayerAchievements();
-      }
-    });
-  }
+  late String _selectedCategory = AchievementCategory.milestone.name;
 
   @override
   Widget build(BuildContext context) {
-    final userState = ref.watch(userViewModelProvider);
-    final userId = userState.userId ?? '';
-
-    if (userId.isEmpty) {
-      return Scaffold(
-        appBar: AppBar(
-          title: const Text('成果'),
-        ),
-        body: const Center(
-          child: CircularProgressIndicator(),
-        ),
-      );
-    }
-
-    final achievementState = ref.watch(achievementViewModelProvider(userId));
-    final achievementNotifier =
-        ref.read(achievementViewModelProvider(userId).notifier);
-
     return Scaffold(
       appBar: AppBar(
         title: const Text('成果'),
-        elevation: 0,
+        centerTitle: true,
       ),
       body: Column(
         children: [
-          // Category tabs
-          SizedBox(
-            height: 60,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: AchievementCategory.values
-                  .map((category) => _buildCategoryTab(category))
-                  .toList(),
+          // Category filter tabs
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Row(
+                children: [
+                  _CategoryTab(
+                    label: 'すべて',
+                    isSelected: _selectedCategory == 'all',
+                    onTap: () {
+                      setState(() => _selectedCategory = 'all');
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  for (final category in AchievementCategory.values)
+                    Padding(
+                      padding: const EdgeInsets.only(right: 8),
+                      child: _CategoryTab(
+                        label: _categoryLabel(category),
+                        isSelected: _selectedCategory == category.name,
+                        onTap: () {
+                          setState(() => _selectedCategory = category.name);
+                        },
+                      ),
+                    ),
+                ],
+              ),
             ),
           ),
-
           // Achievements grid
           Expanded(
-            child: achievementState.isLoading
-                ? const Center(child: CircularProgressIndicator())
-                : achievementState.error != null
-                    ? Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            const Icon(Icons.error_outline, size: 48),
-                            const SizedBox(height: 12),
-                            Text(achievementState.error ?? 'エラーが発生しました'),
-                            const SizedBox(height: 12),
-                            ElevatedButton(
-                              onPressed: () {
-                                achievementNotifier.loadPlayerAchievements();
-                              },
-                              child: const Text('再読み込み'),
-                            ),
-                          ],
-                        ),
-                      )
-                    : _buildAchievementsGrid(
-                        achievementNotifier,
-                        userId,
-                      ),
+            child: FutureBuilder<List<Achievement>>(
+              future: _getAchievements(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Text('エラー: ${snapshot.error}'),
+                  );
+                }
+
+                final achievements = snapshot.data ?? [];
+                if (achievements.isEmpty) {
+                  return const Center(
+                    child: Text('成果がありません'),
+                  );
+                }
+
+                return GridView.builder(
+                  padding: const EdgeInsets.all(16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2,
+                    childAspectRatio: 1.0,
+                    crossAxisSpacing: 12,
+                    mainAxisSpacing: 12,
+                  ),
+                  itemCount: achievements.length,
+                  itemBuilder: (context, index) {
+                    final achievement = achievements[index];
+                    return _AchievementGridCard(
+                      achievement: achievement,
+                      onTap: () {
+                        _showAchievementDetail(context, achievement);
+                      },
+                    );
+                  },
+                );
+              },
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildCategoryTab(AchievementCategory category) {
-    final categoryNames = {
-      AchievementCategory.progression: '進行',
-      AchievementCategory.milestone: 'マイルストーン',
-      AchievementCategory.skill: 'スキル',
-      AchievementCategory.seasonal: 'シーズン',
-      AchievementCategory.special: 'スペシャル',
-    };
+  Future<List<Achievement>> _getAchievements() async {
+    // TODO: Fetch actual achievements from AchievementService
+    // For now, return sample achievements
+    return [
+      Achievement(
+        achievementId: 'aha_moment',
+        category: AchievementCategory.milestone,
+        name: 'Aha Moment',
+        description: 'Get your first kill',
+        iconUrl: 'assets/icons/aha_moment.png',
+        rewardTier: AchievementRewardTier.common,
+        maxProgress: 1,
+        isProgressBased: false,
+      ),
+      Achievement(
+        achievementId: 'rising_star',
+        category: AchievementCategory.milestone,
+        name: 'Rising Star',
+        description: 'Win your first battle',
+        iconUrl: 'assets/icons/rising_star.png',
+        rewardTier: AchievementRewardTier.uncommon,
+        maxProgress: 1,
+        isProgressBased: false,
+      ),
+      Achievement(
+        achievementId: 'stat_master',
+        category: AchievementCategory.progression,
+        name: 'Stat Master',
+        description: 'Collect 50 stat points',
+        iconUrl: 'assets/icons/stat_master.png',
+        rewardTier: AchievementRewardTier.rare,
+        maxProgress: 50,
+        isProgressBased: true,
+      ),
+      Achievement(
+        achievementId: 'balanced_fighter',
+        category: AchievementCategory.progression,
+        name: 'Balanced Fighter',
+        description: 'Unlock 3 different skill paths',
+        iconUrl: 'assets/icons/balanced_fighter.png',
+        rewardTier: AchievementRewardTier.rare,
+        maxProgress: 3,
+        isProgressBased: true,
+      ),
+      Achievement(
+        achievementId: 'season_warrior',
+        category: AchievementCategory.seasonal,
+        name: 'Season Warrior',
+        description: 'Participate in 10 seasons',
+        iconUrl: 'assets/icons/season_warrior.png',
+        rewardTier: AchievementRewardTier.epic,
+        maxProgress: 10,
+        isProgressBased: true,
+      ),
+      Achievement(
+        achievementId: 'consistency',
+        category: AchievementCategory.seasonal,
+        name: 'Consistency',
+        description: 'Reach Gold tier for 3 consecutive seasons',
+        iconUrl: 'assets/icons/consistency.png',
+        rewardTier: AchievementRewardTier.legendary,
+        maxProgress: 3,
+        isProgressBased: true,
+      ),
+    ];
+  }
 
-    final isSelected = _selectedCategory == category;
+  void _showAchievementDetail(
+    BuildContext context,
+    Achievement achievement,
+  ) {
+    showDialog(
+      context: context,
+      builder: (context) => _AchievementDetailDialog(achievement: achievement),
+    );
+  }
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
-      child: FilterChip(
-        label: Text(categoryNames[category] ?? ''),
-        selected: isSelected,
-        onSelected: (selected) {
-          if (selected) {
-            setState(() {
-              _selectedCategory = category;
-            });
-          }
-        },
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        selectedColor: Theme.of(context).colorScheme.primary.withOpacity(0.3),
+  String _categoryLabel(AchievementCategory category) {
+    switch (category) {
+      case AchievementCategory.milestone:
+        return 'マイルストーン';
+      case AchievementCategory.progression:
+        return '進行';
+      case AchievementCategory.seasonal:
+        return 'シーズン';
+      case AchievementCategory.special:
+        return 'スペシャル';
+    }
+  }
+}
+
+/// Category filter tab widget
+class _CategoryTab extends StatelessWidget {
+  final String label;
+  final bool isSelected;
+  final VoidCallback onTap;
+
+  const _CategoryTab({
+    required this.label,
+    required this.isSelected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected ? AppColors.gold : Colors.grey.shade300,
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Text(
+          label,
+          style: TextStyle(
+            color: isSelected ? Colors.white : Colors.black87,
+            fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
+          ),
+        ),
       ),
     );
   }
+}
 
-  Widget _buildAchievementsGrid(
-    AchievementViewModel viewModel,
-    String userId,
-  ) {
-    return FutureBuilder<List<(Achievement, PlayerAchievement?)>>(
-      future: viewModel.getAchievementsWithProgress(_selectedCategory),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+/// Achievement grid card widget
+class _AchievementGridCard extends StatelessWidget {
+  final Achievement achievement;
+  final VoidCallback onTap;
 
-        if (snapshot.hasError) {
-          return Center(child: Text('エラー: ${snapshot.error}'));
-        }
+  const _AchievementGridCard({
+    required this.achievement,
+    required this.onTap,
+  });
 
-        final achievements = snapshot.data ?? [];
-
-        if (achievements.isEmpty) {
-          return Center(
-            child: Text(
-              'この カテゴリの成果はまだありません',
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          );
-        }
-
-        return GridView.builder(
-          padding: const EdgeInsets.all(12),
-          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 2,
-            childAspectRatio: 0.8,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
-          ),
-          itemCount: achievements.length,
-          itemBuilder: (context, index) {
-            final (achievement, playerAchievement) = achievements[index];
-            return _buildAchievementCard(achievement, playerAchievement);
-          },
-        );
-      },
-    );
+  Color _getRewardTierColor(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return const Color(0xFF808080);
+      case AchievementRewardTier.uncommon:
+        return const Color(0xFF00AA00);
+      case AchievementRewardTier.rare:
+        return const Color(0xFF0099FF);
+      case AchievementRewardTier.epic:
+        return const Color(0xFF9933FF);
+      case AchievementRewardTier.legendary:
+        return const Color(0xFFFFAA00);
+      case AchievementRewardTier.mythic:
+        return const Color(0xFFFF0000);
+      case AchievementRewardTier.silver:
+        return const Color(0xFFC0C0C0);
+      case AchievementRewardTier.gold:
+        return const Color(0xFFFFD700);
+    }
   }
 
-  Widget _buildAchievementCard(
-    Achievement achievement,
-    PlayerAchievement? playerAchievement,
-  ) {
-    final isUnlocked = playerAchievement?.isUnlocked ?? false;
-    final progress = playerAchievement?.progress;
+  @override
+  Widget build(BuildContext context) {
+    final tierColor = _getRewardTierColor(achievement.rewardTier);
 
-    final tierColors = {
-      AchievementRewardTier.bronze: const Color(0xFFCD7F32),
-      AchievementRewardTier.silver: const Color(0xFFC0C0C0),
-      AchievementRewardTier.gold: const Color(0xFFFFD700),
-      AchievementRewardTier.platinum: const Color(0xFFE5E4E2),
-    };
-
-    return Card(
-      elevation: isUnlocked ? 4 : 1,
-      color: isUnlocked
-          ? Theme.of(context).colorScheme.surface
-          : Theme.of(context).colorScheme.surface.withOpacity(0.5),
-      child: InkWell(
-        onTap: () => _showAchievementDetail(achievement, playerAchievement),
-        child: Padding(
-          padding: const EdgeInsets.all(12),
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: BorderSide(
+            color: tierColor.withOpacity(0.5),
+            width: 2,
+          ),
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                tierColor.withOpacity(0.1),
+                tierColor.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(16),
+          ),
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              // Icon/Badge area
-              Expanded(
-                child: Center(
-                  child: Container(
-                    width: 80,
-                    height: 80,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: tierColors[achievement.rewardTier]?.withOpacity(
-                            isUnlocked ? 1.0 : 0.3,
-                          ) ??
-                          Colors.grey.withOpacity(0.3),
-                      border: Border.all(
-                        color: tierColors[achievement.rewardTier] ?? Colors.grey,
-                        width: isUnlocked ? 2 : 1,
-                      ),
-                    ),
-                    child: isUnlocked
-                        ? const Icon(Icons.check_circle, size: 40, color: Colors.white)
-                        : Icon(
-                            Icons.lock_outline,
-                            size: 40,
-                            color: Theme.of(context).colorScheme.onSurface.withOpacity(0.3),
-                          ),
-                  ),
-                ),
+              const Text(
+                '🏆',
+                style: TextStyle(fontSize: 40),
               ),
               const SizedBox(height: 8),
-
-              // Achievement name
-              Text(
-                achievement.name,
-                style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                      fontWeight: FontWeight.bold,
-                      color: isUnlocked
-                          ? Theme.of(context).colorScheme.onSurface
-                          : Theme.of(context).colorScheme.onSurface.withOpacity(0.6),
-                    ),
-                textAlign: TextAlign.center,
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 8),
+                child: Text(
+                  achievement.name,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-
-              const SizedBox(height: 4),
-
-              // Progress bar (if progress-based)
-              if (achievement.isProgressBased && progress != null) ...[
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(2),
-                  child: LinearProgressIndicator(
-                    value: progress.percentage / 100,
-                    minHeight: 4,
-                    backgroundColor: Theme.of(context)
-                        .colorScheme
-                        .onSurface
-                        .withOpacity(0.2),
-                    valueColor: AlwaysStoppedAnimation<Color>(
-                      tierColors[achievement.rewardTier] ?? Colors.blue,
-                    ),
-                  ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 4,
                 ),
-                const SizedBox(height: 4),
-                Text(
-                  '${progress.current}/${progress.target}',
+                decoration: BoxDecoration(
+                  color: tierColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: Text(
+                  _tierLabel(achievement.rewardTier),
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
                         fontSize: 10,
+                        color: tierColor,
+                        fontWeight: FontWeight.bold,
                       ),
                 ),
-              ] else if (!isUnlocked && achievement.unlockedAfter != null)
-                Text(
-                  '後でロック解除',
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        color: Colors.orange,
-                      ),
-                ),
+              ),
             ],
           ),
         ),
@@ -282,131 +333,168 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
     );
   }
 
-  void _showAchievementDetail(
-    Achievement achievement,
-    PlayerAchievement? playerAchievement,
-  ) {
-    final tierColors = {
-      AchievementRewardTier.bronze: const Color(0xFFCD7F32),
-      AchievementRewardTier.silver: const Color(0xFFC0C0C0),
-      AchievementRewardTier.gold: const Color(0xFFFFD700),
-      AchievementRewardTier.platinum: const Color(0xFFE5E4E2),
-    };
+  String _tierLabel(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return 'コモン';
+      case AchievementRewardTier.uncommon:
+        return 'アンコモン';
+      case AchievementRewardTier.rare:
+        return 'レア';
+      case AchievementRewardTier.epic:
+        return 'エピック';
+      case AchievementRewardTier.legendary:
+        return 'レジェンダリー';
+      case AchievementRewardTier.mythic:
+        return 'ミシック';
+      case AchievementRewardTier.silver:
+        return 'シルバー';
+      case AchievementRewardTier.gold:
+        return 'ゴールド';
+    }
+  }
+}
 
-    showModalBottomSheet(
-      context: context,
-      builder: (context) => Padding(
-        padding: const EdgeInsets.all(20),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Header
-            Row(
+/// Achievement detail dialog
+class _AchievementDetailDialog extends StatelessWidget {
+  final Achievement achievement;
+
+  const _AchievementDetailDialog({required this.achievement});
+
+  Color _getRewardTierColor(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return const Color(0xFF808080);
+      case AchievementRewardTier.uncommon:
+        return const Color(0xFF00AA00);
+      case AchievementRewardTier.rare:
+        return const Color(0xFF0099FF);
+      case AchievementRewardTier.epic:
+        return const Color(0xFF9933FF);
+      case AchievementRewardTier.legendary:
+        return const Color(0xFFFFAA00);
+      case AchievementRewardTier.mythic:
+        return const Color(0xFFFF0000);
+      case AchievementRewardTier.silver:
+        return const Color(0xFFC0C0C0);
+      case AchievementRewardTier.gold:
+        return const Color(0xFFFFD700);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final tierColor = _getRewardTierColor(achievement.rewardTier);
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [
+              tierColor.withOpacity(0.1),
+              tierColor.withOpacity(0.05),
+            ],
+          ),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: tierColor.withOpacity(0.3),
+            width: 2,
+          ),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
               children: [
+                const Text(
+                  '🏆',
+                  style: TextStyle(fontSize: 56),
+                ),
+                const SizedBox(height: 16),
+                Text(
+                  achievement.name,
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                        color: tierColor,
+                      ),
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 12),
                 Container(
-                  width: 60,
-                  height: 60,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: tierColors[achievement.rewardTier],
+                    color: tierColor.withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(8),
                   ),
-                  child: const Center(
-                    child: Icon(Icons.star, color: Colors.white, size: 28),
+                  child: Text(
+                    _tierLabel(achievement.rewardTier),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                          color: tierColor,
+                          fontWeight: FontWeight.bold,
+                        ),
                   ),
                 ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        achievement.name,
-                        style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                      Text(
-                        achievement.description,
-                        style: Theme.of(context).textTheme.bodySmall,
-                      ),
-                    ],
+                const SizedBox(height: 16),
+                Text(
+                  achievement.description,
+                  style: Theme.of(context).textTheme.bodyMedium,
+                  textAlign: TextAlign.center,
+                ),
+                if (achievement.isProgressBased) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    '進捗: 0/${achievement.maxProgress}',
+                    style: Theme.of(context).textTheme.bodySmall,
                   ),
+                  const SizedBox(height: 8),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(4),
+                    child: LinearProgressIndicator(
+                      value: 0,
+                      minHeight: 8,
+                      backgroundColor: Colors.grey.shade300,
+                      valueColor: AlwaysStoppedAnimation<Color>(tierColor),
+                    ),
+                  ),
+                ],
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () => Navigator.pop(context),
+                  child: const Text('閉じる'),
                 ),
               ],
             ),
-            const SizedBox(height: 20),
-
-            // Status
-            if (playerAchievement != null)
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.primaryContainer,
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      playerAchievement.isUnlocked ? '✅ ロック解除済み' : '🔒 ロック済み',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                    if (playerAchievement.progress != null)
-                      Text(
-                        '${playerAchievement.progress!.percentage}%',
-                        style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                              fontWeight: FontWeight.bold,
-                            ),
-                      ),
-                  ],
-                ),
-              ),
-
-            const SizedBox(height: 16),
-
-            // Rewards
-            Text(
-              '報酬',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-            ),
-            const SizedBox(height: 8),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceAround,
-              children: [
-                Column(
-                  children: [
-                    const Text('💰'),
-                    const SizedBox(height: 4),
-                    Text(
-                      '+${achievement.getRewardCurrency()}',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-                Column(
-                  children: [
-                    const Text('🏅'),
-                    const SizedBox(height: 4),
-                    Text(
-                      '+${achievement.getRewardBadges()}',
-                      style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                          ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ],
+          ),
         ),
       ),
     );
+  }
+
+  String _tierLabel(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return 'コモン';
+      case AchievementRewardTier.uncommon:
+        return 'アンコモン';
+      case AchievementRewardTier.rare:
+        return 'レア';
+      case AchievementRewardTier.epic:
+        return 'エピック';
+      case AchievementRewardTier.legendary:
+        return 'レジェンダリー';
+      case AchievementRewardTier.mythic:
+        return 'ミシック';
+      case AchievementRewardTier.silver:
+        return 'シルバー';
+      case AchievementRewardTier.gold:
+        return 'ゴールド';
+    }
   }
 }

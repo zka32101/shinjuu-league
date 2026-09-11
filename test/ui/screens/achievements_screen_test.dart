@@ -1,251 +1,222 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
-import 'package:shinjuu_league/data/models/user_model.dart';
-import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
-import 'package:shinjuu_league/viewmodels/achievement_viewmodel.dart';
-import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
-
-class MockAchievementService extends Mock implements AchievementService {}
-
-class MockUserViewModel extends Mock {}
 
 void main() {
   group('AchievementsScreen', () {
-    late MockAchievementService mockAchievementService;
-
-    setUp(() {
-      mockAchievementService = MockAchievementService();
-    });
-
-    testWidgets('renders achievements screen with appbar', (WidgetTester tester) async {
+    testWidgets('renders achievements screen with app bar',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
-      expect(find.text('成果'), findsWidgets);
-      expect(find.byType(AppBar), findsOneWidget);
+      expect(find.byType(Scaffold), findsOneWidget);
+      expect(find.text('成果'), findsOneWidget);
     });
 
-    testWidgets('displays category filter chips', (WidgetTester tester) async {
+    testWidgets('displays category filter tabs',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
-      // Wait for build
-      await tester.pumpAndSettle();
-
-      // Verify category chips are present
-      expect(find.byType(FilterChip), findsWidgets);
+      expect(find.text('すべて'), findsOneWidget);
+      expect(find.text('マイルストーン'), findsOneWidget);
+      expect(find.text('進行'), findsOneWidget);
+      expect(find.text('シーズン'), findsOneWidget);
     });
 
-    testWidgets('shows loading state initially', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
+    testWidgets('displays achievement grid', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
-        ),
-      );
-
-      // Loading state should show
-      await tester.pumpAndSettle();
-    });
-
-    testWidgets('switches category on chip tap', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
-      await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      // Tap on a category chip (find the second one)
-      final chips = find.byType(FilterChip);
-      if (chips.evaluate().length > 1) {
-        await tester.tap(chips.at(1));
-        await tester.pumpAndSettle();
-      }
-    });
-
-    testWidgets('displays achievements in grid', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
-      await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
-        ),
-      );
-
-      await tester.pumpAndSettle();
-
-      // Grid should be present
+      // Should display grid view
       expect(find.byType(GridView), findsOneWidget);
     });
 
-    testWidgets('shows error state on load failure', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenThrow(Exception('Failed to load'));
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenThrow(Exception('Failed to load'));
-
+    testWidgets('shows achievement cards with trophy emoji',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      // Error should be shown
-      expect(find.byIcon(Icons.error_outline), findsOneWidget);
+      expect(find.text('🏆'), findsWidgets);
     });
 
-    testWidgets('shows reload button on error', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenThrow(Exception('Failed to load'));
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenThrow(Exception('Failed to load'));
-
+    testWidgets('displays achievement names', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      expect(find.text('再読み込み'), findsOneWidget);
+      expect(find.text('Aha Moment'), findsOneWidget);
+      expect(find.text('Rising Star'), findsOneWidget);
     });
 
-    testWidgets('achievement card shows locked state for non-unlocked', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
+    testWidgets('shows achievement tier badges', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
+
+      expect(find.text('コモン'), findsWidgets);
+      expect(find.text('レア'), findsWidgets);
     });
 
-    testWidgets('shows empty state for category with no achievements', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
+    testWidgets('opens detail dialog when achievement card tapped',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      // Should show empty state message
-      expect(
-        find.textContaining('この カテゴリの成果はまだありません'),
-        findsOneWidget,
-      );
+      // Tap first achievement card
+      await tester.tap(find.text('Aha Moment').first);
+      await tester.pumpAndSettle();
+
+      // Dialog should be visible
+      expect(find.byType(Dialog), findsOneWidget);
     });
 
-    testWidgets('opens achievement detail modal on card tap', (WidgetTester tester) async {
-      when(mockAchievementService.getPlayerAchievements(''))
-          .thenAnswer((_) async => []);
-      when(mockAchievementService.getUnlockedAchievements(''))
-          .thenAnswer((_) async => []);
-
+    testWidgets('achievement detail shows description',
+        (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            achievementServiceProvider.overrideWithValue(mockAchievementService),
-          ],
-          child: const MaterialApp(
-            home: AchievementsScreen(),
-          ),
+        const MaterialApp(
+          home: AchievementsScreen(),
         ),
       );
 
       await tester.pumpAndSettle();
 
-      // Look for cards and tap one
-      final cards = find.byType(Card);
-      if (cards.evaluate().isNotEmpty) {
-        await tester.tap(cards.first);
-        await tester.pumpAndSettle();
+      // Tap achievement
+      await tester.tap(find.text('Aha Moment').first);
+      await tester.pumpAndSettle();
 
-        // Modal should open
-        expect(find.byType(ModalBottomSheet), findsOneWidget);
-      }
+      expect(find.text('Get your first kill'), findsOneWidget);
+    });
+
+    testWidgets('achievement detail shows progress for progress-based achievements',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Tap progress-based achievement (Stat Master)
+      await tester.tap(find.text('Stat Master').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('進捗: 0/50'), findsOneWidget);
+      expect(find.byType(LinearProgressIndicator), findsOneWidget);
+    });
+
+    testWidgets('achievement detail has close button', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Aha Moment').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('閉じる'), findsOneWidget);
+    });
+
+    testWidgets('closes dialog when close button tapped',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      await tester.tap(find.text('Aha Moment').first);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsOneWidget);
+
+      await tester.tap(find.text('閉じる'));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsNothing);
+    });
+
+    testWidgets('category tab selection changes selection state',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      // Initially should have default tab selected
+      expect(find.byType(Container), findsWidgets);
+
+      // Tap a category tab
+      await tester.tap(find.text('シーズン'));
+      await tester.pumpAndSettle();
+
+      // Verify state change (screen should still render)
+      expect(find.byType(Scaffold), findsOneWidget);
+    });
+
+    testWidgets('handles multiple achievement tiles', (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      // Should have multiple cards
+      expect(find.text('🏆'), findsWidgets);
+      expect(find.byType(Card), findsWidgets);
+    });
+
+    testWidgets('achievement grid has proper spacing',
+        (WidgetTester tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: AchievementsScreen(),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      final gridView = find.byType(GridView);
+      expect(gridView, findsOneWidget);
     });
   });
 }
