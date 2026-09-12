@@ -1,14 +1,19 @@
 import 'dart:async';
 import 'package:shinjuu_league/services/admin_api_service.dart';
 import 'package:shinjuu_league/services/config_admin_service.dart';
+import 'package:shinjuu_league/services/audit_logger_service.dart';
+import 'package:shinjuu_league/services/auth_service.dart';
 
 /// Real-time web dashboard service.
 ///
 /// Provides reactive dashboard state with periodic polling of AdminApiService.
 /// Designed to feed Flutter web UI with live updates.
+/// Includes comprehensive audit logging of all admin operations.
 class WebAdminDashboardService {
   final AdminApiService _apiService;
   final int _pollIntervalMs;
+  final AuditLoggerService? _auditLogger;
+  final AuthService? _authService;
 
   // State streams
   late final StreamController<DashboardSnapshot> _dashboardController =
@@ -27,8 +32,12 @@ class WebAdminDashboardService {
   WebAdminDashboardService({
     required AdminApiService apiService,
     int pollIntervalMs = 5000, // 5 second default
+    AuditLoggerService? auditLogger,
+    AuthService? authService,
   })  : _apiService = apiService,
-        _pollIntervalMs = pollIntervalMs;
+        _pollIntervalMs = pollIntervalMs,
+        _auditLogger = auditLogger,
+        _authService = authService;
 
   // Public streams
   Stream<DashboardSnapshot> get onDashboardUpdate =>
@@ -58,6 +67,38 @@ class WebAdminDashboardService {
     _isPolling = false;
     _pollTimer?.cancel();
     _pollTimer = null;
+  }
+
+  /// Helper method to log admin operations.
+  Future<void> _logOperation({
+    required String action,
+    required String resourceType,
+    required String resourceId,
+    dynamic oldValue,
+    dynamic newValue,
+    String? reason,
+  }) async {
+    if (_auditLogger == null || _authService == null) {
+      return; // Audit logging not configured
+    }
+
+    try {
+      final userId = _authService!.currentUser?.uid ?? 'unknown';
+      await _auditLogger!.logChange(
+        userId: userId,
+        action: action,
+        resourceType: resourceType,
+        resourceId: resourceId,
+        details: {
+          if (oldValue != null) 'oldValue': oldValue.toString(),
+          if (newValue != null) 'newValue': newValue.toString(),
+          if (reason != null) 'reason': reason,
+        },
+      );
+    } catch (e) {
+      // Log error but don't fail the operation
+      print('Error logging admin operation: $e');
+    }
   }
 
   /// Poll dashboard state once.
@@ -136,6 +177,12 @@ class WebAdminDashboardService {
     try {
       final result = await _apiService.applyDifficultyPreset(preset);
       if (result) {
+        await _logOperation(
+          action: 'APPLY_PRESET',
+          resourceType: 'difficulty_preset',
+          resourceId: preset,
+          reason: 'Admin applied difficulty preset',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -155,6 +202,13 @@ class WebAdminDashboardService {
       final result =
           await _apiService.setDifficultyMultiplier(type, value);
       if (result) {
+        await _logOperation(
+          action: 'SET_MULTIPLIER',
+          resourceType: 'difficulty_multiplier',
+          resourceId: type,
+          newValue: value,
+          reason: 'Admin updated difficulty multiplier',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -173,6 +227,13 @@ class WebAdminDashboardService {
     try {
       final result = await _apiService.setFeatureEnabled(featureName, enabled);
       if (result) {
+        await _logOperation(
+          action: 'SET_ENABLED',
+          resourceType: 'feature',
+          resourceId: featureName,
+          newValue: enabled,
+          reason: 'Admin toggled feature enabled status',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -192,6 +253,13 @@ class WebAdminDashboardService {
       final result =
           await _apiService.setFeatureRollout(featureName, percentage);
       if (result) {
+        await _logOperation(
+          action: 'SET_ROLLOUT',
+          resourceType: 'feature_rollout',
+          resourceId: featureName,
+          newValue: percentage,
+          reason: 'Admin adjusted feature rollout percentage',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -210,6 +278,14 @@ class WebAdminDashboardService {
     try {
       final result = await _apiService.createExperiment(config);
       if (result) {
+        final experimentId = config['experimentId']?.toString() ?? 'unknown';
+        await _logOperation(
+          action: 'CREATE_EXPERIMENT',
+          resourceType: 'experiment',
+          resourceId: experimentId,
+          newValue: config,
+          reason: 'Admin created new A/B experiment',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -232,6 +308,13 @@ class WebAdminDashboardService {
       final result =
           await _apiService.updateExperimentRollout(experimentId, percentage);
       if (result) {
+        await _logOperation(
+          action: 'UPDATE_ROLLOUT',
+          resourceType: 'experiment_rollout',
+          resourceId: experimentId,
+          newValue: percentage,
+          reason: 'Admin adjusted experiment rollout percentage',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
@@ -250,6 +333,12 @@ class WebAdminDashboardService {
     try {
       final result = await _apiService.rollbackToSnapshot(name);
       if (result) {
+        await _logOperation(
+          action: 'ROLLBACK_SNAPSHOT',
+          resourceType: 'snapshot',
+          resourceId: name,
+          reason: 'Admin restored configuration from snapshot',
+        );
         await _pollOnce(); // Refresh dashboard
       }
       return result;
