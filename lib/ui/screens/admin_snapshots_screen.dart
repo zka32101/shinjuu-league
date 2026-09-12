@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shinjuu_league/data/models/admin_role.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/web_admin_dashboard_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 
@@ -187,24 +189,83 @@ class _AdminSnapshotsScreenState extends ConsumerState<AdminSnapshotsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Configuration Snapshots'),
-        centerTitle: true,
-        elevation: 0,
-      ),
-      body: _isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : _error != null
-              ? _buildErrorState()
-              : _buildContent(),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          setState(() => _showCreateForm = !_showCreateForm);
-        },
-        tooltip: 'New Snapshot',
-        child: const Icon(Icons.add),
-      ),
+    return Consumer(
+      builder: (context, ref, child) {
+        final adminAccessState = ref.watch(adminAccessViewModelProvider);
+
+        return Scaffold(
+          appBar: AppBar(
+            title: const Text('Configuration Snapshots'),
+            centerTitle: true,
+            elevation: 0,
+          ),
+          body: adminAccessState.when(
+            data: (state) {
+              // Check if user has permission to view snapshots
+              final canViewSnapshots = ref
+                  .read(adminAccessViewModelProvider.notifier)
+                  .hasPermission(AdminPermission.viewSnapshots);
+
+              if (!canViewSnapshots) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(
+                        Icons.lock_outline,
+                        size: 48,
+                        color: Colors.orange,
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Insufficient Permissions',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'You do not have permission to view snapshots.',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(fontSize: 14, color: Colors.grey),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return _isLoading
+                  ? const Center(child: CircularProgressIndicator())
+                  : _error != null
+                      ? _buildErrorState()
+                      : _buildContent();
+            },
+            loading: () => const Center(child: CircularProgressIndicator()),
+            error: (error, stack) => Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.error_outline, size: 48, color: Colors.red),
+                  const SizedBox(height: 16),
+                  Text(
+                    'Error: $error',
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          floatingActionButton: FloatingActionButton(
+            onPressed: () {
+              setState(() => _showCreateForm = !_showCreateForm);
+            },
+            tooltip: 'New Snapshot',
+            child: const Icon(Icons.add),
+          ),
+        );
+      },
     );
   }
 
