@@ -15,7 +15,17 @@ import 'package:shinjuu_league/ui/screens/rank_screen.dart';
 import 'package:shinjuu_league/ui/screens/result_screen.dart';
 import 'package:shinjuu_league/ui/screens/shop_screen.dart';
 import 'package:shinjuu_league/ui/screens/skill_build_screen.dart';
+import 'package:shinjuu_league/ui/screens/skill_tree_progression_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
+import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
+import 'package:shinjuu_league/ui/screens/quests_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_dashboard_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_difficulty_tuning_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_feature_flags_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_experiments_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_audit_log_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_snapshots_screen.dart';
+import 'package:shinjuu_league/ui/screens/admin_roles_screen.dart';
 
 abstract class AppRoutes {
   static const splash = '/';
@@ -32,6 +42,16 @@ abstract class AppRoutes {
   static const battlePass = '/battlepass';
   static const mechaSelect = '/mecha-select';
   static const inventory = '/inventory';
+  static const skillTreeProgression = '/skill-tree-progression';
+  static const achievements = '/achievements';
+  static const quests = '/quests';
+  static const adminDashboard = '/admin-dashboard';
+  static const adminDifficultyTuning = '/admin-difficulty-tuning';
+  static const adminFeatureFlags = '/admin-feature-flags';
+  static const adminExperiments = '/admin-experiments';
+  static const adminAuditLog = '/admin-audit-log';
+  static const adminSnapshots = '/admin-snapshots';
+  static const adminRoles = '/admin-roles';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -143,6 +163,98 @@ final appRouter = GoRouter(
       path: AppRoutes.inventory,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const InventoryScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.skillTreeProgression,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const SkillTreeProgressionScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.achievements,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const AchievementsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.quests,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const QuestsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.adminDashboard,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const AdminDashboardScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.adminDifficultyTuning,
+      pageBuilder: (context, state) {
+        // Note: In a real app, dashboardService would be injected via Riverpod
+        // For now, using a placeholder that must be initialized in the screen
+        return _buildPage(
+          context,
+          state,
+          AdminDifficultyTuningScreen(
+            dashboardService: null as dynamic, // Placeholder
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.adminFeatureFlags,
+      pageBuilder: (context, state) {
+        return _buildPage(
+          context,
+          state,
+          AdminFeatureFlagsScreen(
+            dashboardService: null as dynamic, // Placeholder
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.adminExperiments,
+      pageBuilder: (context, state) {
+        return _buildPage(
+          context,
+          state,
+          AdminExperimentsScreen(
+            dashboardService: null as dynamic, // Placeholder
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.adminAuditLog,
+      pageBuilder: (context, state) {
+        return _buildPage(
+          context,
+          state,
+          AdminAuditLogScreen(
+            dashboardService: null as dynamic, // Placeholder
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.adminSnapshots,
+      pageBuilder: (context, state) {
+        return _buildPage(
+          context,
+          state,
+          AdminSnapshotsScreen(
+            dashboardService: null as dynamic, // Placeholder
+          ),
+        );
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.adminRoles,
+      pageBuilder: (context, state) {
+        return _buildPage(
+          context,
+          state,
+          const AdminRolesScreen(),
+        );
+      },
     ),
   ],
 );

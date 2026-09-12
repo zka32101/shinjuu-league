@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
@@ -56,6 +57,11 @@ class BattleParticipantState {
   SkillBuild? skillBuild;
   final Map<String, double> skillCooldowns = {}; // skillId -> 残りクールダウン秒数
 
+  // スキルツリー修正倍率（デフォルト: 修正なし）
+  double skillTreeAtkMultiplier = 1.0;
+  double skillTreeDefMultiplier = 1.0;
+  double skillTreeSpdMultiplier = 1.0;
+
   int kills = 0;
   int deaths = 0;
   int assists = 0;
@@ -101,7 +107,8 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseStats.hp, atk: baseAtk.toInt(), spd: baseStats.spd),
     );
-    return baseAtk + itemBonuses.atk;
+    // スキルツリー修正倍率を適用（ベースATK + アイテムボーナス）に対して
+    return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier;
   }
 
   double get effectiveHp {
@@ -110,7 +117,9 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseHp.toInt(), atk: baseStats.atk, spd: baseStats.spd),
     );
-    return baseHp + itemBonuses.hp;
+    // スキルツリー修正倍率を適用（ベースHP + アイテムボーナス）に対して
+    // 防御ツリーのボーナスは有効HPに影響する（体力の多さで防御力を高める）
+    return (baseHp + itemBonuses.hp) * skillTreeDefMultiplier;
   }
 
   double get effectiveSpd {
@@ -119,7 +128,8 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseStats.hp, atk: baseStats.atk, spd: baseSpd.toInt()),
     );
-    return baseSpd + itemBonuses.spd;
+    // スキルツリー修正倍率を適用（ベースSPD + アイテムボーナス）に対して
+    return (baseSpd + itemBonuses.spd) * skillTreeSpdMultiplier;
   }
 
   int get score => kills * 3 + assists - deaths;
@@ -171,6 +181,7 @@ class BattleEngine {
   final String mapId;
   final List<BattleParticipantState> participants;
   final int durationSeconds;
+  final SkillProgressionConfig _progressionConfig;
 
   BattleEngine({
     required this.battleId,
@@ -179,7 +190,9 @@ class BattleEngine {
     required this.participants,
     this.durationSeconds = AppConfig.battleDurationSeconds,
     Random? random,
-  }) : _random = random ?? Random();
+    SkillProgressionConfig? progressionConfig,
+  }) : _progressionConfig = progressionConfig ?? SkillProgressionConfig(),
+       _random = random ?? Random();
 
   final Random _random;
   Timer? _timer;
@@ -211,6 +224,29 @@ class BattleEngine {
     participant.evolution = evolution;
     // 進化ボーナスでHP上限が変わるため、交戦開始前に満タンへ再計算する
     participant.currentHp = participant.effectiveHp;
+  }
+
+  /// スキルツリー修正倍率を設定（マップ上の戦闘開始前に呼び出す）
+  /// 攻撃/防御/速度ツリーの現在の割り当てから乗算倍率を算出
+  void setSkillTreeModifiers(
+    String userId, {
+    required double atkMultiplier,
+    required double defMultiplier,
+    required double spdMultiplier,
+  }) {
+    final participant = participants
+        .where((p) => p.userId == userId)
+        .firstOrNull;
+    if (participant == null) return;
+
+    participant.skillTreeAtkMultiplier = atkMultiplier;
+    participant.skillTreeDefMultiplier = defMultiplier;
+    participant.skillTreeSpdMultiplier = spdMultiplier;
+
+    // HP上限が変わるため、現在HPを再計算する
+    if (participant.currentHp > participant.effectiveHp) {
+      participant.currentHp = participant.effectiveHp;
+    }
   }
 
   void start() {
@@ -258,10 +294,12 @@ class BattleEngine {
       p.resources = p.resources.addGold(GoldRewards.passiveGoldPerSecond);
       p.totalGoldEarned += GoldRewards.passiveGoldPerSecond;
 
-      // スキルクールダウン減少
+      // スキルクールダウン減少（Remote Config の難易度プリセット倍率を適用）
+      final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
+      final cooldownReduction = 1.0 * difficultyModifiers.skillCooldownMultiplier;
       p.skillCooldowns.forEach((skillId, cooldown) {
         if (cooldown > 0) {
-          p.skillCooldowns[skillId] = cooldown - 1.0;
+          p.skillCooldowns[skillId] = cooldown - cooldownReduction;
         }
       });
     }
@@ -392,6 +430,7 @@ class BattleEngine {
 
   /// 素早さが高いほど被弾を軽減する（回避寄りの簡易ミティゲーション）
   /// 攻撃力が高いほどクリティカル確率が上がる
+  /// Remote Config の難易度プリセット倍率を適用
   ({double damage, bool isCritical}) _computeDamage(
     BattleParticipantState attacker,
     BattleParticipantState defender,
@@ -400,11 +439,15 @@ class BattleEngine {
         1.0 - (defender.effectiveSpd / (defender.effectiveSpd + 200));
     final baseDamage = attacker.effectiveAtk * _hitDamageFactor * mitigation;
 
+    // Remote Config の難易度プリセット倍率を適用
+    final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
+    final effectiveDamage = baseDamage * difficultyModifiers.skillDamageMultiplier;
+
     // クリティカル判定：攻撃力 / 600 が基本確率（最大25%）
     final critChance = (attacker.effectiveAtk / 600).clamp(0, 0.25);
     final isCritical = _random.nextDouble() < critChance;
 
-    final finalDamage = isCritical ? baseDamage * 2.0 : baseDamage;
+    final finalDamage = isCritical ? effectiveDamage * 2.0 : effectiveDamage;
 
     return (damage: finalDamage, isCritical: isCritical);
   }

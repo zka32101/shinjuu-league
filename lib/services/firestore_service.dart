@@ -445,4 +445,136 @@ class FirestoreService {
       throw 'Failed to log event: $e';
     }
   }
+
+  // ============ Achievement Methods ============
+  /// Mark an achievement as unlocked for a user
+  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .doc(achievementId)
+          .set({
+        'achievementId': achievementId,
+        'unlockedAt': FieldValue.serverTimestamp(),
+        'isHidden': false,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to mark achievement unlocked: $e';
+    }
+  }
+
+  /// Increment user currency (earned from achievements or other sources)
+  Future<void> incrementUserCurrency(String userId, int amount) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'currency': FieldValue.increment(amount),
+      });
+    } catch (e) {
+      throw 'Failed to increment currency: $e';
+    }
+  }
+
+  /// Increment user achievement badges (cosmetic reward)
+  Future<void> incrementUserAchievementBadges(String userId, int count) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'achievementBadges': FieldValue.increment(count),
+      });
+    } catch (e) {
+      throw 'Failed to increment achievement badges: $e';
+    }
+  }
+
+  /// Add a cosmetic item to user's collection
+  Future<void> addUserCosmetic(String userId, String cosmeticId) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'ownedCosmetics': FieldValue.arrayUnion([cosmeticId]),
+      });
+    } catch (e) {
+      throw 'Failed to add cosmetic: $e';
+    }
+  }
+
+  /// Get user achievement history
+  Future<List<Map<String, dynamic>>> getUserAchievements(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch achievements: $e';
+    }
+  }
+
+  // ============ Quest Methods ============
+  /// Save player quest progress to Firestore
+  Future<void> savePlayerQuest(String userId, dynamic playerQuest) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(playerQuest.questId)
+          .set(playerQuest.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to save quest: $e';
+    }
+  }
+
+  /// Get a specific player quest
+  Future<dynamic> getPlayerQuest(String userId, String questId) async {
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(questId)
+          .get();
+      if (doc.exists) {
+        // Return raw data - caller handles deserialization
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to fetch quest: $e';
+    }
+  }
+
+  /// Get player quests by frequency
+  Future<List<Map<String, dynamic>>> getPlayerQuestsByFrequency(
+    String userId,
+    dynamic frequency,
+  ) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .where('frequency', isEqualTo: frequency.toString())
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch quests by frequency: $e';
+    }
+  }
+
+  /// Get all player quests
+  Future<List<Map<String, dynamic>>> getAllPlayerQuests(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch all quests: $e';
+    }
+  }
 }

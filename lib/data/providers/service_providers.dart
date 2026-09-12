@@ -3,13 +3,20 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
+import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
+import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
+import 'package:shinjuu_league/services/achievement_detector_service.dart';
+import 'package:shinjuu_league/services/achievement_reward_service.dart';
+import 'package:shinjuu_league/services/achievement_integration_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
+import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
+import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
@@ -17,11 +24,15 @@ import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
+import 'package:shinjuu_league/services/admin_role_service.dart';
+import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/guild_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/matching_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
+import 'package:shinjuu_league/viewmodels/admin_access_viewmodel.dart';
+import 'package:shinjuu_league/data/models/admin_role.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 final firestoreServiceProvider = Provider<FirestoreService>(
@@ -128,4 +139,71 @@ final rankingServiceProvider = Provider<RankingService>((ref) {
 // Phase 8: Item System
 final itemServiceProvider = Provider<ItemService>((ref) {
   return ItemService();
-}););
+});
+
+// Phase 10 Step 6: Achievement Analytics Integration
+final achievementAnalyticsIntegrationProvider = Provider<AchievementAnalyticsIntegration>((ref) {
+  return AchievementAnalyticsIntegration(
+    achievementService: ref.watch(achievementServiceProvider),
+    analyticsService: ref.watch(analyticsServiceProvider),
+  );
+});
+
+// Phase 10 Step 9: Achievement Toast Notifications
+final achievementToastNotificationServiceProvider = Provider<AchievementToastNotificationService>((ref) {
+  return AchievementToastNotificationService();
+});
+
+// Phase 10 Step 11: Achievement Unlock Detection & Reward Distribution
+final battleEngineServiceProvider = Provider<BattleEngineService>((ref) {
+  return BattleEngineService();
+});
+
+final achievementDetectorServiceProvider = Provider.autoDispose<AchievementDetectorService>((ref) {
+  return AchievementDetectorService(
+    battleEngine: ref.watch(battleEngineServiceProvider),
+  );
+});
+
+final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref) {
+  return AchievementRewardService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+final achievementIntegrationServiceProvider = Provider.autoDispose<AchievementIntegrationService>((ref) {
+  return AchievementIntegrationService(
+    detector: ref.watch(achievementDetectorServiceProvider),
+    rewardService: ref.watch(achievementRewardServiceProvider),
+    toastService: ref.watch(achievementToastNotificationServiceProvider),
+    analyticsService: ref.watch(analyticsServiceProvider),
+  );
+});
+
+// Phase 11: Daily Quests & Mission System
+final questServiceProvider = Provider<QuestService>((ref) {
+  return QuestService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+// Phase 33: Admin Role-Based Access Control
+final adminRoleServiceProvider = Provider<AdminRoleService>((ref) {
+  return AdminRoleService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+final auditLoggerServiceProvider = Provider<AuditLoggerService>((ref) {
+  return AuditLoggerService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+    roleService: ref.watch(adminRoleServiceProvider),
+  );
+});
+
+final adminAccessViewModelProvider = StateNotifierProvider<AdminAccessViewModel, AsyncValue<AdminAccessState>>((ref) {
+  return AdminAccessViewModel(
+    roleService: ref.watch(adminRoleServiceProvider),
+    authService: ref.watch(authServiceProvider),
+  );
+});
