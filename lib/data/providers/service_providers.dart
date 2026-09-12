@@ -24,11 +24,15 @@ import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
+import 'package:shinjuu_league/services/admin_role_service.dart';
+import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/guild_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/matching_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
+import 'package:shinjuu_league/viewmodels/admin_access_viewmodel.dart';
+import 'package:shinjuu_league/data/models/admin_role.dart';
 
 final authServiceProvider = Provider<AuthService>((ref) => AuthService());
 final firestoreServiceProvider = Provider<FirestoreService>(
@@ -180,5 +184,26 @@ final achievementIntegrationServiceProvider = Provider.autoDispose<AchievementIn
 final questServiceProvider = Provider<QuestService>((ref) {
   return QuestService(
     firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+// Phase 33: Admin Role-Based Access Control
+final adminRoleServiceProvider = Provider<AdminRoleService>((ref) {
+  return AdminRoleService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+  );
+});
+
+final auditLoggerServiceProvider = Provider<AuditLoggerService>((ref) {
+  return AuditLoggerService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+    roleService: ref.watch(adminRoleServiceProvider),
+  );
+});
+
+final adminAccessViewModelProvider = StateNotifierProvider<AdminAccessViewModel, AsyncValue<AdminAccessState>>((ref) {
+  return AdminAccessViewModel(
+    roleService: ref.watch(adminRoleServiceProvider),
+    authService: ref.watch(authServiceProvider),
   );
 });
