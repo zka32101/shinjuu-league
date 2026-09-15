@@ -26,6 +26,8 @@ import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/admin_role_service.dart';
 import 'package:shinjuu_league/services/audit_logger_service.dart';
+import 'package:shinjuu_league/services/admin_analytics_service.dart';
+import 'package:shinjuu_league/viewmodels/admin_analytics_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/guild_viewmodel.dart';
@@ -207,3 +209,18 @@ final adminAccessViewModelProvider = StateNotifierProvider<AdminAccessViewModel,
     authService: ref.watch(authServiceProvider),
   );
 });
+
+// Phase 35: Admin Analytics Dashboard
+final adminAnalyticsServiceProvider = Provider<AdminAnalyticsService>((ref) {
+  return AdminAnalyticsService(
+    firestoreService: ref.watch(firestoreServiceProvider),
+    auditLoggerService: ref.watch(auditLoggerServiceProvider),
+  );
+});
+
+final adminAnalyticsViewModelProvider =
+    StateNotifierProvider<AdminAnalyticsViewModel, AnalyticsState>((ref) {
+      return AdminAnalyticsViewModel(
+        analyticsService: ref.watch(adminAnalyticsServiceProvider),
+      );
+    });
