@@ -7,10 +7,63 @@ import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dar
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
 
 class MockSkillProgressionBattleService extends Mock
-    implements SkillProgressionBattleService {}
+    implements SkillProgressionBattleService {
+  @override
+  void confirmEvolution(String? playerId, EvolutionType? choice) {
+    super.noSuchMethod(
+      Invocation.method(#confirmEvolution, [playerId, choice]),
+      returnValueForMissingStub: null,
+    );
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  int get firstEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#firstEvolutionLevel),
+        returnValue: 3,
+        returnValueForMissingStub: 3,
+      ) as int;
+
+  @override
+  int get secondEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#secondEvolutionLevel),
+        returnValue: 6,
+        returnValueForMissingStub: 6,
+      ) as int;
+
+  @override
+  double get skillCooldownMultiplier => super.noSuchMethod(
+        Invocation.getter(#skillCooldownMultiplier),
+        returnValue: 1.0,
+        returnValueForMissingStub: 1.0,
+      ) as double;
+
+  @override
+  double get skillDamageMultiplier => super.noSuchMethod(
+        Invocation.getter(#skillDamageMultiplier),
+        returnValue: 1.0,
+        returnValueForMissingStub: 1.0,
+      ) as double;
+
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 void main() {
   group('BattleSkillProgressionCoordinator', () {
@@ -134,7 +187,7 @@ void main() {
 
         coordinator.autoConfirmEvolution('player1');
 
-        verify(mockSkillService.confirmEvolution(any as String, any as EvolutionType)).called(1);
+        verify(mockSkillService.confirmEvolution(any, any)).called(1);
       });
     });
 
