@@ -4,7 +4,65 @@ import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/viewmodels/achievement_viewmodel.dart';
 
-class MockAchievementService extends Mock implements AchievementService {}
+class MockAchievementService extends Mock implements AchievementService {
+  @override
+  Future<List<PlayerAchievement>> getPlayerAchievements(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getPlayerAchievements, [userId]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+
+  @override
+  Future<List<PlayerAchievement>> getUnlockedAchievements(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getUnlockedAchievements, [userId]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+
+  @override
+  Future<List<PlayerAchievement>> getAchievementsByCategory(
+      String? userId, AchievementCategory? category) {
+    return super.noSuchMethod(
+      Invocation.method(#getAchievementsByCategory, [userId, category]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+
+  @override
+  Future<int> getUnlockCount(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getUnlockCount, [userId]),
+      returnValue: Future<int>.value(0),
+      returnValueForMissingStub: Future<int>.value(0),
+    ) as Future<int>;
+  }
+
+  @override
+  Future<double> getCompletionPercentage(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getCompletionPercentage, [userId]),
+      returnValue: Future<double>.value(0.0),
+      returnValueForMissingStub: Future<double>.value(0.0),
+    ) as Future<double>;
+  }
+
+  @override
+  int getTotalAvailableCount() {
+    return super.noSuchMethod(
+      Invocation.method(#getTotalAvailableCount, []),
+      returnValue: 0,
+      returnValueForMissingStub: 0,
+    ) as int;
+  }
+}
 
 void main() {
   group('AchievementViewModel', () {
