@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
+import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 class MockSkillProgressionConfig extends Mock

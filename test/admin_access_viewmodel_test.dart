@@ -458,6 +458,7 @@ void main() {
 
 // Mock implementations
 class MockAuthService implements AuthService {
+  @override
   User? currentUser;
 
   @override

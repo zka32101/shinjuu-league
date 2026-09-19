@@ -54,7 +54,7 @@ void main() {
       )).thenAnswer((_) async {});
       when(mockAnalytics.recordError(any, any,
           reason: anyNamed('reason'),
-          information: anyNamed('information'))).thenAnswer((_) async {});
+          information: anyNamed('information') as Iterable<Object>)).thenAnswer((_) async {});
       when(mockAchievement.getUnlockedAchievements(any as String))
           .thenAnswer((_) async => []);
       when(mockAchievement.unlockAchievement(any as String, any as String))

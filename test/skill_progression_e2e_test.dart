@@ -6,6 +6,7 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';

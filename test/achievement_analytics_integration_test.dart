@@ -133,7 +133,7 @@ void main() {
           any,
           any,
           reason: anyNamed('reason'),
-          information: anyNamed('information'),
+          information: anyNamed('information') as Iterable<Object>,
         )).called(1);
       });
 

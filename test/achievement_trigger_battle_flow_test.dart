@@ -55,7 +55,7 @@ void main() {
       )).thenAnswer((_) async {});
       when(mockAnalytics.recordError(any, any,
           reason: anyNamed('reason'),
-          information: anyNamed('information'))).thenAnswer((_) async {});
+          information: anyNamed('information') as Iterable<Object>)).thenAnswer((_) async {});
 
       viewModel = BattleViewModel(
         firestoreService: mockFirestore,

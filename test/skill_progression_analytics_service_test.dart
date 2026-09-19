@@ -757,7 +757,7 @@ void main() {
               contains('Player attempted evolution at level 5'),
             ),
             named: 'information',
-          ),
+          ) as Iterable<Object>,
         )).called(1);
       });
 
@@ -775,7 +775,7 @@ void main() {
           information: argThat(
             contains('duplicate_level_up'),
             named: 'information',
-          ),
+          ) as Iterable<Object>,
         )).called(1);
       });
 
@@ -784,7 +784,7 @@ void main() {
           any,
           any,
           reason: anyNamed('reason'),
-          information: anyNamed('information'),
+          information: anyNamed('information') as Iterable<Object>,
         )).thenThrow(Exception('Crashlytics error'));
 
         // Should not throw
