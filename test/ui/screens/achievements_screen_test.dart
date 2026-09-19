@@ -128,8 +128,14 @@ void main() {
 
       await tester.pumpAndSettle();
 
+      // Stat Master is the 3rd card in the achievement grid, which can
+      // render below the visible viewport - scroll it into view first.
+      final statMasterCard = find.text('Stat Master').first;
+      await tester.ensureVisible(statMasterCard);
+      await tester.pumpAndSettle();
+
       // Tap progress-based achievement (Stat Master)
-      await tester.tap(find.text('Stat Master').first);
+      await tester.tap(statMasterCard);
       await tester.pumpAndSettle();
 
       expect(find.text('進捗: 0/50'), findsOneWidget);
