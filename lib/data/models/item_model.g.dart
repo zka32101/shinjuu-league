@@ -40,7 +40,7 @@ Map<String, dynamic> _$ItemToJson(Item instance) => <String, dynamic>{
   'description': instance.description,
   'type': _$ItemTypeEnumMap[instance.type]!,
   'rarity': _$ItemRarityEnumMap[instance.rarity]!,
-  'bonus': instance.bonus,
+  'bonus': instance.bonus?.toJson(),
   'purchasePrice': instance.purchasePrice,
   'acquiredAt': instance.acquiredAt?.toIso8601String(),
   'isEquipped': instance.isEquipped,

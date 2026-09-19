@@ -61,7 +61,7 @@ class ItemBonus {
 }
 
 /// プレイヤーが所有するアイテム
-@JsonSerializable()
+@JsonSerializable(explicitToJson: true)
 class Item {
   final String itemId;
   final String name;
