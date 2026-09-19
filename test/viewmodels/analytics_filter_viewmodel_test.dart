@@ -4,7 +4,22 @@ import 'package:shinjuu_league/services/admin_analytics_service.dart';
 import 'package:shinjuu_league/services/analytics_filter_service.dart';
 import 'package:shinjuu_league/viewmodels/analytics_filter_viewmodel.dart';
 
-class MockAdminAnalyticsService extends Mock implements AdminAnalyticsService {}
+class MockAdminAnalyticsService extends Mock implements AdminAnalyticsService {
+  @override
+  Future<List<Map<String, dynamic>>> getAuditLog({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #getAuditLog, [], {#startTime: startTime, #endTime: endTime}),
+      returnValue: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+      returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+    ) as Future<List<Map<String, dynamic>>>;
+  }
+}
 
 void main() {
   group('FilteredAnalyticsState', () {

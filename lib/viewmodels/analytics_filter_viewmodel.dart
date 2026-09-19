@@ -69,7 +69,7 @@ class AnalyticsFilterViewModel extends StateNotifier<FilteredAnalyticsState> {
       _allLogs = await _analyticsService.getAuditLog(
         startTime: startTime,
         endTime: endTime,
-      ) as List<Map<String, dynamic>>;
+      );
 
       // Get available filter options
       final operationTypes = AnalyticsFilterService.getAvailableOperationTypes(_allLogs);
@@ -192,17 +192,4 @@ class AnalyticsFilterViewModel extends StateNotifier<FilteredAnalyticsState> {
 
   int get filteredResourceTypes =>
       (state.filteredStats['resourceTypes'] as int?) ?? 0;
-}
-
-/// Extension helper for AuditLoggerService compatibility
-extension AuditLoggerServiceExtension on AdminAnalyticsService {
-  /// Compatibility method for filter service
-  Future<List<Map<String, dynamic>>> getAuditLog({
-    DateTime? startTime,
-    DateTime? endTime,
-  }) async {
-    // This method would normally delegate to AuditLoggerService
-    // For now, return empty list - implement based on actual service
-    return [];
-  }
 }

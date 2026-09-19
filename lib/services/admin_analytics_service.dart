@@ -21,6 +21,17 @@ class AdminAnalyticsService {
   })  : _firestoreService = firestoreService,
         _auditLoggerService = auditLoggerService;
 
+  /// Get raw audit log entries for a time period (used by filtering UIs).
+  Future<List<Map<String, dynamic>>> getAuditLog({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return _auditLoggerService.getAuditLog(
+      startTime: startTime,
+      endTime: endTime,
+    );
+  }
+
   // ============================================================================
   // OPERATION METRICS
   // ============================================================================
