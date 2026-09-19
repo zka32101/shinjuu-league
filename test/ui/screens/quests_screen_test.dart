@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
+import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
 import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 
