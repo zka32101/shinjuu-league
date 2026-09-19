@@ -23,20 +23,22 @@ class MockFirestoreService implements FirestoreService {
 
   @override
   Future<void> incrementUserCurrency(String userId, int amount) async {
-    _userData[userId] ??= {'currency': 0};
+    _userData[userId] ??= <String, dynamic>{'currency': 0};
     _userData[userId]!['currency'] = (_userData[userId]!['currency'] ?? 0) + amount;
   }
 
   @override
   Future<void> incrementUserAchievementBadges(String userId, int count) async {
-    _userData[userId] ??= {'badges': 0};
+    _userData[userId] ??= <String, dynamic>{'badges': 0};
     _userData[userId]!['badges'] = (_userData[userId]!['badges'] ?? 0) + count;
   }
 
   @override
   Future<void> addUserCosmetic(String userId, String cosmeticId) async {
-    _userData.putIfAbsent(userId, () => {'cosmetics': []});
-    (_userData[userId]!['cosmetics'] as List<String>).add(cosmeticId);
+    final entry = _userData.putIfAbsent(userId, () => <String, dynamic>{});
+    final cosmetics = (entry['cosmetics'] as List<String>?) ?? <String>[];
+    cosmetics.add(cosmeticId);
+    entry['cosmetics'] = cosmetics;
   }
 
   // getPendingRewards() reads currency/cosmetics back off the User record,
