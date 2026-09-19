@@ -1,12 +1,28 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/admin_analytics_service.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/ui/screens/admin_analytics_screen.dart';
 import 'package:shinjuu_league/viewmodels/admin_analytics_viewmodel.dart';
 
 class MockAdminAnalyticsService extends Mock implements AdminAnalyticsService {}
+
+/// AdminAnalyticsScreen -> adminAnalyticsViewModelProvider ->
+/// adminAnalyticsServiceProvider/auditLoggerServiceProvider, all of which
+/// default to the real (Firebase-touching) FirestoreService() singleton.
+/// Override it with a fake so widget tests never require
+/// Firebase.initializeApp().
+ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
+      overrides: [
+        firestoreServiceProvider.overrideWithValue(
+          FirestoreService.forFirestore(FakeFirebaseFirestore()),
+        ),
+      ],
+    );
 
 void main() {
   group('AdminAnalyticsScreen', () {
@@ -19,7 +35,7 @@ void main() {
     testWidgets('renders with loading state', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
@@ -35,7 +51,7 @@ void main() {
     testWidgets('displays AppBar with title', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
@@ -50,7 +66,7 @@ void main() {
     testWidgets('AppBar has refresh button', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
@@ -65,7 +81,7 @@ void main() {
     testWidgets('has date range filter section', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
@@ -86,7 +102,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -136,7 +152,7 @@ void main() {
     testWidgets('shows loading skeleton when loading', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -163,7 +179,7 @@ void main() {
     testWidgets('displays metric cards when data loaded', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -192,7 +208,7 @@ void main() {
     testWidgets('renders most active admins section', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -235,7 +251,7 @@ void main() {
     testWidgets('renders operations breakdown section', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -273,7 +289,7 @@ void main() {
     testWidgets('renders audit trail integrity section', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -321,7 +337,7 @@ void main() {
     testWidgets('renders anomalies section when no anomalies', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -361,7 +377,7 @@ void main() {
     testWidgets('renders anomalies with affected users', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -420,7 +436,7 @@ void main() {
     testWidgets('has scrollable body', (WidgetTester tester) async {
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: SingleChildScrollView(
