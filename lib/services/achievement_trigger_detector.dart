@@ -72,7 +72,7 @@ class AchievementTriggerDetector {
 
   /// Check progression-based achievements for progress updates
   /// Returns achievements with updated progress
-  Future<List<PlayerAchievement>> checkProgressTriggers(
+  Future<List<Achievement>> checkProgressTriggers(
     String userId, {
     required int statPoints,
     required int pathDiversity,
@@ -81,39 +81,21 @@ class AchievementTriggerDetector {
     required String currentTier,
   }) async {
     try {
-      final progressList = <PlayerAchievement>[];
+      final unlockedList = <Achievement>[];
 
       // Stat Master: 50+ points (progress-based)
-      final statProgress = await _achievementService.getProgress(
-        userId,
-        'stat_master',
-      );
-      if (statProgress != null && !statProgress.isUnlocked) {
-        if (statPoints >= 50) {
-          final updated = await _checkAndUnlock(
-            userId,
-            'stat_master',
-          );
-          if (updated != null) progressList.add(statProgress.copyWith(isUnlocked: true));
-        }
+      if (statPoints >= 50) {
+        final achieved = await _checkAndUnlock(userId, 'stat_master');
+        if (achieved != null) unlockedList.add(achieved);
       }
 
       // Balanced Fighter: Points in all 3 trees (progress-based)
-      final balancedProgress = await _achievementService.getProgress(
-        userId,
-        'balanced_fighter',
-      );
-      if (balancedProgress != null && !balancedProgress.isUnlocked) {
-        if (pathDiversity >= 3) {
-          final updated = await _checkAndUnlock(
-            userId,
-            'balanced_fighter',
-          );
-          if (updated != null) progressList.add(balancedProgress.copyWith(isUnlocked: true));
-        }
+      if (pathDiversity >= 3) {
+        final achieved = await _checkAndUnlock(userId, 'balanced_fighter');
+        if (achieved != null) unlockedList.add(achieved);
       }
 
-      return progressList;
+      return unlockedList;
     } catch (e) {
       return [];
     }
@@ -187,11 +169,8 @@ class AchievementTriggerDetector {
       if (achievement == null) return null;
 
       // Check if already unlocked
-      final current = await _achievementService.getProgress(
-        userId,
-        achievementId,
-      );
-      if (current?.isUnlocked ?? false) {
+      final unlocked = await _achievementService.getUnlockedAchievements(userId);
+      if (unlocked.any((a) => a.achievementId == achievementId)) {
         return null; // Already unlocked
       }
 
@@ -244,13 +223,15 @@ class AchievementTriggerDetector {
       );
 
       // Check progress triggers
-      await checkProgressTriggers(
-        userId,
-        statPoints: statPoints,
-        pathDiversity: pathDiversity,
-        seasonsParticipated: seasonsParticipated,
-        consistentSeasons: consistentSeasons,
-        currentTier: currentTier,
+      allUnlocked.addAll(
+        await checkProgressTriggers(
+          userId,
+          statPoints: statPoints,
+          pathDiversity: pathDiversity,
+          seasonsParticipated: seasonsParticipated,
+          consistentSeasons: consistentSeasons,
+          currentTier: currentTier,
+        ),
       );
 
       // Check seasonal triggers
