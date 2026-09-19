@@ -107,3 +107,14 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# CI環境のFlutter SDK(stable channel)が要求する言語バージョンに対し、
+# ロック済みのanalyzer 7.6.0（riverpod_generator/build_runner/json_serializable
+# 経由の推移的依存）が古すぎて内部でクラッシュする問題への対処。
+# pubspec.yamlのsdk制約(^3.12.2)自体がanalyzer 7.6.0の対応言語バージョン(3.9.0)
+# より新しいため、CI側のFlutter SDKを古いものに固定する回避策は取れない
+# （アプリ自体のsdk制約を満たせなくなる）。analyzer単体を最新へ上書きすることで
+# riverpod_generator/build_runner/json_serializableのメジャーバージョンは
+# 変えずに済ませる（実行時の依存関係には一切影響しないビルド時ツールのみの変更）。
+dependency_overrides:
+  analyzer: ^14.0.0
