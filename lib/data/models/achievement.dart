@@ -13,11 +13,26 @@ enum AchievementCategory {
 }
 
 /// Reward tier for achievement
+///
+/// Carries two historically-separate naming schemes that different features
+/// were built against: `bronze`/`silver`/`gold`/`platinum` (reward payout
+/// tier, used by [AchievementsCatalog] and [getRewardCurrency]/
+/// [getRewardBadges] below) and `common`/`uncommon`/`rare`/`epic`/
+/// `legendary`/`mythic` (cosmetic rarity color-coding used by the
+/// achievement toast/result-screen UI). Both are kept as real enum values
+/// rather than reconciled into one, since call sites for both already exist
+/// throughout the codebase.
 enum AchievementRewardTier {
   bronze,   // 50 currency + 1 badge
   silver,   // 100 currency + 1 badge + cosmetic
   gold,     // 250 currency + 2 badges + cosmetic
   platinum, // 500 currency + 3 badges + cosmetics
+  common,
+  uncommon,
+  rare,
+  epic,
+  legendary,
+  mythic,
 }
 
 /// Base achievement definition
@@ -52,6 +67,18 @@ class Achievement with _$Achievement {
         return 250;
       case AchievementRewardTier.platinum:
         return 500;
+      case AchievementRewardTier.common:
+        return 25;
+      case AchievementRewardTier.uncommon:
+        return 75;
+      case AchievementRewardTier.rare:
+        return 150;
+      case AchievementRewardTier.epic:
+        return 300;
+      case AchievementRewardTier.legendary:
+        return 600;
+      case AchievementRewardTier.mythic:
+        return 1000;
     }
   }
 
@@ -66,6 +93,18 @@ class Achievement with _$Achievement {
         return 2;
       case AchievementRewardTier.platinum:
         return 3;
+      case AchievementRewardTier.common:
+        return 0;
+      case AchievementRewardTier.uncommon:
+        return 1;
+      case AchievementRewardTier.rare:
+        return 1;
+      case AchievementRewardTier.epic:
+        return 2;
+      case AchievementRewardTier.legendary:
+        return 3;
+      case AchievementRewardTier.mythic:
+        return 5;
     }
   }
 

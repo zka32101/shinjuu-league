@@ -175,6 +175,22 @@ class RemoteConfigService {
 
   // ========== Raw Access ==========
 
+  /// 任意のキーの整数値を取得（未定義のキー・初期化前は defaultValue を返す）
+  int getInt(String key, {required int defaultValue}) =>
+      _initialized ? _remoteConfig.getInt(key) : defaultValue;
+
+  /// 任意のキーの文字列値を取得（未定義のキー・初期化前は defaultValue を返す）
+  String getString(String key, {required String defaultValue}) =>
+      _initialized ? _remoteConfig.getString(key) : defaultValue;
+
+  /// 任意のキーの真偽値を取得（未定義のキー・初期化前は defaultValue を返す）
+  bool getBool(String key, {required bool defaultValue}) =>
+      _initialized ? _remoteConfig.getBool(key) : defaultValue;
+
+  /// 任意のキーの小数値を取得（未定義のキー・初期化前は defaultValue を返す）
+  double getDouble(String key, {required double defaultValue}) =>
+      _initialized ? _remoteConfig.getDouble(key) : defaultValue;
+
   /// 任意の設定値にアクセス（型は String で返される）
   /// 初期化前は空文字列を返す
   String getRawString(String key) =>

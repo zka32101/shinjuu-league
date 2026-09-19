@@ -52,6 +52,12 @@ const _$AchievementRewardTierEnumMap = {
   AchievementRewardTier.silver: 'silver',
   AchievementRewardTier.gold: 'gold',
   AchievementRewardTier.platinum: 'platinum',
+  AchievementRewardTier.common: 'common',
+  AchievementRewardTier.uncommon: 'uncommon',
+  AchievementRewardTier.rare: 'rare',
+  AchievementRewardTier.epic: 'epic',
+  AchievementRewardTier.legendary: 'legendary',
+  AchievementRewardTier.mythic: 'mythic',
 };
 
 _$PlayerAchievementImpl _$$PlayerAchievementImplFromJson(

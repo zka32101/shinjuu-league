@@ -254,10 +254,14 @@ class _AchievementGridCard extends StatelessWidget {
         return const Color(0xFFFFAA00);
       case AchievementRewardTier.mythic:
         return const Color(0xFFFF0000);
+      case AchievementRewardTier.bronze:
+        return const Color(0xFFCD7F32);
       case AchievementRewardTier.silver:
         return const Color(0xFFC0C0C0);
       case AchievementRewardTier.gold:
         return const Color(0xFFFFD700);
+      case AchievementRewardTier.platinum:
+        return const Color(0xFFE5E4E2);
     }
   }
 
@@ -347,10 +351,14 @@ class _AchievementGridCard extends StatelessWidget {
         return 'レジェンダリー';
       case AchievementRewardTier.mythic:
         return 'ミシック';
+      case AchievementRewardTier.bronze:
+        return 'ブロンズ';
       case AchievementRewardTier.silver:
         return 'シルバー';
       case AchievementRewardTier.gold:
         return 'ゴールド';
+      case AchievementRewardTier.platinum:
+        return 'プラチナ';
     }
   }
 }
@@ -375,10 +383,14 @@ class _AchievementDetailDialog extends StatelessWidget {
         return const Color(0xFFFFAA00);
       case AchievementRewardTier.mythic:
         return const Color(0xFFFF0000);
+      case AchievementRewardTier.bronze:
+        return const Color(0xFFCD7F32);
       case AchievementRewardTier.silver:
         return const Color(0xFFC0C0C0);
       case AchievementRewardTier.gold:
         return const Color(0xFFFFD700);
+      case AchievementRewardTier.platinum:
+        return const Color(0xFFE5E4E2);
     }
   }
 
@@ -491,10 +503,14 @@ class _AchievementDetailDialog extends StatelessWidget {
         return 'レジェンダリー';
       case AchievementRewardTier.mythic:
         return 'ミシック';
+      case AchievementRewardTier.bronze:
+        return 'ブロンズ';
       case AchievementRewardTier.silver:
         return 'シルバー';
       case AchievementRewardTier.gold:
         return 'ゴールド';
+      case AchievementRewardTier.platinum:
+        return 'プラチナ';
     }
   }
 }
