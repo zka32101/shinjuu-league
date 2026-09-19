@@ -4,7 +4,24 @@ import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 void main() {
   group('FeatureFlagsService', () {
