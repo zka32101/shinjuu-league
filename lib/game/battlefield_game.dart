@@ -8,6 +8,8 @@ import 'package:flutter/material.dart' show Colors, EdgeInsets, Icons;
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/stage_model.dart';
+import 'package:shinjuu_league/data/stage_catalog.dart';
 import 'package:shinjuu_league/game/impact_line.dart';
 import 'package:shinjuu_league/game/isometric_projection.dart';
 import 'package:shinjuu_league/game/jungle_monster_token.dart';
@@ -38,6 +40,11 @@ class AttackTarget {
 /// 味方/Botの位置もこのクラス内で緩やかに動かすが、あくまで見た目上の移動演出であり、
 /// 撃破判定・勝敗などのシミュレーションはBattleEngineが引き続き唯一の正。
 class BattlefieldGame extends FlameGame {
+  BattlefieldGame({String mapId = defaultStageId}) : stage = stageById(mapId);
+
+  /// バトルのテーマ（配色）。mapId から解決される（[stageCatalog]参照）。
+  final Stage stage;
+
   static const _projection = IsometricProjection();
   static const _laneCenterYs = [-1.8, 1.8];
   static const _selfMoveSpeed = 90.0; // world px/sec
@@ -87,7 +94,7 @@ class BattlefieldGame extends FlameGame {
   }
 
   @override
-  Color backgroundColor() => const Color(0xFF14171F);
+  Color backgroundColor() => stage.backgroundColor;
 
   @override
   Future<void> onLoad() async {
@@ -95,12 +102,11 @@ class BattlefieldGame extends FlameGame {
       OpenField(
         halfWidth: _playfieldHalfWidth,
         halfHeight: _playfieldHalfHeight,
+        color: stage.voidColor,
       )..priority = -1000,
     );
     for (var lane = 0; lane < AppConfig.teamsCount; lane++) {
-      final color = lane.isEven
-          ? const Color(0xFF1E2536)
-          : const Color(0xFF241B2E);
+      final color = stage.laneColors[lane % stage.laneColors.length];
       add(LaneFloor(laneCenterY: _laneCenterYs[lane], color: color));
     }
     camera.viewfinder.anchor = Anchor.center;

@@ -6,8 +6,7 @@ import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
-
-const _maps = ['map_east_west', 'map_twin_valley'];
+import 'package:shinjuu_league/data/stage_catalog.dart';
 
 /// マッチング < 30秒を保証するため、実プレイヤーが揃わない場合はBotで即座に埋める。
 /// ロール自動割当：チーム内で lane を交互に割り当て、初心者でも即戦力になれるようにする。
@@ -24,7 +23,7 @@ class MatchmakingService {
     required BattleMode mode,
   }) async {
     final matchId = _uuid.v4();
-    final mapId = _maps[_random.nextInt(_maps.length)];
+    final mapId = stageCatalog[_random.nextInt(stageCatalog.length)].stageId;
 
     final queuedOpponents = await _searchQueueForOpponents(currentUser, mode);
 

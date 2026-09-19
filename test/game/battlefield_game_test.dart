@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/stage_catalog.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
@@ -70,6 +71,26 @@ void main() {
           game.update(0.2);
         }
       }, returnsNormally);
+    });
+  });
+
+  group('BattlefieldGame ステージテーマ', () {
+    test('mapId未指定時はデフォルトステージの配色になる', () {
+      final game = BattlefieldGame();
+      expect(game.stage.stageId, defaultStageId);
+      expect(game.backgroundColor(), stageById(defaultStageId).backgroundColor);
+    });
+
+    test('mapIdを指定すると対応するステージの配色になる', () {
+      final targetStage = stageCatalog.last;
+      final game = BattlefieldGame(mapId: targetStage.stageId);
+
+      expect(game.stage.stageId, targetStage.stageId);
+      expect(game.backgroundColor(), targetStage.backgroundColor);
+    });
+
+    test('存在しないmapIdでも例外を投げずフォールバックする', () {
+      expect(() => BattlefieldGame(mapId: '存在しないID'), returnsNormally);
     });
   });
 

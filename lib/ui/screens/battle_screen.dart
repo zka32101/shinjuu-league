@@ -29,11 +29,12 @@ class BattleScreen extends ConsumerStatefulWidget {
 }
 
 class _BattleScreenState extends ConsumerState<BattleScreen> {
-  final _game = BattlefieldGame();
+  late final BattlefieldGame _game;
 
   @override
   void initState() {
     super.initState();
+    _game = BattlefieldGame(mapId: widget.match.mapId);
     // バトルBGMを開始
     AudioService().playBgm('battle_bgm');
   }
@@ -295,6 +296,21 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         automaticallyImplyLeading: false,
         title: Text(
           '残り ${remaining.clamp(0, AppConfig.battleDurationSeconds)}秒',
+        ),
+        // ステージ名を表示：mapIdごとに異なる配色のバトルフィールドであることを伝える
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(20),
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 4),
+            child: Text(
+              _game.stage.name,
+              textAlign: TextAlign.center,
+              style: TextStyle(
+                fontSize: 12,
+                color: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.6),
+              ),
+            ),
+          ),
         ),
       ),
       body: Column(
