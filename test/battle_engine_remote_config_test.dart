@@ -6,7 +6,24 @@ import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 void main() {
   group('BattleEngine with Remote Config', () {
