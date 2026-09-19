@@ -99,7 +99,7 @@ void main() {
 
       // Level up to Lv3 (requires 2 level-ups from Lv1)
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -142,7 +142,7 @@ void main() {
 
       // Level up to Lv3
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -175,7 +175,7 @@ void main() {
 
       // Level up to Lv3 and select first evolution
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -183,7 +183,7 @@ void main() {
 
       // Level up to Lv6 (3 more levels)
       for (int i = 0; i < 3; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -219,14 +219,14 @@ void main() {
 
       // Setup: reach Lv6 with first evolution
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
       viewModel.confirmEvolution('player1', EvolutionType.offensive);
 
       for (int i = 0; i < 3; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -282,7 +282,7 @@ void main() {
 
       // Level up player to Lv5
       for (int i = 0; i < 4; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -330,7 +330,7 @@ void main() {
       expect(viewModel.state.showLevelUpAnimation, isFalse);
 
       // Level up to Lv2
-      engine.levelUpPlayer('player1');
+      viewModel.levelUpPlayer('player1');
 
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -404,7 +404,7 @@ void main() {
       final beforeLevelUp = DateTime.now();
 
       // Level up
-      engine.levelUpPlayer('player1');
+      viewModel.levelUpPlayer('player1');
 
       await Future.delayed(const Duration(milliseconds: 100));
 
@@ -429,7 +429,7 @@ void main() {
 
       // Level up to Lv3
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -458,7 +458,7 @@ void main() {
 
       // First evolution at Lv3 - select offensive
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
@@ -466,7 +466,7 @@ void main() {
 
       // Level to Lv6 and switch to defensive
       for (int i = 0; i < 3; i++) {
-        engine.levelUpPlayer('player1');
+        viewModel.levelUpPlayer('player1');
       }
 
       await Future.delayed(const Duration(milliseconds: 100));
