@@ -98,9 +98,9 @@ void main() {
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
         final enemy1 = engine.participants.firstWhere((p) => p.userId == 'enemy1');
 
-        // Base ATK is 20 (from mecha catalog)
-        expect(player1.effectiveAtk, closeTo(23.0, 0.1)); // 20 × 1.15
-        expect(enemy1.effectiveAtk, equals(20.0)); // No multiplier
+        // Base ATK is 55 (mecha_east_flame, from mecha catalog)
+        expect(player1.effectiveAtk, closeTo(63.25, 0.1)); // 55 × 1.15
+        expect(enemy1.effectiveAtk, equals(55.0)); // No multiplier
       });
 
       test('player with DEF tree investment survives longer', () async {
@@ -126,13 +126,13 @@ void main() {
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
         final enemy1 = engine.participants.firstWhere((p) => p.userId == 'enemy1');
 
-        // Base HP is 100 (from mecha catalog)
-        expect(player1.effectiveHp, closeTo(124.0, 0.1)); // 100 × 1.24
-        expect(enemy1.effectiveHp, equals(100.0)); // No multiplier
+        // Base HP is 120 (mecha_east_flame, from mecha catalog)
+        expect(player1.effectiveHp, closeTo(148.8, 0.1)); // 120 × 1.24
+        expect(enemy1.effectiveHp, equals(120.0)); // No multiplier
 
-        // Player survives 24% more hits
+        // Player survives 24% more hits (148.8 - 120 = 28.8)
         final survivalDifference = player1.effectiveHp - enemy1.effectiveHp;
-        expect(survivalDifference, closeTo(24.0, 0.1));
+        expect(survivalDifference, closeTo(28.8, 0.1));
       });
 
       test('player with SPD tree investment acts first', () async {
@@ -158,9 +158,9 @@ void main() {
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
         final enemy1 = engine.participants.firstWhere((p) => p.userId == 'enemy1');
 
-        // Base SPD is 15 (from mecha catalog)
-        expect(player1.effectiveSpd, closeTo(16.35, 0.1)); // 15 × 1.09
-        expect(enemy1.effectiveSpd, equals(15.0)); // No multiplier
+        // Base SPD is 35 (mecha_east_flame, from mecha catalog)
+        expect(player1.effectiveSpd, closeTo(38.15, 0.1)); // 35 × 1.09
+        expect(enemy1.effectiveSpd, equals(35.0)); // No multiplier
 
         // Player is faster
         expect(player1.effectiveSpd, greaterThan(enemy1.effectiveSpd));
@@ -191,9 +191,9 @@ void main() {
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
 
         // All stats boosted proportionally
-        expect(player1.effectiveAtk, closeTo(22.0, 0.1)); // 20 × 1.10
-        expect(player1.effectiveHp, closeTo(116.0, 0.1)); // 100 × 1.16
-        expect(player1.effectiveSpd, closeTo(15.9, 0.1)); // 15 × 1.06
+        expect(player1.effectiveAtk, closeTo(60.5, 0.1)); // 55 × 1.10
+        expect(player1.effectiveHp, closeTo(139.2, 0.1)); // 120 × 1.16
+        expect(player1.effectiveSpd, closeTo(37.1, 0.1)); // 35 × 1.06
 
         // Verify all modifiers are independent
         expect(player1.skillTreeAtkMultiplier, closeTo(1.10, 0.001));
@@ -223,10 +223,10 @@ void main() {
         final engine = battleViewModel.state.engine!;
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
 
-        // Base stats unchanged
-        expect(player1.effectiveAtk, equals(20.0));
-        expect(player1.effectiveHp, equals(100.0));
-        expect(player1.effectiveSpd, equals(15.0));
+        // Base stats unchanged (mecha_east_flame: hp:120/atk:55/spd:35)
+        expect(player1.effectiveAtk, equals(55.0));
+        expect(player1.effectiveHp, equals(120.0));
+        expect(player1.effectiveSpd, equals(35.0));
       });
     });
 
@@ -329,8 +329,8 @@ void main() {
         expect(speedDifference, greaterThan(0.0));
 
         // With 6% SPD advantage, first to act in combat loops
-        expect(player1.effectiveSpd, closeTo(15.9, 0.1));
-        expect(enemy1.effectiveSpd, equals(15.0));
+        expect(player1.effectiveSpd, closeTo(37.1, 0.1));
+        expect(enemy1.effectiveSpd, equals(35.0));
       });
     });
 
@@ -363,9 +363,9 @@ void main() {
             engine.participants.firstWhere((p) => p.userId == 'enemy1');
 
         // Fully optimized player has massive stat advantage
-        expect(player1.effectiveAtk, closeTo(25.0, 0.1)); // 20 × 1.25
-        expect(player1.effectiveHp, closeTo(140.0, 0.1)); // 100 × 1.40
-        expect(player1.effectiveSpd, closeTo(17.25, 0.1)); // 15 × 1.15
+        expect(player1.effectiveAtk, closeTo(68.75, 0.1)); // 55 × 1.25
+        expect(player1.effectiveHp, closeTo(168.0, 0.1)); // 120 × 1.40
+        expect(player1.effectiveSpd, closeTo(40.25, 0.1)); // 35 × 1.15
 
         // Stat ratios show progression advantage
         expect(player1.effectiveAtk / unallocatedEnemy.effectiveAtk,
@@ -401,12 +401,12 @@ void main() {
         final player1 = engine.participants.firstWhere((p) => p.userId == 'player1');
 
         // Verify MULTIPLICATIVE stacking
-        // NOT additive: (1.15 + 1.24 + 1.09 - 3) * 20 = 4 ATK (wrong)
-        // Correct: 20 * 1.15 = 23 ATK (each multiplier independent)
+        // NOT additive: (1.15 + 1.24 + 1.09 - 3) * 55 = 24.2 ATK (wrong)
+        // Correct: 55 * 1.15 = 63.25 ATK (each multiplier independent)
 
-        expect(player1.effectiveAtk, closeTo(23.0, 0.1)); // 20 × 1.15
-        expect(player1.effectiveHp, closeTo(124.0, 0.1)); // 100 × 1.24
-        expect(player1.effectiveSpd, closeTo(16.35, 0.1)); // 15 × 1.09
+        expect(player1.effectiveAtk, closeTo(63.25, 0.1)); // 55 × 1.15
+        expect(player1.effectiveHp, closeTo(148.8, 0.1)); // 120 × 1.24
+        expect(player1.effectiveSpd, closeTo(38.15, 0.1)); // 35 × 1.09
 
         // Ensure no cross-tree contamination
         expect(player1.skillTreeAtkMultiplier, closeTo(1.15, 0.001));
@@ -428,12 +428,20 @@ MatchResult _createTestMatch(String selfUserId) {
     mode: BattleMode.quick,
     mapId: 'map_1',
     estimatedWaitSeconds: 5,
+    // 'mecha_east_flame' (base stats hp:120/atk:55/spd:35) is used
+    // explicitly rather than a placeholder ID: mechaById() falls back
+    // silently to mechaCatalog.first for any unknown ID, which previously
+    // masked this test relying on a made-up 'mecha_1' that doesn't exist
+    // in mecha_catalog.dart -- it happened to fall back to this same mecha
+    // anyway, but the expected numeric values below were computed against
+    // fictional base stats (hp:100/atk:20/spd:15) that don't match any
+    // real catalog entry.
     teamA: [
-      _createMatchParticipant(selfUserId, 'mecha_1', 0, 0, 1200.0, false),
+      _createMatchParticipant(selfUserId, 'mecha_east_flame', 0, 0, 1200.0, false),
     ],
     teamB: [
-      _createMatchParticipant('enemy1', 'mecha_1', 1, 0, 1200.0, true),
-      _createMatchParticipant('enemy2', 'mecha_1', 1, 1, 1200.0, true),
+      _createMatchParticipant('enemy1', 'mecha_east_flame', 1, 0, 1200.0, true),
+      _createMatchParticipant('enemy2', 'mecha_east_flame', 1, 1, 1200.0, true),
     ],
   );
 }
