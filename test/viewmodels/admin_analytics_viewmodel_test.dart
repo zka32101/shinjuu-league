@@ -4,7 +4,96 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/services/admin_analytics_service.dart';
 import 'package:shinjuu_league/viewmodels/admin_analytics_viewmodel.dart';
 
-class MockAdminAnalyticsService extends Mock implements AdminAnalyticsService {}
+class MockAdminAnalyticsService extends Mock implements AdminAnalyticsService {
+  @override
+  Future<Map<String, int>> getOperationsByType({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getOperationsByType, [],
+          {#startTime: startTime, #endTime: endTime}),
+      returnValue: Future<Map<String, int>>.value(<String, int>{}),
+      returnValueForMissingStub:
+          Future<Map<String, int>>.value(<String, int>{}),
+    ) as Future<Map<String, int>>;
+  }
+
+  @override
+  Future<Map<String, int>> getOperationsByUser({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getOperationsByUser, [],
+          {#startTime: startTime, #endTime: endTime}),
+      returnValue: Future<Map<String, int>>.value(<String, int>{}),
+      returnValueForMissingStub:
+          Future<Map<String, int>>.value(<String, int>{}),
+    ) as Future<Map<String, int>>;
+  }
+
+  @override
+  Future<Map<int, int>> getHourlyOperationTrend() {
+    return super.noSuchMethod(
+      Invocation.method(#getHourlyOperationTrend, []),
+      returnValue: Future<Map<int, int>>.value(<int, int>{}),
+      returnValueForMissingStub: Future<Map<int, int>>.value(<int, int>{}),
+    ) as Future<Map<int, int>>;
+  }
+
+  @override
+  Future<Map<String, int>> getDailyOperationTrend() {
+    return super.noSuchMethod(
+      Invocation.method(#getDailyOperationTrend, []),
+      returnValue: Future<Map<String, int>>.value(<String, int>{}),
+      returnValueForMissingStub:
+          Future<Map<String, int>>.value(<String, int>{}),
+    ) as Future<Map<String, int>>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> detectHighFrequencyOperations({
+    Duration? timeWindow,
+    int? threshold,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#detectHighFrequencyOperations, [],
+          {#timeWindow: timeWindow, #threshold: threshold}),
+      returnValue: Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      returnValueForMissingStub:
+          Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+    ) as Future<Map<String, dynamic>>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> getAuditTrailIntegrity({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getAuditTrailIntegrity, [],
+          {#startTime: startTime, #endTime: endTime}),
+      returnValue: Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      returnValueForMissingStub:
+          Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+    ) as Future<Map<String, dynamic>>;
+  }
+
+  @override
+  Future<Map<String, dynamic>> getDashboardSummary({
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getDashboardSummary, [],
+          {#startTime: startTime, #endTime: endTime}),
+      returnValue: Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+      returnValueForMissingStub:
+          Future<Map<String, dynamic>>.value(<String, dynamic>{}),
+    ) as Future<Map<String, dynamic>>;
+  }
+}
 
 void main() {
   group('AdminAnalyticsViewModel', () {
