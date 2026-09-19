@@ -31,6 +31,7 @@ class BattleState {
     required this.killFeed,
     required this.hitFeed,
     required this.damageEvents,
+    required this.monsterKillFeed,
     required this.isLoading,
     required this.isFinished,
     required this.error,
@@ -52,6 +53,7 @@ class BattleState {
     killFeed: [],
     hitFeed: [],
     damageEvents: [],
+    monsterKillFeed: [],
     isLoading: false,
     isFinished: false,
     error: null,
@@ -72,6 +74,7 @@ class BattleState {
   final List<CombatEvent> killFeed;
   final List<CombatEvent> hitFeed;
   final List<DamageEvent> damageEvents;
+  final List<MonsterEvent> monsterKillFeed;
   final bool isLoading;
   final bool isFinished;
   final String? error;
@@ -92,6 +95,7 @@ class BattleState {
     List<CombatEvent>? killFeed,
     List<CombatEvent>? hitFeed,
     List<DamageEvent>? damageEvents,
+    List<MonsterEvent>? monsterKillFeed,
     bool? isLoading,
     bool? isFinished,
     String? error,
@@ -112,6 +116,7 @@ class BattleState {
       killFeed: killFeed ?? this.killFeed,
       hitFeed: hitFeed ?? this.hitFeed,
       damageEvents: damageEvents ?? this.damageEvents,
+      monsterKillFeed: monsterKillFeed ?? this.monsterKillFeed,
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
@@ -156,6 +161,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   StreamSubscription<int>? _tickSub;
   StreamSubscription<DamageEvent>? _damageSub;
   StreamSubscription<BattleSkillEvent>? _skillEventSub;
+  StreamSubscription<MonsterEvent>? _monsterSub;
 
   late String _selfUserId;
   late double _selfEloAtStart;
@@ -241,6 +247,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
     _hitSub = engine.hitEvents.listen(_onHitEvent);
     _damageSub = engine.damageEvents.listen(_onDamageEvent);
+    _monsterSub = engine.monsterEvents.listen(_onMonsterEvent);
     _tickSub = engine.onTick.listen((second) => _onTick(second, engine));
     _skillEventSub = _skillCoordinator.skillEvents.listen(_onSkillEvent);
 
@@ -333,6 +340,24 @@ class BattleViewModel extends StateNotifier<BattleState> {
     }
 
     final resolved = engine.manualDuel(_selfUserId, targetUserId);
+    if (resolved) {
+      _lastManualAttackAt = now;
+    }
+  }
+
+  /// プレイヤーが中立モンスターへ接近して攻撃ボタンを押した時に呼ばれる。
+  /// 敵プレイヤーへの手動攻撃と同じ連打防止クールダウンを共有する（同一の「攻撃」操作のため）。
+  void attemptAttackMonster(String monsterId) {
+    final engine = state.engine;
+    if (engine == null) return;
+
+    final now = DateTime.now();
+    if (_lastManualAttackAt != null &&
+        now.difference(_lastManualAttackAt!) < _manualAttackCooldown) {
+      return;
+    }
+
+    final resolved = engine.attackJungleMonster(_selfUserId, monsterId);
     if (resolved) {
       _lastManualAttackAt = now;
     }
@@ -485,6 +510,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
   void _onDamageEvent(DamageEvent event) {
     state = state.copyWith(damageEvents: [...state.damageEvents, event]);
+  }
+
+  void _onMonsterEvent(MonsterEvent event) {
+    state = state.copyWith(monsterKillFeed: [...state.monsterKillFeed, event]);
   }
 
   void _onTick(int second, BattleEngine engine) {
@@ -720,6 +749,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _hitSub?.cancel();
     _tickSub?.cancel();
     _damageSub?.cancel();
+    _monsterSub?.cancel();
     _skillEventSub?.cancel();
     state.engine?.dispose();
     _skillCoordinator.dispose();

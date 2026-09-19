@@ -42,6 +42,34 @@ class DamageEvent {
   });
 }
 
+/// レーン中央に配置される中立モンスター（ジャングルモンスター）。
+/// 討伐するとゴール報酬 + 一定時間の攻撃バフを得られる（MOBAらしい寄り道の駆け引き要素）。
+/// BattleEngineのみが状態を保持し、BattlefieldGameは描画専用（既存設計原則を踏襲）。
+class JungleMonster {
+  final String id;
+  final int lane;
+  final double maxHp;
+  double currentHp;
+  bool isAlive = true;
+  int respawnAtSecond = 0;
+
+  JungleMonster({required this.id, required this.lane, required this.maxHp})
+    : currentHp = maxHp;
+}
+
+/// ジャングルモンスター討伐イベント（UI側の演出トリガーに使用）
+class MonsterEvent {
+  final String monsterId;
+  final String killerId;
+  final int tickSecond;
+
+  MonsterEvent({
+    required this.monsterId,
+    required this.killerId,
+    required this.tickSecond,
+  });
+}
+
 class BattleParticipantState {
   final String userId;
   final String mechaId;
@@ -69,6 +97,10 @@ class BattleParticipantState {
   int respawnAtSecond = 0;
   late double currentHp;
   int totalGoldEarned = 0; // 試合中のゴール累計
+
+  // ジャングルモンスター討伐で得られる一時的な攻撃バフ
+  double jungleBuffMultiplier = 1.0;
+  int jungleBuffExpiresAtSecond = 0;
 
   BattleParticipantState({
     required this.userId,
@@ -107,8 +139,8 @@ class BattleParticipantState {
       ownedItemIds: resources.ownedItemIds,
       baseStats: BaseStats(hp: baseStats.hp, atk: baseAtk.toInt(), spd: baseStats.spd),
     );
-    // スキルツリー修正倍率を適用（ベースATK + アイテムボーナス）に対して
-    return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier;
+    // スキルツリー修正倍率 + ジャングルモンスター討伐バフを適用（ベースATK + アイテムボーナス）に対して
+    return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier * jungleBuffMultiplier;
   }
 
   double get effectiveHp {
@@ -176,12 +208,22 @@ class BattleEngine {
   static const _hitDamageFactor = 0.35;
   static const _skillDamageMultiplier = 2.2;
 
+  // ジャングルモンスター関連の定数
+  static const _monsterMaxHp = 400.0;
+  static const _monsterRespawnDelaySeconds = 30;
+  static const _monsterGoldReward = 50;
+  static const _monsterBuffMultiplier = 1.3;
+  static const _monsterBuffDurationSeconds = 20;
+
   final String battleId;
   final BattleMode mode;
   final String mapId;
   final List<BattleParticipantState> participants;
   final int durationSeconds;
   final SkillProgressionConfig _progressionConfig;
+
+  /// レーンごとに1体配置される中立モンスター（討伐でゴール+一時攻撃バフ）
+  late final List<JungleMonster> jungleMonsters;
 
   BattleEngine({
     required this.battleId,
@@ -192,7 +234,12 @@ class BattleEngine {
     Random? random,
     SkillProgressionConfig? progressionConfig,
   }) : _progressionConfig = progressionConfig ?? SkillProgressionConfig(),
-       _random = random ?? Random();
+       _random = random ?? Random() {
+    jungleMonsters = List.generate(
+      AppConfig.teamsCount,
+      (lane) => JungleMonster(id: 'jungle_$lane', lane: lane, maxHp: _monsterMaxHp),
+    );
+  }
 
   final Random _random;
   Timer? _timer;
@@ -206,11 +253,14 @@ class BattleEngine {
   final _hitController = StreamController<CombatEvent>.broadcast(sync: true);
   // ダメージイベント（ダメージ数値表示用）
   final _damageController = StreamController<DamageEvent>.broadcast(sync: true);
+  // ジャングルモンスター討伐イベント
+  final _monsterController = StreamController<MonsterEvent>.broadcast(sync: true);
 
   Stream<CombatEvent> get combatEvents => _combatController.stream;
   Stream<int> get onTick => _tickController.stream;
   Stream<CombatEvent> get hitEvents => _hitController.stream;
   Stream<DamageEvent> get damageEvents => _damageController.stream;
+  Stream<MonsterEvent> get monsterEvents => _monsterController.stream;
 
   bool get isRunning => _isRunning;
   int get elapsedSeconds => _elapsedSeconds;
@@ -266,6 +316,7 @@ class BattleEngine {
     _tickController.close();
     _hitController.close();
     _damageController.close();
+    _monsterController.close();
   }
 
   /// 1秒分のシミュレーションを進める。Timer.periodic から呼ばれる他、
@@ -273,7 +324,8 @@ class BattleEngine {
   void tick() {
     _elapsedSeconds++;
     _resolveRespawns();
-    _updateResources(); // マナ回復・ゴール配分・クールダウン減少
+    _resolveMonsterRespawns();
+    _updateResources(); // マナ回復・ゴール配分・クールダウン減少・ジャングルバフ失効判定
     _resolveEngagements();
     _tickController.add(_elapsedSeconds);
 
@@ -302,7 +354,71 @@ class BattleEngine {
           p.skillCooldowns[skillId] = cooldown - cooldownReduction;
         }
       });
+
+      // ジャングルモンスター討伐バフの失効判定
+      if (p.jungleBuffMultiplier != 1.0 &&
+          _elapsedSeconds >= p.jungleBuffExpiresAtSecond) {
+        p.jungleBuffMultiplier = 1.0;
+      }
     }
+  }
+
+  void _resolveMonsterRespawns() {
+    for (final monster in jungleMonsters) {
+      if (!monster.isAlive && _elapsedSeconds >= monster.respawnAtSecond) {
+        monster.isAlive = true;
+        monster.currentHp = monster.maxHp;
+      }
+    }
+  }
+
+  /// プレイヤーがジャングルモンスターへ接近して手動攻撃した際に呼ばれる。
+  /// 同じレーンのモンスターのみ攻撃可能（2レーン制の設計を踏襲）。
+  /// 討伐するとゴール報酬 + 一定時間の攻撃バフを付与する。
+  bool attackJungleMonster(String attackerId, String monsterId) {
+    final attacker = participants
+        .where((p) => p.userId == attackerId)
+        .firstOrNull;
+    if (attacker == null || !attacker.isAlive) return false;
+
+    final monster = jungleMonsters
+        .where((m) => m.id == monsterId)
+        .firstOrNull;
+    if (monster == null || !monster.isAlive) return false;
+    if (monster.lane != attacker.lane) return false;
+
+    final damage = attacker.effectiveAtk * _hitDamageFactor;
+    monster.currentHp = (monster.currentHp - damage).clamp(0.0, double.infinity);
+
+    _damageController.add(
+      DamageEvent(
+        attackerId: attackerId,
+        victimId: monster.id,
+        damage: damage.toInt(),
+        tickSecond: _elapsedSeconds,
+      ),
+    );
+
+    if (monster.currentHp <= 0) {
+      monster.isAlive = false;
+      monster.respawnAtSecond = _elapsedSeconds + _monsterRespawnDelaySeconds;
+
+      attacker.resources = attacker.resources.addGold(_monsterGoldReward);
+      attacker.totalGoldEarned += _monsterGoldReward;
+      attacker.jungleBuffMultiplier = _monsterBuffMultiplier;
+      attacker.jungleBuffExpiresAtSecond =
+          _elapsedSeconds + _monsterBuffDurationSeconds;
+
+      _monsterController.add(
+        MonsterEvent(
+          monsterId: monster.id,
+          killerId: attackerId,
+          tickSecond: _elapsedSeconds,
+        ),
+      );
+    }
+
+    return true;
   }
 
   /// スキルを発動（マナコスト・クールダウンを適用）

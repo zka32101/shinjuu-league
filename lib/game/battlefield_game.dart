@@ -10,6 +10,7 @@ import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/game/impact_line.dart';
 import 'package:shinjuu_league/game/isometric_projection.dart';
+import 'package:shinjuu_league/game/jungle_monster_token.dart';
 import 'package:shinjuu_league/game/kill_burst.dart';
 import 'package:shinjuu_league/game/lane_floor.dart';
 import 'package:shinjuu_league/game/mecha_token.dart';
@@ -21,6 +22,14 @@ import 'package:shinjuu_league/game/buff_indicator.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/game/rendering_optimization.dart';
+import 'package:shinjuu_league/ui/widgets/minimap.dart';
+
+/// 攻撃ボタンが対象とする相手（敵プレイヤー or 中立モンスター）を表す。
+class AttackTarget {
+  final String id;
+  final bool isMonster;
+  const AttackTarget({required this.id, required this.isMonster});
+}
 
 /// 参加者の状態（位置・生死）だけを受け取って描画するレンダラー。
 /// 対戦のシミュレーションロジックは持たない（BattleEngine が唯一の正）。
@@ -44,6 +53,7 @@ class BattlefieldGame extends FlameGame {
   static const _playfieldHalfHeight = 560.0;
 
   final Map<String, MechaToken> _tokens = {};
+  final Map<String, JungleMonsterToken> _monsterTokens = {};
   final _random = Random();
   double _shakeMagnitude = 0.0;
   double _flashAlpha = 0.0;
@@ -58,8 +68,11 @@ class BattlefieldGame extends FlameGame {
   double _wanderRetargetTimer = 0.0;
   final Map<String, Vector2> _wanderTargets = {};
 
-  /// 攻撃可能な射程内に敵がいる場合、そのuserIdを保持する。UIの攻撃ボタン有効化に使う。
-  final ValueNotifier<String?> attackTargetId = ValueNotifier(null);
+  /// 攻撃可能な射程内に敵/モンスターがいる場合、その対象を保持する。UIの攻撃ボタン有効化に使う。
+  final ValueNotifier<AttackTarget?> attackTargetId = ValueNotifier(null);
+
+  /// ミニマップ表示用のエントリ一覧（自分・味方・敵・モンスター）。
+  final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(const []);
 
   @override
   Color backgroundColor() => const Color(0xFF14171F);
@@ -135,16 +148,16 @@ class BattlefieldGame extends FlameGame {
 
     Vector2 shakeOffset = Vector2.zero();
     if (_shakeMagnitude > 0) {
-      _shakeMagnitude = (_shakeMagnitude - dt * 6).clamp(0.0, 1.0);
+      _shakeMagnitude = (_shakeMagnitude - dt * 4.5).clamp(0.0, 1.0);
       shakeOffset = Vector2(
-        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 14,
-        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 14,
+        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 20,
+        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 20,
       );
     }
     camera.viewfinder.position = _cameraFollowPos + shakeOffset;
 
     if (_flashAlpha > 0) {
-      _flashAlpha = (_flashAlpha - dt * 4).clamp(0.0, 1.0);
+      _flashAlpha = (_flashAlpha - dt * 3.2).clamp(0.0, 1.0);
     }
 
     _updateSelfMovement(dt);
@@ -238,7 +251,22 @@ class BattlefieldGame extends FlameGame {
     return nearest;
   }
 
-  /// 自キャラの射程内にいる最も近い敵を探し、攻撃可能対象として公開する。
+  /// 同じレーンの生存中モンスターのうち最も近いものを返す。
+  JungleMonsterToken? _findNearestAliveMonster(MechaToken from) {
+    JungleMonsterToken? nearest;
+    var nearestDist = double.infinity;
+    for (final monster in _monsterTokens.values) {
+      if (!monster.isAlive) continue;
+      final dist = _gridDistance(monster.position, from.position);
+      if (dist < nearestDist) {
+        nearestDist = dist;
+        nearest = monster;
+      }
+    }
+    return nearest;
+  }
+
+  /// 自キャラの射程内にいる最も近い攻撃対象（敵プレイヤー優先、次点でモンスター）を公開する。
   void _updateAttackTarget() {
     final self = _selfToken;
     if (self == null || !self.isAlive) {
@@ -246,14 +274,60 @@ class BattlefieldGame extends FlameGame {
       return;
     }
 
-    final nearest = _findNearestAliveEnemy(self);
-    if (nearest == null) {
-      attackTargetId.value = null;
-      return;
+    final nearestEnemy = _findNearestAliveEnemy(self);
+    if (nearestEnemy != null) {
+      final dist = _gridDistance(nearestEnemy.position, self.position);
+      if (dist <= _attackRangeGrid) {
+        attackTargetId.value = AttackTarget(id: nearestEnemy.userId, isMonster: false);
+        return;
+      }
     }
 
-    final dist = _gridDistance(nearest.position, self.position);
-    attackTargetId.value = dist <= _attackRangeGrid ? nearest.userId : null;
+    final nearestMonster = _findNearestAliveMonster(self);
+    if (nearestMonster != null) {
+      final dist = _gridDistance(nearestMonster.position, self.position);
+      if (dist <= _attackRangeGrid) {
+        attackTargetId.value = AttackTarget(id: nearestMonster.monsterId, isMonster: true);
+        return;
+      }
+    }
+
+    attackTargetId.value = null;
+  }
+
+  /// ミニマップ表示用のエントリ一覧を再構築する。プレイヤー・モンスター双方の
+  /// 同期処理の後に呼び出し、常に最新の位置を反映する。
+  void _rebuildMinimap() {
+    final entries = <MinimapEntry>[];
+    final self = _selfToken;
+    for (final token in _tokens.values) {
+      final type = token.isSelf
+          ? MinimapEntryType.self
+          : (self != null && token.team == self.team
+                ? MinimapEntryType.ally
+                : MinimapEntryType.enemy);
+      entries.add(
+        MinimapEntry(
+          id: token.userId,
+          x: token.position.x / _playfieldHalfWidth,
+          y: token.position.y / _playfieldHalfHeight,
+          type: type,
+          isAlive: token.isAlive,
+        ),
+      );
+    }
+    for (final monster in _monsterTokens.values) {
+      entries.add(
+        MinimapEntry(
+          id: monster.monsterId,
+          x: monster.position.x / _playfieldHalfWidth,
+          y: monster.position.y / _playfieldHalfHeight,
+          type: MinimapEntryType.monster,
+          isAlive: monster.isAlive,
+        ),
+      );
+    }
+    minimapEntries.value = entries;
   }
 
   @override
@@ -262,7 +336,7 @@ class BattlefieldGame extends FlameGame {
     if (_flashAlpha > 0) {
       canvas.drawRect(
         Rect.fromLTWH(0, 0, size.x, size.y),
-        Paint()..color = Colors.white.withValues(alpha: _flashAlpha * 0.35),
+        Paint()..color = Colors.white.withValues(alpha: _flashAlpha * 0.45),
       );
     }
   }
@@ -330,11 +404,50 @@ class BattlefieldGame extends FlameGame {
     }
 
     _renderingStats.visibleObjectCount = visibleCount;
+    _rebuildMinimap();
+  }
+
+  /// ジャングルモンスターの状態を反映する。sync() と同様 tick 毎に呼んでよい。
+  void syncMonsters(List<JungleMonster> monsters) {
+    for (final m in monsters) {
+      final token = _monsterTokens.putIfAbsent(m.id, () {
+        final gridY = _laneCenterYs[m.lane];
+        final screenPos = _projection.toScreen(0, gridY);
+        final newToken = JungleMonsterToken(monsterId: m.id, basePosition: screenPos)
+          ..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
+        add(newToken);
+        return newToken;
+      });
+      token.setAlive(m.isAlive);
+      token.updateHp(m.currentHp, m.maxHp);
+    }
+    _rebuildMinimap();
   }
 
   /// 撃破に至らない被弾（HPが削れただけ）の軽い反応。キル演出ほど強くしない。
   void onHitEvent(String victimId) {
     _tokens[victimId]?.triggerHitFlash();
+    _monsterTokens[victimId]?.triggerHitFlash();
+  }
+
+  /// ジャングルモンスター討伐時の演出：討伐者の位置に大きめのキルバースト+バフ表示。
+  void onMonsterKillEvent(String killerId, String monsterId) {
+    final killer = _tokens[killerId];
+    final monster = _monsterTokens[monsterId];
+    if (monster != null) {
+      add(KillBurst(worldPosition: monster.position.clone()));
+    }
+    if (killer != null) {
+      killer.triggerKillFlash();
+      add(
+        BuffIndicator(
+          buffType: BuffType.atkBoost,
+          duration: 1.4,
+          tokenPosition: killer.position.clone(),
+        ),
+      );
+    }
+    _shakeMagnitude = 0.6;
   }
 
   /// 自キャラ周囲のスキル範囲内にいる敵のuserIdを列挙する（発動時に1回だけ呼ばれる想定）。

@@ -13,6 +13,7 @@ import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/haptic_service.dart';
+import 'package:shinjuu_league/ui/widgets/minimap.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 import 'package:shinjuu_league/ui/widgets/resource_hud.dart';
 import 'package:shinjuu_league/ui/widgets/skill_buttons.dart';
@@ -40,6 +41,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   @override
   void dispose() {
     _game.attackTargetId.dispose();
+    _game.minimapEntries.dispose();
     // バトル画面を離れるときはBGMを停止
     AudioService().stopBgm();
     super.dispose();
@@ -219,6 +221,22 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
+      // ジャングルモンスター討伐：討伐者へバフ演出+SEを再生
+      final prevMonsterKillCount = previous?.monsterKillFeed.length ?? 0;
+      if (next.monsterKillFeed.length > prevMonsterKillCount) {
+        for (final event
+            in next.monsterKillFeed.sublist(prevMonsterKillCount)) {
+          _game.onMonsterKillEvent(event.killerId, event.monsterId);
+        }
+        if (selfId != null &&
+            next.monsterKillFeed
+                .sublist(prevMonsterKillCount)
+                .any((e) => e.killerId == selfId)) {
+          HapticService.onKill();
+          AudioService().playKillSe();
+        }
+      }
+
       // ダメージ数値表示＋音響フィードバック
       final prevDamageCount = previous?.damageEvents.length ?? 0;
       if (next.damageEvents.length > prevDamageCount) {
@@ -254,6 +272,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     }
 
     _game.sync(engine.participants);
+    _game.syncMonsters(engine.jungleMonsters);
 
     BattleParticipantState? selfParticipant;
     try {
@@ -358,15 +377,25 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                 Positioned(
                   right: 24,
                   bottom: 24,
-                  child: ValueListenableBuilder<String?>(
+                  child: ValueListenableBuilder<AttackTarget?>(
                     valueListenable: _game.attackTargetId,
-                    builder: (context, targetId, _) {
-                      final canAttack = targetId != null;
+                    builder: (context, target, _) {
+                      final canAttack = target != null;
+                      final accentColor = target?.isMonster == true
+                          ? const Color(0xFF4ADE80)
+                          : Colors.redAccent;
                       return GestureDetector(
                         onTap: canAttack
-                            ? () => ref
-                                  .read(battleViewModelProvider.notifier)
-                                  .attemptManualAttack(targetId)
+                            ? () {
+                                final notifier = ref.read(
+                                  battleViewModelProvider.notifier,
+                                );
+                                if (target.isMonster) {
+                                  notifier.attemptAttackMonster(target.id);
+                                } else {
+                                  notifier.attemptManualAttack(target.id);
+                                }
+                              }
                             : null,
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 150),
@@ -375,25 +404,38 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             color: canAttack
-                                ? Colors.redAccent
+                                ? accentColor
                                 : Colors.grey.withValues(alpha: 0.4),
                             boxShadow: canAttack
                                 ? [
                                     BoxShadow(
-                                      color: Colors.redAccent.withValues(alpha: 0.6),
+                                      color: accentColor.withValues(alpha: 0.6),
                                       blurRadius: 12,
                                       spreadRadius: 2,
                                     ),
                                   ]
                                 : null,
                           ),
-                          child: const Icon(
-                            Icons.flash_on,
+                          child: Icon(
+                            target?.isMonster == true
+                                ? Icons.bug_report
+                                : Icons.flash_on,
                             color: Colors.white,
                             size: 32,
                           ),
                         ),
                       );
+                    },
+                  ),
+                ),
+                // ミニマップ：マップ全体を歩き回れるため、戦況把握を助ける俯瞰表示
+                Positioned(
+                  top: 12,
+                  right: 12,
+                  child: ValueListenableBuilder<List<MinimapEntry>>(
+                    valueListenable: _game.minimapEntries,
+                    builder: (context, entries, _) {
+                      return Minimap(entries: entries);
                     },
                   ),
                 ),
