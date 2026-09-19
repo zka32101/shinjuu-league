@@ -43,6 +43,8 @@ enum QuestConditionType {
 /// Quest condition definition
 @freezed
 class QuestCondition with _$QuestCondition {
+  const QuestCondition._();
+
   const factory QuestCondition({
     required QuestConditionType type,
     required int target,              // Goal value
@@ -76,6 +78,8 @@ class QuestReward with _$QuestReward {
 /// Base quest definition
 @freezed
 class Quest with _$Quest {
+  const Quest._();
+
   const factory Quest({
     required String questId,
     required String title,
@@ -115,6 +119,8 @@ class Quest with _$Quest {
 /// Player-specific quest progress
 @freezed
 class PlayerQuest with _$PlayerQuest {
+  const PlayerQuest._();
+
   const factory PlayerQuest({
     required String userId,
     required String questId,

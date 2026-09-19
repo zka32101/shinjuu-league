@@ -13,6 +13,8 @@ enum ProgressionTrendType {
 /// Single-season statistics
 @freezed
 class SeasonStats with _$SeasonStats {
+  const SeasonStats._();
+
   const factory SeasonStats({
     required String seasonId,
     required DateTime startedAt,
@@ -74,6 +76,8 @@ class EloSnapshot with _$EloSnapshot {
 /// Aggregate all-time statistics
 @freezed
 class AggregateStats with _$AggregateStats {
+  const AggregateStats._();
+
   const factory AggregateStats({
     required int totalSeasonsPlayed,
     required String favoriteTree,       // Most invested skill tree
@@ -108,6 +112,8 @@ class AggregateStats with _$AggregateStats {
 /// Progression trend tracking
 @freezed
 class ProgressionTrend with _$ProgressionTrend {
+  const ProgressionTrend._();
+
   const factory ProgressionTrend({
     required double seasonOverSeason,    // % change in tier rating
     required double winRateTrend,        // Win rate delta
@@ -147,6 +153,8 @@ class ProgressionTrend with _$ProgressionTrend {
 /// Complete player progression statistics
 @freezed
 class ProgressionStats with _$ProgressionStats {
+  const ProgressionStats._();
+
   const factory ProgressionStats({
     required String userId,
     required SeasonStats? currentSeason,

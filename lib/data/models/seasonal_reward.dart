@@ -29,6 +29,8 @@ class SeasonalReward with _$SeasonalReward {
 /// Distribution of seasonal rewards to a player
 @freezed
 class SeasonRewardDistribution with _$SeasonRewardDistribution {
+  const SeasonRewardDistribution._();
+
   const factory SeasonRewardDistribution({
     required String seasonId,
     required String userId,

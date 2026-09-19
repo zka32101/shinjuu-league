@@ -30,6 +30,8 @@ class SkillTreeSnapshot with _$SkillTreeSnapshot {
 /// Reset record for a skill tree at season boundary
 @freezed
 class SkillTreeReset with _$SkillTreeReset {
+  const SkillTreeReset._();
+
   const factory SkillTreeReset({
     required String seasonId,
     required String nextSeasonId,
@@ -86,6 +88,8 @@ class ProgressDelta with _$ProgressDelta {
 /// Season boundaries and reset configuration
 @freezed
 class SeasonResetConfig with _$SeasonResetConfig {
+  const SeasonResetConfig._();
+
   const factory SeasonResetConfig({
     required String seasonId,
     required String nextSeasonId,

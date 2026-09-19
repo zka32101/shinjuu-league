@@ -26,6 +26,8 @@ class SkillLevelData with _$SkillLevelData {
 /// スキル定義（キャラ × スロット）
 @freezed
 class SkillDefinition with _$SkillDefinition {
+  const SkillDefinition._();
+
   const factory SkillDefinition({
     required String skillId, // e.g. 'leon_q', 'dragoon_ult'
     required String name,

@@ -22,6 +22,8 @@ class EvolutionRecord with _$EvolutionRecord {
 /// プレイヤーのキャラ進化状態（1試合中での変化を追跡）
 @freezed
 class PlayerEvolutionState with _$PlayerEvolutionState {
+  const PlayerEvolutionState._();
+
   const factory PlayerEvolutionState({
     required String mechaId,
     required EvolutionType? currentEvolution,
@@ -83,6 +85,8 @@ class PlayerEvolutionState with _$PlayerEvolutionState {
 /// Lv3進化選択画面のUI状態
 @freezed
 class EvolutionSelectionState with _$EvolutionSelectionState {
+  const EvolutionSelectionState._();
+
   const factory EvolutionSelectionState({
     required int targetLevel, // 3 or 6
     required bool isVisible,
@@ -119,6 +123,8 @@ class EvolutionSelectionState with _$EvolutionSelectionState {
 /// スキルプログレッション（Lv→ダメージ / 効果値のマッピング）
 @freezed
 class SkillProgression with _$SkillProgression {
+  const SkillProgression._();
+
   const factory SkillProgression({
     required String skillId,
     required Map<int, int> levelToDamage, // Lv → ダメージ値

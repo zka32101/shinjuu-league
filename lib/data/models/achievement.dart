@@ -23,6 +23,8 @@ enum AchievementRewardTier {
 /// Base achievement definition
 @freezed
 class Achievement with _$Achievement {
+  const Achievement._();
+
   const factory Achievement({
     required String achievementId,
     required AchievementCategory category,
@@ -77,6 +79,8 @@ class Achievement with _$Achievement {
 /// Player-specific achievement progress
 @freezed
 class PlayerAchievement with _$PlayerAchievement {
+  const PlayerAchievement._();
+
   const factory PlayerAchievement({
     required String userId,
     required String achievementId,
@@ -103,6 +107,8 @@ class PlayerAchievement with _$PlayerAchievement {
 /// Progress tracking for cumulative achievements
 @freezed
 class AchievementProgress with _$AchievementProgress {
+  const AchievementProgress._();
+
   const factory AchievementProgress({
     required int current,      // Current progress value
     required int target,       // Target/max value
