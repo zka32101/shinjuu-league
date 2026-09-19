@@ -221,12 +221,10 @@ class ConfigAdminService {
     );
   }
 
-  /// Get configuration change history.
+  /// Get configuration change history (most recent [limit] entries).
   List<ConfigChangeRecord> getChangeHistory({int limit = 50}) {
-    return _changeHistory.sublist(
-      0,
-      (_changeHistory.length - limit).clamp(0, _changeHistory.length),
-    );
+    final start = (_changeHistory.length - limit).clamp(0, _changeHistory.length);
+    return _changeHistory.sublist(start);
   }
 
   /// Record configuration change.
