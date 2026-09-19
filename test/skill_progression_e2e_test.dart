@@ -15,9 +15,59 @@ import 'package:shinjuu_league/services/skill_progression_analytics_service.dart
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 
-class MockFirestoreService extends Mock implements FirestoreService {}
-class MockAnalyticsService extends Mock implements AnalyticsService {}
-class MockSkillTreeService extends Mock implements SkillTreeService {}
+class MockFirestoreService extends Mock implements FirestoreService {
+  @override
+  Future<void> createBattle(Battle? battle) {
+    return super.noSuchMethod(
+      Invocation.method(#createBattle, [battle]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> updateBattle(Battle? battle) {
+    return super.noSuchMethod(
+      Invocation.method(#updateBattle, [battle]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
+
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logCustomEvent(String? eventName,
+      {Map<String, Object>? parameters}) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logCustomEvent, [eventName], {#parameters: parameters}),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
+
+class MockSkillTreeService extends Mock implements SkillTreeService {
+  @override
+  Future<SkillTree?> getSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTree, [userId]),
+      returnValue: Future<SkillTree?>.value(),
+      returnValueForMissingStub: Future<SkillTree?>.value(),
+    ) as Future<SkillTree?>;
+  }
+
+  @override
+  Map<String, double> calculateStatModifiers(SkillTree? skillTree) {
+    return super.noSuchMethod(
+      Invocation.method(#calculateStatModifiers, [skillTree]),
+      returnValue: <String, double>{},
+      returnValueForMissingStub: <String, double>{},
+    ) as Map<String, double>;
+  }
+}
+
 class MockAchievementService extends Mock implements AchievementService {}
 
 void main() {
@@ -43,10 +93,10 @@ void main() {
       );
 
       // Setup default mock responses
-      when(mockSkillTree.getSkillTree(any as String)).thenAnswer((_) async => null);
-      when(mockSkillTree.calculateStatModifiers(any as SkillTree)).thenReturn({});
-      when(mockFirestore.createBattle(any as Battle)).thenAnswer((_) async => {});
-      when(mockFirestore.updateBattle(any as Battle)).thenAnswer((_) async => {});
+      when(mockSkillTree.getSkillTree(any)).thenAnswer((_) async => null);
+      when(mockSkillTree.calculateStatModifiers(any)).thenReturn({});
+      when(mockFirestore.createBattle(any)).thenAnswer((_) async => {});
+      when(mockFirestore.updateBattle(any)).thenAnswer((_) async => {});
 
       // Create test match
       testMatch = MatchResult(
@@ -476,7 +526,7 @@ void main() {
       viewModel.switchEvolution('player1', EvolutionType.defensive);
 
       // Verify both selections were tracked
-      final calls = verify(mockAnalytics.logCustomEvent(any as String,
+      final calls = verify(mockAnalytics.logCustomEvent(any,
           parameters: argThat(
             isA<Map<String, Object>>(),
             named: 'parameters',

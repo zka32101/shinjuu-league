@@ -7,7 +7,17 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
 class MockFirestoreService extends Mock implements FirestoreService {}
-class MockSkillTreeResetService extends Mock implements SkillTreeResetService {}
+class MockSkillTreeResetService extends Mock implements SkillTreeResetService {
+  @override
+  Future<List<SkillTreeSnapshot>> getSeasonHistory(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSeasonHistory, [userId]),
+      returnValue: Future<List<SkillTreeSnapshot>>.value(<SkillTreeSnapshot>[]),
+      returnValueForMissingStub:
+          Future<List<SkillTreeSnapshot>>.value(<SkillTreeSnapshot>[]),
+    ) as Future<List<SkillTreeSnapshot>>;
+  }
+}
 
 void main() {
   group('ProgressionAnalyticsService', () {
