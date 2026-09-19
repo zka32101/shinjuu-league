@@ -141,9 +141,19 @@ class QuestViewModel extends StateNotifier<QuestState> {
                 [updated]
             : state.completedQuests;
 
+        // allQuests is a separate field from activeQuests/completedQuests
+        // (see loadQuests()) and getQuestById()/getClaimableQuests() read
+        // from it directly - without updating it here too, they'd keep
+        // returning the stale pre-update quest even though
+        // activeQuests/completedQuests were already correct.
+        final updatedAll = state.allQuests.map((q) {
+          return q.questId == questId ? updated : q;
+        }).toList();
+
         state = state.copyWith(
           activeQuests: updatedActive,
           completedQuests: newCompleted,
+          allQuests: updatedAll,
         );
       }
     } catch (e) {
@@ -159,13 +169,18 @@ class QuestViewModel extends StateNotifier<QuestState> {
       final reward = await _questService.claimQuestReward(_userId, questId);
 
       if (reward != null) {
-        // Update quest to mark as rewarded
-        final updatedActive = state.activeQuests.map((q) {
-          if (q.questId == questId) {
-            return q.copyWith(isRewarded: true);
-          }
-          return q;
-        }).toList();
+        // Update quest to mark as rewarded. A claimable quest is normally a
+        // completed one (see PlayerQuest.canClaimReward), so it typically
+        // lives in completedQuests rather than activeQuests - update both
+        // (plus allQuests, read directly by getQuestById()/
+        // getClaimableQuests()) so whichever list actually holds it, and
+        // every reader, sees the rewarded flag.
+        PlayerQuest markRewarded(PlayerQuest q) =>
+            q.questId == questId ? q.copyWith(isRewarded: true) : q;
+
+        final updatedActive = state.activeQuests.map(markRewarded).toList();
+        final updatedCompleted = state.completedQuests.map(markRewarded).toList();
+        final updatedAll = state.allQuests.map(markRewarded).toList();
 
         // Update totals
         final newTotals = {
@@ -175,6 +190,8 @@ class QuestViewModel extends StateNotifier<QuestState> {
 
         state = state.copyWith(
           activeQuests: updatedActive,
+          completedQuests: updatedCompleted,
+          allQuests: updatedAll,
           rewardTotals: newTotals,
         );
       }
