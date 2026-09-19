@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
@@ -75,7 +74,7 @@ void main() {
 
       engine = BattleEngine(
         battleId: 'e2e-test-battle',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         mapId: 'map_01',
         participants: [player1, player2],
         progressionConfig: mockConfig,

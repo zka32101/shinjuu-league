@@ -202,6 +202,20 @@ class AchievementsCatalog {
     isProgressBased: false,
   );
 
+  /// Aha Moment: first kill in a battle, detected in real time by
+  /// [AchievementTriggerDetector] (kept separate from [firstBlood], which
+  /// is a different, pre-existing detector's take on the same moment).
+  static const Achievement ahaMoment = Achievement(
+    achievementId: 'aha_moment',
+    category: AchievementCategory.milestone,
+    name: 'Aha Moment',
+    description: 'Get your first kill',
+    iconUrl: 'assets/achievements/aha_moment.png',
+    rewardTier: AchievementRewardTier.common,
+    maxProgress: 1,
+    isProgressBased: false,
+  );
+
   static const Achievement statMaster = Achievement(
     achievementId: 'stat_master',
     category: AchievementCategory.skill,
@@ -272,6 +286,7 @@ class AchievementsCatalog {
   static const List<Achievement> all = [
     risingStar,
     firstBlood,
+    ahaMoment,
     statMaster,
     balancedFighter,
     seasonWarrior,

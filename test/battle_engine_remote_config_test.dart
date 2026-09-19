@@ -2,7 +2,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
 class MockSkillProgressionConfig extends Mock
@@ -49,7 +48,7 @@ void main() {
 
       engine = BattleEngine(
         battleId: 'test-battle',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         mapId: 'map_01',
         participants: [player1, player2],
         progressionConfig: mockConfig,
@@ -64,7 +63,7 @@ void main() {
       test('uses default SkillProgressionConfig when not provided', () {
         final defaultEngine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
         );
@@ -84,7 +83,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -107,7 +106,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -130,7 +129,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -153,7 +152,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -182,7 +181,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -205,7 +204,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -228,7 +227,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -288,7 +287,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -313,7 +312,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -339,7 +338,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -367,7 +366,7 @@ void main() {
 
         var testEngine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -385,7 +384,7 @@ void main() {
         // New engine instance gets new values
         testEngine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -407,7 +406,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
@@ -431,7 +430,7 @@ void main() {
 
         engine = BattleEngine(
           battleId: 'test-battle',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           participants: [player1, player2],
           progressionConfig: mockConfig,
