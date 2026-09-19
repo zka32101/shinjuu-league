@@ -110,7 +110,16 @@ class BattleSkillProgressionCoordinator {
     final progressBefore = _skillService.getProgress(playerId);
     if (progressBefore == null) return;
 
-    _skillService.levelUpPlayer(playerId);
+    // Evolution-lock detection itself must also use the configured
+    // thresholds (not just the classification of first vs. second below) -
+    // otherwise a Remote Config A/B test that sets e.g. firstEvolutionLevel
+    // to 2 would never actually lock evolution at Lv2 in the first place,
+    // since the underlying service defaults to the hardcoded Lv3/Lv6.
+    _skillService.levelUpPlayer(
+      playerId,
+      firstEvolutionLevel: _progressionConfig.firstEvolutionLevel,
+      secondEvolutionLevel: _progressionConfig.secondEvolutionLevel,
+    );
 
     final progressAfter = _skillService.getProgress(playerId);
     if (progressAfter == null) return;

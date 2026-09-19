@@ -184,8 +184,11 @@ void main() {
         engine.start();
         engine.tick();
 
-        // At normal difficulty, damage should be baseline
-        expect(engine.isRunning, isFalse);
+        // At normal (1.0x) difficulty, a single tick of HP-accumulation
+        // combat (see BattleEngine's damage model) doesn't one-shot either
+        // participant at these baseline stats (100 HP / 50 ATK each), so
+        // the battle should still be actively running afterward.
+        expect(engine.isRunning, isTrue);
       });
 
       test('cooldown multiplier (1.0x) maintains baseline cooldowns', () async {

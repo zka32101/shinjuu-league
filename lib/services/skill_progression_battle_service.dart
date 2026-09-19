@@ -23,18 +23,25 @@ class BattleSkillProgressionState {
 
   /// レベルアップ（バトル内での経験値→レベル上昇）
   /// 進化選択が必要な場合は isEvolutionLocked をセットして呼び出し側に通知
-  BattleSkillProgressionState levelUp() {
-    // getNextEvolutionLevel() returns the threshold STRICTLY ABOVE the given
-    // level (e.g. getNextEvolutionLevel(3) == 6, not 3), so it must be read
-    // from the level *before* leveling up to detect "we just reached an
-    // evolution level". Reading it from newState (post-increment) always
-    // looks one evolution level too far ahead, so isEvolutionPointReached
-    // could never become true and evolution selection never triggered.
-    final nextEvoLevel = state.getNextEvolutionLevel();
+  ///
+  /// firstEvolutionLevel/secondEvolutionLevel（デフォルト3/6）は
+  /// BattleSkillProgressionCoordinator が SkillProgressionConfig（Remote
+  /// Config）から渡す想定。以前はこれらを一切受け取らず、常に
+  /// SkillEvolutionService の**ハードコードされた**3/6/8しきい値
+  /// （state.getNextEvolutionLevel()経由）だけで isEvolutionLocked を
+  /// 判定していたため、Remote Config 側で進化レベルをA/Bテストしても
+  /// （例: firstEvolutionLevel=2）実際のゲームプレイには一切反映されない
+  /// 実害バグだった。
+  BattleSkillProgressionState levelUp({
+    int firstEvolutionLevel = 3,
+    int secondEvolutionLevel = 6,
+  }) {
     final newState = state.levelUp();
 
-    // Lv3またはLv6での進化選択が必要か判定
-    final isEvolutionPointReached = nextEvoLevel == newState.currentLevel;
+    // 設定された進化レベルに到達したか判定（post-increment level との直接比較）
+    final isEvolutionPointReached =
+        newState.currentLevel == firstEvolutionLevel ||
+        newState.currentLevel == secondEvolutionLevel;
 
     return BattleSkillProgressionState(userId: userId, state: newState)
       // 既にロック中（前回の進化選択がまだ confirmEvolution/switchEvolution
@@ -139,11 +146,18 @@ class SkillProgressionBattleService {
   }
 
   /// レベルアップを実行し、イベントを発火
-  void levelUpPlayer(String playerId) {
+  void levelUpPlayer(
+    String playerId, {
+    int firstEvolutionLevel = 3,
+    int secondEvolutionLevel = 6,
+  }) {
     final current = _battleProgression[playerId];
     if (current == null) return;
 
-    final updated = current.levelUp();
+    final updated = current.levelUp(
+      firstEvolutionLevel: firstEvolutionLevel,
+      secondEvolutionLevel: secondEvolutionLevel,
+    );
     _battleProgression[playerId] = updated;
 
     // レベルアップイベント発火
@@ -168,7 +182,7 @@ class SkillProgressionBattleService {
       _evolutionRequiredController.add(EvolutionRequiredEvent(
         playerId: playerId,
         level: updated.state.currentLevel,
-        evolutionType: updated.state.currentLevel == 3
+        evolutionType: updated.state.currentLevel == firstEvolutionLevel
           ? EvolutionSelectionType.first
           : EvolutionSelectionType.second,
       ));
