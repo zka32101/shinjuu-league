@@ -1,3 +1,5 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/admin_role.dart';
@@ -17,37 +19,63 @@ import 'package:shinjuu_league/viewmodels/admin_access_viewmodel.dart';
 /// 5. Role revocation removes access
 /// 6. Audit trail shows complete history
 
-class MockFirestoreService extends Mock implements FirestoreService {}
-
 class MockAuthService extends Mock implements AuthService {}
 
-class FakeUser {
-  final String uid;
-  final String email;
+// firebase_auth's User is abstract with many members these tests don't
+// need; implement it with a noSuchMethod fallback and only the getters
+// actually read (uid).
+class MockUser implements User {
+  MockUser({required this.uid, this.email});
 
-  FakeUser({required this.uid, required this.email});
+  @override
+  final String uid;
+  @override
+  final String? email;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
   group('RBAC Integration Tests', () {
-    late MockFirestoreService mockFirestore;
+    late FakeFirebaseFirestore fakeDb;
+    late FirestoreService firestoreService;
     late MockAuthService mockAuth;
     late AdminRoleService roleService;
     late AuditLoggerService auditService;
     late AdminAccessViewModel viewModel;
 
-    setUp(() {
-      mockFirestore = MockFirestoreService();
+    /// Seeds a user document directly into the fake Firestore's
+    /// `admin_users` collection, matching UserAdminRole.toJson()'s shape.
+    Future<void> seedAdminUser(
+      String userId,
+      String role, {
+      String? email,
+      String? assignedBy,
+    }) async {
+      await fakeDb.collection('admin_users').doc(userId).set({
+        'userId': userId,
+        'userName': userId,
+        'userEmail': email ?? '$userId@game.com',
+        'role': role,
+        'assignedAt': DateTime.now().toIso8601String(),
+        'assignedBy': assignedBy,
+      });
+    }
+
+    setUp(() async {
+      fakeDb = FakeFirebaseFirestore();
+      firestoreService = FirestoreService.forFirestore(fakeDb);
       mockAuth = MockAuthService();
 
-      roleService = AdminRoleService(firestoreService: mockFirestore);
+      roleService = AdminRoleService(firestoreService: firestoreService);
       auditService = AuditLoggerService(
-        firestoreService: mockFirestore,
+        firestoreService: firestoreService,
         roleService: roleService,
       );
 
       // Setup mock auth to return a user
-      when(mockAuth.currentUser).thenReturn(FakeUser(
+      when(mockAuth.currentUser).thenReturn(MockUser(
         uid: 'admin_user_123',
         email: 'admin@game.com',
       ));
@@ -60,32 +88,29 @@ void main() {
 
     group('Scenario 1: User Without Admin Role', () {
       test('Regular user has no admin role', () async {
-        // Setup: user not in admin_users collection
-        when(mockFirestore.getDocument('admin_users', 'regular_user_456'))
-            .thenAnswer((_) async => null);
+        // Setup: admin_users collection has no entry for this user
+        await roleService.loadAdminRoles();
 
         // Act: Check if user is admin
-        final role = await roleService.getUserRole('regular_user_456');
+        final role = roleService.getUserRole('regular_user_456');
 
         // Assert: User has no admin role
         expect(role, isNull);
       });
 
       test('Regular user cannot view feature flags', () async {
-        when(mockFirestore.getDocument('admin_users', 'regular_user_456'))
-            .thenAnswer((_) async => null);
+        await roleService.loadAdminRoles();
 
         final hasPermission =
-            await roleService.hasPermission('regular_user_456', AdminPermission.viewFeatureFlags);
+            roleService.hasPermission('regular_user_456', AdminPermission.viewFeatureFlags);
 
         expect(hasPermission, isFalse);
       });
 
       test('Regular user cannot manage admin roles', () async {
-        when(mockFirestore.getDocument('admin_users', 'regular_user_456'))
-            .thenAnswer((_) async => null);
+        await roleService.loadAdminRoles();
 
-        final hasPermission = await roleService.hasPermission(
+        final hasPermission = roleService.hasPermission(
           'regular_user_456',
           AdminPermission.manageAdminRoles,
         );
@@ -94,13 +119,12 @@ void main() {
       });
 
       test('Regular user cannot access any admin permission', () async {
-        when(mockFirestore.getDocument('admin_users', 'regular_user_456'))
-            .thenAnswer((_) async => null);
+        await roleService.loadAdminRoles();
 
         // Test all permissions
         for (final permission in AdminPermission.values) {
           final hasPermission =
-              await roleService.hasPermission('regular_user_456', permission);
+              roleService.hasPermission('regular_user_456', permission);
           expect(hasPermission, isFalse,
               reason: 'Regular user should not have $permission');
         }
@@ -110,42 +134,34 @@ void main() {
     group('Scenario 2: Admin Assigns Role to User', () {
       test('Admin can assign operator role to user', () async {
         // Setup: admin user in admin_users with admin role
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-              'email': 'admin@game.com',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
+        await roleService.loadAdminRoles();
 
         // Act: Assign operator role
         final success = await roleService.assignRoleToUser(
-          'new_operator_789',
-          'operator',
-          'admin_user_123',
+          userId: 'new_operator_789',
+          userName: 'New Operator',
+          userEmail: 'new_operator@game.com',
+          role: AdminRole.operator,
+          assignedByUserId: 'admin_user_123',
         );
 
         // Assert: Assignment succeeds
         expect(success, isTrue);
 
-        // Verify Firebase document creation was called
-        verify(mockFirestore.setDocument(
-          'admin_users',
-          'new_operator_789',
-          argThat(isA<Map<String, dynamic>>()),
-        )).called(greaterThan(0));
+        // Verify Firestore document was actually created
+        final doc = await fakeDb.collection('admin_users').doc('new_operator_789').get();
+        expect(doc.exists, isTrue);
+        expect(doc.data()!['role'], equals('operator'));
       });
 
       test('Operator cannot assign roles (permission check)', () async {
         // Setup: user has operator role
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-              'email': 'operator@game.com',
-            });
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
         // Verify: Operator lacks manageAdminRoles permission
-        final hasPermission = await roleService.hasPermission(
+        final hasPermission = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.manageAdminRoles,
         );
@@ -157,29 +173,24 @@ void main() {
         const validRoles = ['admin', 'operator', 'viewer'];
 
         for (final role in validRoles) {
-          when(mockFirestore.getDocument('admin_users', 'user_$role'))
-              .thenAnswer((_) async => {
-                'userId': 'user_$role',
-                'role': role,
-                'email': '$role@game.com',
-              });
+          await seedAdminUser('user_$role', role);
+        }
+        await roleService.loadAdminRoles();
 
-          final userRole = await roleService.getUserRole('user_$role');
-          expect(userRole, role);
+        for (final role in validRoles) {
+          final userRole = roleService.getUserRole('user_$role');
+          expect(userRole, isNotNull);
+          expect(userRole!.role.name, equals(role));
         }
       });
     });
 
     group('Scenario 3: User With Role Gains Permissions', () {
       test('Operator can view feature flags', () async {
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-              'email': 'operator@game.com',
-            });
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
-        final hasPermission = await roleService.hasPermission(
+        final hasPermission = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.viewFeatureFlags,
         );
@@ -188,14 +199,10 @@ void main() {
       });
 
       test('Operator can view experiments', () async {
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-              'email': 'operator@game.com',
-            });
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
-        final hasPermission = await roleService.hasPermission(
+        final hasPermission = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.viewExperiments,
         );
@@ -204,22 +211,18 @@ void main() {
       });
 
       test('Viewer can read audit log but not manage roles', () async {
-        when(mockFirestore.getDocument('admin_users', 'viewer_user_111'))
-            .thenAnswer((_) async => {
-              'userId': 'viewer_user_111',
-              'role': 'viewer',
-              'email': 'viewer@game.com',
-            });
+        await seedAdminUser('viewer_user_111', 'viewer');
+        await roleService.loadAdminRoles();
 
         // Viewer can read audit log
-        final canRead = await roleService.hasPermission(
+        final canRead = roleService.hasPermission(
           'viewer_user_111',
           AdminPermission.viewAuditLog,
         );
         expect(canRead, isTrue);
 
         // Viewer cannot manage roles
-        final canManage = await roleService.hasPermission(
+        final canManage = roleService.hasPermission(
           'viewer_user_111',
           AdminPermission.manageAdminRoles,
         );
@@ -227,16 +230,12 @@ void main() {
       });
 
       test('Admin has all permissions', () async {
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-              'email': 'admin@game.com',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
+        await roleService.loadAdminRoles();
 
         // Admin should have all permissions
         for (final permission in AdminPermission.values) {
-          final hasPermission = await roleService.hasPermission(
+          final hasPermission = roleService.hasPermission(
             'admin_user_123',
             permission,
           );
@@ -247,27 +246,25 @@ void main() {
 
     group('Scenario 4: Operations Logged to Audit Trail', () {
       test('Role assignment is logged', () async {
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-              'email': 'admin@game.com',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
+        await roleService.loadAdminRoles();
 
         // Act: Assign role
         await roleService.assignRoleToUser(
-          'new_user_999',
-          'operator',
-          'admin_user_123',
+          userId: 'new_user_999',
+          userName: 'New User',
+          userEmail: 'new_user@game.com',
+          role: AdminRole.operator,
+          assignedByUserId: 'admin_user_123',
         );
 
-        // The audit logging would be handled by AuditLoggerService
-        // Verify that the operation was recorded
-        verify(mockFirestore.setDocument(
-          'admin_users',
-          'new_user_999',
-          any,
-        )).called(greaterThan(0));
+        // Verify that the operation was recorded to the audit log
+        final logSnapshot = await fakeDb
+            .collection('admin_role_audit_log')
+            .where('userId', isEqualTo: 'new_user_999')
+            .get();
+        expect(logSnapshot.docs, isNotEmpty);
+        expect(logSnapshot.docs.first.data()['action'], equals('ROLE_ASSIGNED'));
       });
 
       test('Feature flag change is logged with details', () async {
@@ -303,34 +300,32 @@ void main() {
         };
 
         final parsedTime = DateTime.parse(auditEntry['timestamp'] as String);
-        expect(parsedTime.isBefore(now.add(Duration(seconds: 1))), isTrue);
-        expect(parsedTime.isAfter(now.subtract(Duration(seconds: 1))), isTrue);
+        expect(parsedTime.isBefore(now.add(const Duration(seconds: 1))), isTrue);
+        expect(parsedTime.isAfter(now.subtract(const Duration(seconds: 1))), isTrue);
       });
     });
 
     group('Scenario 5: Role Revocation Removes Access', () {
       test('After role is revoked, user loses permissions', () async {
         // Setup: User initially has operator role
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-              'email': 'operator@game.com',
-            });
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
         // Verify: User has permissions
-        var hasPermission = await roleService.hasPermission(
+        var hasPermission = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.viewFeatureFlags,
         );
         expect(hasPermission, isTrue);
 
-        // Act: Revoke role (remove from admin_users)
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => null);
+        // Act: Revoke role
+        await roleService.revokeAdminRole(
+          userId: 'operator_user_456',
+          revokedByUserId: 'admin_user_123',
+        );
 
         // Verify: User no longer has permissions
-        hasPermission = await roleService.hasPermission(
+        hasPermission = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.viewFeatureFlags,
         );
@@ -381,12 +376,8 @@ void main() {
           },
         ];
 
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-              'email': 'admin@game.com',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
+        await roleService.loadAdminRoles();
 
         // Verify: Audit log has 3 entries in order
         expect(auditLogs, hasLength(3));
@@ -399,11 +390,11 @@ void main() {
         final now = DateTime.now();
         final auditLogs = [
           {
-            'timestamp': now.subtract(Duration(minutes: 10)).toIso8601String(),
+            'timestamp': now.subtract(const Duration(minutes: 10)).toIso8601String(),
             'action': 'ASSIGN_ROLE',
           },
           {
-            'timestamp': now.subtract(Duration(minutes: 5)).toIso8601String(),
+            'timestamp': now.subtract(const Duration(minutes: 5)).toIso8601String(),
             'action': 'SET_ENABLED',
           },
           {
@@ -422,36 +413,25 @@ void main() {
 
       test('Different roles can only view their own operations in audit log', () async {
         // Admin can view all audit logs
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
+        // Operator can view audit logs
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
-        final adminCanViewAll = await roleService.hasPermission(
+        final adminCanViewAll = roleService.hasPermission(
           'admin_user_123',
           AdminPermission.viewAuditLog,
         );
         expect(adminCanViewAll, isTrue);
 
-        // Operator can view audit logs
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-            });
-
-        final operatorCanView = await roleService.hasPermission(
+        final operatorCanView = roleService.hasPermission(
           'operator_user_456',
           AdminPermission.viewAuditLog,
         );
         expect(operatorCanView, isTrue);
 
-        // Regular user cannot view audit logs
-        when(mockFirestore.getDocument('admin_users', 'regular_user_789'))
-            .thenAnswer((_) async => null);
-
-        final regularUserCanView = await roleService.hasPermission(
+        // Regular user (never seeded) cannot view audit logs
+        final regularUserCanView = roleService.hasPermission(
           'regular_user_789',
           AdminPermission.viewAuditLog,
         );
@@ -462,14 +442,10 @@ void main() {
     group('Scenario 7: Permission Validation Edge Cases', () {
       test('hasAnyPermission returns true if user has at least one permission',
           () async {
-        when(mockFirestore.getDocument('admin_users', 'viewer_user_111'))
-            .thenAnswer((_) async => {
-              'userId': 'viewer_user_111',
-              'role': 'viewer',
-              'email': 'viewer@game.com',
-            });
+        await seedAdminUser('viewer_user_111', 'viewer');
+        await roleService.loadAdminRoles();
 
-        final result = await roleService.hasAnyPermission(
+        final result = roleService.hasAnyPermission(
           'viewer_user_111',
           [
             AdminPermission.manageAdminRoles, // Viewer doesn't have this
@@ -482,15 +458,11 @@ void main() {
 
       test('hasAllPermissions returns true only if user has ALL permissions',
           () async {
-        when(mockFirestore.getDocument('admin_users', 'operator_user_456'))
-            .thenAnswer((_) async => {
-              'userId': 'operator_user_456',
-              'role': 'operator',
-              'email': 'operator@game.com',
-            });
+        await seedAdminUser('operator_user_456', 'operator');
+        await roleService.loadAdminRoles();
 
         // Operator has viewFeatureFlags but not manageAdminRoles
-        final result = await roleService.hasAllPermissions(
+        final result = roleService.hasAllPermissions(
           'operator_user_456',
           [
             AdminPermission.viewFeatureFlags,
@@ -502,23 +474,15 @@ void main() {
       });
 
       test('Cache is properly populated on first load', () async {
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
 
         // First call populates cache
-        await roleService.getUserRole('admin_user_123');
+        await roleService.loadAdminRoles();
         expect(roleService.isCacheLoaded, isTrue);
       });
 
       test('Cache can be cleared manually', () async {
-        when(mockFirestore.getDocument('admin_users', 'admin_user_123'))
-            .thenAnswer((_) async => {
-              'userId': 'admin_user_123',
-              'role': 'admin',
-            });
+        await seedAdminUser('admin_user_123', 'admin');
 
         // Load cache
         await roleService.loadAdminRoles();

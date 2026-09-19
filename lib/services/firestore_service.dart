@@ -14,9 +14,15 @@ class FirestoreService {
     return _instance;
   }
 
-  FirestoreService._internal();
+  FirestoreService._internal() : _db = FirebaseFirestore.instance;
 
-  final _db = FirebaseFirestore.instance;
+  /// Test-only seam: builds a standalone (non-singleton) FirestoreService
+  /// backed by a caller-provided Firestore instance (e.g. FakeFirebaseFirestore),
+  /// so tests can exercise real query/collection logic without touching the
+  /// production Firebase singleton.
+  FirestoreService.forFirestore(FirebaseFirestore firestore) : _db = firestore;
+
+  final FirebaseFirestore _db;
 
   /// Raw Firestore instance, for callers that need to build their own
   /// query/reference chains beyond what the generic path-based methods below
