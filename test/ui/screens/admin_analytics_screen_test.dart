@@ -18,11 +18,12 @@ void main() {
 
     testWidgets('renders with loading state', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
-            ),
+        ),
           ),
         ),
       );
@@ -33,11 +34,12 @@ void main() {
 
     testWidgets('displays AppBar with title', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
-            ),
+        ),
           ),
         ),
       );
@@ -47,11 +49,12 @@ void main() {
 
     testWidgets('AppBar has refresh button', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
-            ),
+        ),
           ),
         ),
       );
@@ -61,11 +64,12 @@ void main() {
 
     testWidgets('has date range filter section', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: AdminAnalyticsScreen(),
-            ),
+        ),
           ),
         ),
       );
@@ -81,10 +85,8 @@ void main() {
       });
 
       await tester.pumpWidget(
-        ProviderContainer(
-          overrides: [
-            // Override the provider to return error state
-          ],
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -133,7 +135,8 @@ void main() {
 
     testWidgets('shows loading skeleton when loading', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -149,7 +152,7 @@ void main() {
                   );
                 },
               ),
-            ),
+        ),
           ),
         ),
       );
@@ -159,7 +162,8 @@ void main() {
 
     testWidgets('displays metric cards when data loaded', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -177,7 +181,7 @@ void main() {
                   );
                 },
               ),
-            ),
+        ),
           ),
         ),
       );
@@ -187,7 +191,8 @@ void main() {
 
     testWidgets('renders most active admins section', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -212,7 +217,7 @@ void main() {
                                 ),
                               ],
                             ),
-                          ),
+        ),
                         ),
                       ],
                     ),
@@ -229,7 +234,8 @@ void main() {
 
     testWidgets('renders operations breakdown section', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -249,7 +255,7 @@ void main() {
                                 const Text('40 (40.0%)'),
                               ],
                             ),
-                          ),
+        ),
                         ),
                       ],
                     ),
@@ -266,7 +272,8 @@ void main() {
 
     testWidgets('renders audit trail integrity section', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -295,7 +302,7 @@ void main() {
                                 ),
                               ],
                             ),
-                          ),
+        ),
                         ),
                       ],
                     ),
@@ -313,7 +320,8 @@ void main() {
 
     testWidgets('renders anomalies section when no anomalies', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -334,7 +342,7 @@ void main() {
                                 Text('No anomalies detected'),
                               ],
                             ),
-                          ),
+        ),
                         ),
                       ],
                     ),
@@ -352,7 +360,8 @@ void main() {
 
     testWidgets('renders anomalies with affected users', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: Consumer(
@@ -376,7 +385,7 @@ void main() {
                                     const Text(
                                       '1 user(s) with high-frequency operations',
                                       style: TextStyle(fontWeight: FontWeight.bold),
-                                    ),
+        ),
                                   ],
                                 ),
                                 const SizedBox(height: 16),
@@ -410,7 +419,8 @@ void main() {
 
     testWidgets('has scrollable body', (WidgetTester tester) async {
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: Scaffold(
               body: SingleChildScrollView(
@@ -419,7 +429,7 @@ void main() {
                     Container(height: 2000), // Large content
                   ],
                 ),
-              ),
+        ),
             ),
           ),
         ),
