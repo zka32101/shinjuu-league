@@ -6,6 +6,56 @@ part of 'skill_tree_reset.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+SkillTreeSnapshot _$SkillTreeSnapshotFromJson(Map<String, dynamic> json) =>
+    SkillTreeSnapshot(
+      seasonId: json['seasonId'] as String,
+      snapshotAt: DateTime.parse(json['snapshotAt'] as String),
+      treeState: SkillTree.fromJson(json['treeState'] as Map<String, dynamic>),
+      finalTier: json['finalTier'] as String,
+      totalPointsAllocated: (json['totalPointsAllocated'] as num).toInt(),
+      treePointsBreakdown: Map<String, int>.from(
+        json['treePointsBreakdown'] as Map,
+      ),
+    );
+
+Map<String, dynamic> _$SkillTreeSnapshotToJson(SkillTreeSnapshot instance) =>
+    <String, dynamic>{
+      'seasonId': instance.seasonId,
+      'snapshotAt': instance.snapshotAt.toIso8601String(),
+      'treeState': instance.treeState.toJson(),
+      'finalTier': instance.finalTier,
+      'totalPointsAllocated': instance.totalPointsAllocated,
+      'treePointsBreakdown': instance.treePointsBreakdown,
+    };
+
+SkillTreeReset _$SkillTreeResetFromJson(Map<String, dynamic> json) =>
+    SkillTreeReset(
+      seasonId: json['seasonId'] as String,
+      nextSeasonId: json['nextSeasonId'] as String,
+      userId: json['userId'] as String,
+      previousTree: SkillTree.fromJson(
+        json['previousTree'] as Map<String, dynamic>,
+      ),
+      currentTree: SkillTree.fromJson(
+        json['currentTree'] as Map<String, dynamic>,
+      ),
+      resetAt: DateTime.parse(json['resetAt'] as String),
+      carryoverMode: $enumDecode(_$CarryoverModeEnumMap, json['carryoverMode']),
+      pointsCarriedOver: (json['pointsCarriedOver'] as num).toInt(),
+    );
+
+Map<String, dynamic> _$SkillTreeResetToJson(SkillTreeReset instance) =>
+    <String, dynamic>{
+      'seasonId': instance.seasonId,
+      'nextSeasonId': instance.nextSeasonId,
+      'userId': instance.userId,
+      'previousTree': instance.previousTree.toJson(),
+      'currentTree': instance.currentTree.toJson(),
+      'resetAt': instance.resetAt.toIso8601String(),
+      'carryoverMode': _$CarryoverModeEnumMap[instance.carryoverMode]!,
+      'pointsCarriedOver': instance.pointsCarriedOver,
+    };
+
 const _$CarryoverModeEnumMap = {
   CarryoverMode.none: 'none',
   CarryoverMode.partial: 'partial',
@@ -30,7 +80,7 @@ Map<String, dynamic> _$$SkillTreeSnapshotImplToJson(
 ) => <String, dynamic>{
   'seasonId': instance.seasonId,
   'snapshotAt': instance.snapshotAt.toIso8601String(),
-  'treeState': instance.treeState.toJson(),
+  'treeState': instance.treeState,
   'finalTier': instance.finalTier,
   'totalPointsAllocated': instance.totalPointsAllocated,
   'treePointsBreakdown': instance.treePointsBreakdown,
@@ -58,8 +108,8 @@ Map<String, dynamic> _$$SkillTreeResetImplToJson(
   'seasonId': instance.seasonId,
   'nextSeasonId': instance.nextSeasonId,
   'userId': instance.userId,
-  'previousTree': instance.previousTree.toJson(),
-  'currentTree': instance.currentTree.toJson(),
+  'previousTree': instance.previousTree,
+  'currentTree': instance.currentTree,
   'resetAt': instance.resetAt.toIso8601String(),
   'carryoverMode': _$CarryoverModeEnumMap[instance.carryoverMode]!,
   'pointsCarriedOver': instance.pointsCarriedOver,
