@@ -3,7 +3,7 @@ import 'dart:ui';
 
 import 'package:flame/components.dart';
 import 'package:flame/game.dart';
-import 'package:flutter/foundation.dart' show ValueNotifier;
+import 'package:flutter/foundation.dart' show ValueNotifier, visibleForTesting;
 import 'package:flutter/material.dart' show Colors, EdgeInsets, Icons;
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
@@ -73,6 +73,18 @@ class BattlefieldGame extends FlameGame {
 
   /// ミニマップ表示用のエントリ一覧（自分・味方・敵・モンスター）。
   final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(const []);
+
+  /// テスト専用：ジョイスティック入力を経由せず自キャラをグリッド座標へ直接移動する。
+  /// ユニットテストでは実タッチ入力によるジョイスティック操作を再現できないため、
+  /// 攻撃対象検出ロジックの検証にのみ使用する。
+  @visibleForTesting
+  void debugSetSelfGridPosition(double gridX, double gridY) {
+    final self = _selfToken;
+    if (self == null) return;
+    final screenPos = _projection.toScreen(gridX, gridY);
+    self.position.setFrom(screenPos);
+    self.priority = screenPos.y.round();
+  }
 
   @override
   Color backgroundColor() => const Color(0xFF14171F);
@@ -257,6 +269,7 @@ class BattlefieldGame extends FlameGame {
     var nearestDist = double.infinity;
     for (final monster in _monsterTokens.values) {
       if (!monster.isAlive) continue;
+      if (monster.lane != from.lane) continue;
       final dist = _gridDistance(monster.position, from.position);
       if (dist < nearestDist) {
         nearestDist = dist;
@@ -413,8 +426,9 @@ class BattlefieldGame extends FlameGame {
       final token = _monsterTokens.putIfAbsent(m.id, () {
         final gridY = _laneCenterYs[m.lane];
         final screenPos = _projection.toScreen(0, gridY);
-        final newToken = JungleMonsterToken(monsterId: m.id, basePosition: screenPos)
-          ..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
+        final newToken =
+            JungleMonsterToken(monsterId: m.id, lane: m.lane, basePosition: screenPos)
+              ..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
         add(newToken);
         return newToken;
       });

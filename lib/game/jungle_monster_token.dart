@@ -7,10 +7,14 @@ import 'package:flutter/material.dart' show Colors, Icons;
 /// レーン中央に鎮座する中立モンスターの描画。討伐すると討伐者へゴール+攻撃バフを与える
 /// （BattleEngine側の状態が唯一の正、このクラスは見た目のみ）。
 class JungleMonsterToken extends PositionComponent {
-  JungleMonsterToken({required this.monsterId, required Vector2 basePosition})
-    : super(position: basePosition, size: Vector2.all(56), anchor: Anchor.center);
+  JungleMonsterToken({
+    required this.monsterId,
+    required this.lane,
+    required Vector2 basePosition,
+  }) : super(position: basePosition, size: Vector2.all(56), anchor: Anchor.center);
 
   final String monsterId;
+  final int lane;
 
   bool isAlive = true;
   double _hpRatio = 1.0;
