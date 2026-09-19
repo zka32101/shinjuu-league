@@ -279,7 +279,7 @@ void main() {
           authService: mockAuthService,
         );
 
-        viewModel.state = const AsyncValue.data(null);
+        viewModel.state = const AsyncValue.loading();
         final modifiers = viewModel.getStatModifiers();
 
         expect(modifiers['atk'], equals(1.0));
@@ -333,7 +333,7 @@ void main() {
           authService: mockAuthService,
         );
 
-        viewModel.state = const AsyncValue.data(null);
+        viewModel.state = const AsyncValue.loading();
         final stats = viewModel.getSkillTreeStats();
 
         expect(stats['total_points'], equals(0));
