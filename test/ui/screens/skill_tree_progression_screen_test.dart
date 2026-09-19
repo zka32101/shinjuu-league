@@ -216,7 +216,15 @@ void main() {
                 tierIndex: 0,
                 isAllocated: true,
                 modifier: 1.05,
-                onAllocate: () {},
+                // The real screen only ever passes a non-null onAllocate
+                // when the tier is NOT yet allocated (see the
+                // `!tree.isAllocated(tierIndex)` guard around the call site
+                // in skill_tree_progression_screen.dart) - canAllocate
+                // takes priority over isAllocated in the widget's own
+                // rendering order, so passing a non-null callback here
+                // together with isAllocated:true would incorrectly render
+                // the allocate button instead of the check icon.
+                onAllocate: null,
               ),
             ),
           ),
@@ -268,11 +276,15 @@ void main() {
 
       testWidgets('modifier percentage is displayed correctly',
           (WidgetTester tester) async {
+        // Unlike StatModifierRow (which switches to a '×N.NN' multiplier
+        // format at exactly 1.0), _TierCard's own modifier Text always uses
+        // the percentage form ('+${((modifier - 1.0) * 100)...}%'), with no
+        // special case for 1.0 - it just renders '+0.0%'.
         final testCases = [
           (1.05, '+5.0%'),
           (1.08, '+8.0%'),
           (1.03, '+3.0%'),
-          (1.00, '×1.00'),
+          (1.00, '+0.0%'),
         ];
 
         for (final (modifier, expected) in testCases) {
