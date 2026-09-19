@@ -185,20 +185,20 @@ void main() {
       test('all catalog items have valid bonuses', () {
         for (final item in ItemCatalog.availableItems) {
           // At least one bonus should be present
-          final hasBonus = item.bonus.attackBonus != null ||
-              item.bonus.defenseBonus != null ||
-              item.bonus.hpBonus != null;
+          final hasBonus = item.bonus?.attackBonus != null ||
+              item.bonus?.defenseBonus != null ||
+              item.bonus?.hpBonus != null;
           expect(hasBonus, isTrue, reason: '${item.name} has no bonus');
 
           // Bonuses should be positive percentages
-          if (item.bonus.attackBonus != null) {
-            expect(item.bonus.attackBonus! > 0, isTrue);
+          if (item.bonus?.attackBonus != null) {
+            expect(item.bonus!.attackBonus! > 0, isTrue);
           }
-          if (item.bonus.defenseBonus != null) {
-            expect(item.bonus.defenseBonus! > 0, isTrue);
+          if (item.bonus?.defenseBonus != null) {
+            expect(item.bonus!.defenseBonus! > 0, isTrue);
           }
-          if (item.bonus.hpBonus != null) {
-            expect(item.bonus.hpBonus! > 0, isTrue);
+          if (item.bonus?.hpBonus != null) {
+            expect(item.bonus!.hpBonus! > 0, isTrue);
           }
         }
       });
@@ -215,11 +215,11 @@ void main() {
         expect(legendWeapons, isNotEmpty);
 
         final avgCommonBonus = commonWeapons
-                .map((i) => i.bonus.attackBonus ?? 0)
+                .map((i) => i.bonus?.attackBonus ?? 0)
                 .reduce((a, b) => a + b) /
             commonWeapons.length;
         final avgLegendBonus = legendWeapons
-                .map((i) => i.bonus.attackBonus ?? 0)
+                .map((i) => i.bonus?.attackBonus ?? 0)
                 .reduce((a, b) => a + b) /
             legendWeapons.length;
 

@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
+import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
@@ -38,8 +39,19 @@ void main() {
           .thenAnswer((_) async {});
       when(mockAnalytics.logAchievementUnlocked(any, any, any))
           .thenAnswer((_) async {});
-      when(mockReplay.generateAndSave(any))
-          .thenAnswer((_) async => null);
+      when(mockReplay.generateAndSave(any)).thenAnswer(
+        (_) async => Replay(
+          replayId: 'replay_$battleId',
+          battleId: battleId,
+          shareUrl: 'https://shinjuu-league.app/replay/$battleId',
+          summary: ReplaySummary(
+            mvpUserId: userId,
+            topKills: 0,
+            totalScore: 0,
+          ),
+          createdAt: DateTime.now(),
+        ),
+      );
     });
 
     testWidgets('displays newly unlocked achievements', (WidgetTester tester) async {
