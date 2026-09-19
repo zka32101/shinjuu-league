@@ -6,6 +6,40 @@ part of 'quest_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+Quest _$QuestFromJson(Map<String, dynamic> json) => Quest(
+  questId: json['questId'] as String,
+  title: json['title'] as String,
+  description: json['description'] as String,
+  type: $enumDecode(_$QuestTypeEnumMap, json['type']),
+  frequency: $enumDecode(_$QuestFrequencyEnumMap, json['frequency']),
+  difficulty: $enumDecode(_$QuestDifficultyEnumMap, json['difficulty']),
+  conditions: (json['conditions'] as List<dynamic>)
+      .map((e) => QuestCondition.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  reward: QuestReward.fromJson(json['reward'] as Map<String, dynamic>),
+  availableFrom: json['availableFrom'] == null
+      ? null
+      : DateTime.parse(json['availableFrom'] as String),
+  availableUntil: json['availableUntil'] == null
+      ? null
+      : DateTime.parse(json['availableUntil'] as String),
+  displayOrder: (json['displayOrder'] as num?)?.toInt(),
+);
+
+Map<String, dynamic> _$QuestToJson(Quest instance) => <String, dynamic>{
+  'questId': instance.questId,
+  'title': instance.title,
+  'description': instance.description,
+  'type': _$QuestTypeEnumMap[instance.type]!,
+  'frequency': _$QuestFrequencyEnumMap[instance.frequency]!,
+  'difficulty': _$QuestDifficultyEnumMap[instance.difficulty]!,
+  'conditions': instance.conditions.map((e) => e.toJson()).toList(),
+  'reward': instance.reward.toJson(),
+  'availableFrom': instance.availableFrom?.toIso8601String(),
+  'availableUntil': instance.availableUntil?.toIso8601String(),
+  'displayOrder': instance.displayOrder,
+};
+
 const _$QuestTypeEnumMap = {
   QuestType.combat: 'combat',
   QuestType.achievement: 'achievement',
@@ -27,6 +61,37 @@ const _$QuestDifficultyEnumMap = {
   QuestDifficulty.hard: 'hard',
   QuestDifficulty.extreme: 'extreme',
 };
+
+PlayerQuest _$PlayerQuestFromJson(Map<String, dynamic> json) => PlayerQuest(
+  userId: json['userId'] as String,
+  questId: json['questId'] as String,
+  conditions: (json['conditions'] as List<dynamic>)
+      .map((e) => QuestCondition.fromJson(e as Map<String, dynamic>))
+      .toList(),
+  isCompleted: json['isCompleted'] as bool,
+  isRewarded: json['isRewarded'] as bool,
+  startedAt: json['startedAt'] == null
+      ? null
+      : DateTime.parse(json['startedAt'] as String),
+  completedAt: json['completedAt'] == null
+      ? null
+      : DateTime.parse(json['completedAt'] as String),
+  claimedRewardAt: json['claimedRewardAt'] == null
+      ? null
+      : DateTime.parse(json['claimedRewardAt'] as String),
+);
+
+Map<String, dynamic> _$PlayerQuestToJson(PlayerQuest instance) =>
+    <String, dynamic>{
+      'userId': instance.userId,
+      'questId': instance.questId,
+      'conditions': instance.conditions.map((e) => e.toJson()).toList(),
+      'isCompleted': instance.isCompleted,
+      'isRewarded': instance.isRewarded,
+      'startedAt': instance.startedAt?.toIso8601String(),
+      'completedAt': instance.completedAt?.toIso8601String(),
+      'claimedRewardAt': instance.claimedRewardAt?.toIso8601String(),
+    };
 
 _$QuestConditionImpl _$$QuestConditionImplFromJson(Map<String, dynamic> json) =>
     _$QuestConditionImpl(
@@ -102,8 +167,8 @@ Map<String, dynamic> _$$QuestImplToJson(_$QuestImpl instance) =>
       'type': _$QuestTypeEnumMap[instance.type]!,
       'frequency': _$QuestFrequencyEnumMap[instance.frequency]!,
       'difficulty': _$QuestDifficultyEnumMap[instance.difficulty]!,
-      'conditions': instance.conditions.map((e) => e.toJson()).toList(),
-      'reward': instance.reward.toJson(),
+      'conditions': instance.conditions,
+      'reward': instance.reward,
       'availableFrom': instance.availableFrom?.toIso8601String(),
       'availableUntil': instance.availableUntil?.toIso8601String(),
       'displayOrder': instance.displayOrder,
@@ -133,7 +198,7 @@ Map<String, dynamic> _$$PlayerQuestImplToJson(_$PlayerQuestImpl instance) =>
     <String, dynamic>{
       'userId': instance.userId,
       'questId': instance.questId,
-      'conditions': instance.conditions.map((e) => e.toJson()).toList(),
+      'conditions': instance.conditions,
       'isCompleted': instance.isCompleted,
       'isRewarded': instance.isRewarded,
       'startedAt': instance.startedAt?.toIso8601String(),
