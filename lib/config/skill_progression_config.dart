@@ -1,4 +1,5 @@
 import 'package:firebase_remote_config/firebase_remote_config.dart';
+import 'package:flutter/foundation.dart';
 
 /// Skill progression configuration with Remote Config support.
 ///
@@ -95,6 +96,7 @@ class SkillProgressionConfig {
   double get offensiveDamageBonus => _getDouble(
     _keyOffensiveDamageBonus,
     _defaultOffensiveDamageBonus,
+    maxValue: 1.0,
   );
 
   /// Defensive evolution HP bonus percentage (0.0-1.0)
@@ -106,6 +108,7 @@ class SkillProgressionConfig {
   double get defensiveHpBonus => _getDouble(
     _keyDefensiveHpBonus,
     _defaultDefensiveHpBonus,
+    maxValue: 1.0,
   );
 
   /// Support evolution ally effect bonus percentage (0.0-1.0)
@@ -117,6 +120,7 @@ class SkillProgressionConfig {
   double get supportAllyEffectBonus => _getDouble(
     _keySupportAllyEffectBonus,
     _defaultSupportAllyEffectBonus,
+    maxValue: 1.0,
   );
 
   // ===============================
@@ -286,6 +290,16 @@ class SkillProgressionConfig {
 
   bool get isInitialized => _isInitialized;
 
+  /// テスト専用: シングルトンの初期化状態を巻き戻す。
+  /// 本番では意図的にリセット手段を持たない（一度 Remote Config を
+  /// 取得したら以後はそのままキャッシュ済みの値を使い続ける設計）が、
+  /// テストではケース間で「初期化前のデフォルト値」を検証する必要が
+  /// あるため、この共有シングルトンだけ状態を戻せるようにする。
+  @visibleForTesting
+  void resetForTesting() {
+    _isInitialized = false;
+  }
+
   // ===============================
   // Debug & Diagnostics
   // ===============================
@@ -317,12 +331,17 @@ class SkillProgressionConfig {
   // Private Helpers
   // ===============================
 
-  double _getDouble(String key, double defaultValue) {
+  // maxValue defaults to 2.0 (the multiplier range - level/skill difficulty
+  // multipliers go up to 2.0-3.0x). Evolution bonus percentages document
+  // themselves as 0.0-1.0, so their getters pass maxValue: 1.0 explicitly -
+  // otherwise a bad Remote Config value like 1.5 for a "percentage" field
+  // would clamp against the multiplier range instead and pass through
+  // unclamped above 1.0.
+  double _getDouble(String key, double defaultValue, {double maxValue = 2.0}) {
     if (!_isInitialized) return defaultValue;
     try {
       final value = _remoteConfig.getDouble(key);
-      // Validate range (most bonuses are 0.0-1.0, multipliers are 0.5-2.0)
-      return value.clamp(0.0, 2.0);
+      return value.clamp(0.0, maxValue);
     } catch (e) {
       return defaultValue;
     }

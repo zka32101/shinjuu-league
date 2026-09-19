@@ -67,6 +67,10 @@ void main() {
     setUp(() {
       mockRemoteConfig = MockFirebaseRemoteConfig();
       config = SkillProgressionConfig();
+      // SkillProgressionConfig is a singleton, so isInitialized (and its
+      // cached Remote Config values) otherwise leaks across every test in
+      // this file once any earlier test calls initialize().
+      config.resetForTesting();
 
       // Default mock behavior: return default values
       when(mockRemoteConfig.getDouble(any)).thenReturn(1.0);
@@ -90,8 +94,15 @@ void main() {
         when(mockRemoteConfig.fetchAndActivate())
             .thenThrow(Exception('Network error'));
 
-        expect(() async => await config.initialize(mockRemoteConfig),
-            returnsNormally);
+        // Not `expect(() async => ..., returnsNormally)`: that matcher only
+        // checks the closure doesn't throw *synchronously* - it never awaits
+        // the Future the async closure returns, so the actual initialize()
+        // call (and its exception handling) hadn't necessarily finished by
+        // the time the isInitialized assertion below ran.
+        await expectLater(
+          config.initialize(mockRemoteConfig),
+          completes,
+        );
 
         expect(config.isInitialized, isTrue);
       });
