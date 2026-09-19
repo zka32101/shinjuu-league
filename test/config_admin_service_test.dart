@@ -6,10 +6,43 @@ import 'package:shinjuu_league/services/config_admin_service.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  String get difficultyPreset => super.noSuchMethod(
+        Invocation.getter(#difficultyPreset),
+        returnValue: 'normal',
+        returnValueForMissingStub: 'normal',
+      ) as String;
+
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 class MockFeatureFlagsService extends Mock
-    implements FeatureFlagsService {}
+    implements FeatureFlagsService {
+  @override
+  List<FeatureFlagMetadata> listFeatures() {
+    return super.noSuchMethod(
+      Invocation.method(#listFeatures, []),
+      returnValue: <FeatureFlagMetadata>[],
+      returnValueForMissingStub: <FeatureFlagMetadata>[],
+    ) as List<FeatureFlagMetadata>;
+  }
+}
 
 class MockABTestCoordinator extends Mock implements ABTestCoordinator {}
 
