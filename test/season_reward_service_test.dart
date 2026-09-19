@@ -4,7 +4,45 @@ import 'package:shinjuu_league/data/models/seasonal_reward.dart';
 import 'package:shinjuu_league/services/season_reward_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
-class MockFirestoreService extends Mock implements FirestoreService {}
+class MockFirestoreService extends Mock implements FirestoreService {
+  @override
+  Future<void> set(String? path, dynamic data) {
+    return super.noSuchMethod(
+      Invocation.method(#set, [path, data]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<Map<String, dynamic>?> get(String? path) {
+    return super.noSuchMethod(
+      Invocation.method(#get, [path]),
+      returnValue: Future<Map<String, dynamic>?>.value(),
+      returnValueForMissingStub: Future<Map<String, dynamic>?>.value(),
+    ) as Future<Map<String, dynamic>?>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCollection(String? path) {
+    return super.noSuchMethod(
+      Invocation.method(#getCollection, [path]),
+      returnValue: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+      returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+    ) as Future<List<Map<String, dynamic>>>;
+  }
+
+  @override
+  Future<void> update(String? path, dynamic data) {
+    return super.noSuchMethod(
+      Invocation.method(#update, [path, data]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
 void main() {
   group('SeasonRewardService', () {
@@ -52,7 +90,7 @@ void main() {
 
     group('distributeSeasonRewards', () {
       test('creates distribution with correct tier', () async {
-        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
 
         await service.distributeSeasonRewards(
           'season_1',
@@ -74,7 +112,7 @@ void main() {
       });
 
       test('distribution has 30-day claim window', () async {
-        when(mockFirestore.set(any as String, any)).thenAnswer((invocation) async {
+        when(mockFirestore.set(any, any)).thenAnswer((invocation) async {
           final distribution = invocation.positionalArguments[1] as SeasonRewardDistribution;
           final daysDifference = distribution.expiresAt.difference(DateTime.now()).inDays;
           expect(daysDifference, equals(30));
@@ -85,7 +123,7 @@ void main() {
 
       test('distribution starts unclaimed', () async {
         SeasonRewardDistribution? capturedDist;
-        when(mockFirestore.set(any as String, any)).thenAnswer((invocation) async {
+        when(mockFirestore.set(any, any)).thenAnswer((invocation) async {
           capturedDist = invocation.positionalArguments[1] as SeasonRewardDistribution;
         });
 
@@ -109,7 +147,7 @@ void main() {
         when(mockFirestore.get('users/user_123/season_rewards/season_1'))
             .thenAnswer((_) async => distribution.toJson());
 
-        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
 
         final result = await service.claimRewards('user_123', 'season_1');
         expect(result, isTrue);
