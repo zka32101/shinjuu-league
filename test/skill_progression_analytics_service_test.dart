@@ -5,7 +5,32 @@ import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 
 // Mock AnalyticsService
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logCustomEvent(String? eventName,
+      {Map<String, Object>? parameters}) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logCustomEvent, [eventName], {#parameters: parameters}),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  void recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    String? reason,
+    Iterable<Object>? information,
+  }) {
+    super.noSuchMethod(
+      Invocation.method(#recordError, [exception, stackTrace],
+          {#reason: reason, #information: information}),
+      returnValueForMissingStub: null,
+    );
+  }
+}
 
 void main() {
   group('SkillProgressionAnalyticsService', () {
@@ -72,7 +97,7 @@ void main() {
       });
 
       test('silently handles exceptions', () async {
-        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Test exception'));
 
         // Should not throw
@@ -286,7 +311,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters'))).callCount, 4);
+        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 4);
       });
 
       test('tracks evolution bonus presence', () async {
@@ -560,7 +585,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters'))).callCount, 3);
+        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 3);
       });
     });
 
@@ -714,7 +739,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verifyNever(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')));
+        verifyNever(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')));
       });
 
       test('handles tie between evolution types', () async {
@@ -757,7 +782,7 @@ void main() {
               contains('Player attempted evolution at level 5'),
             ),
             named: 'information',
-          ) as Iterable<Object>,
+          ),
         )).called(1);
       });
 
@@ -775,7 +800,7 @@ void main() {
           information: argThat(
             contains('duplicate_level_up'),
             named: 'information',
-          ) as Iterable<Object>,
+          ),
         )).called(1);
       });
 
@@ -784,7 +809,7 @@ void main() {
           any,
           any,
           reason: anyNamed('reason'),
-          information: anyNamed('information') as Iterable<Object>,
+          information: anyNamed('information'),
         )).thenThrow(Exception('Crashlytics error'));
 
         // Should not throw
@@ -803,7 +828,7 @@ void main() {
         await analyticsService.logLevelUp('player1', 4, false);
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
               .callCount,
           3,
         );
@@ -827,7 +852,7 @@ void main() {
         await Future.wait(futures);
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
               .callCount,
           10,
         );
