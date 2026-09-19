@@ -20,6 +20,27 @@ abstract class AppColors {
   static const borderColor = Color(0xFF404040);
   static const accentBlue = Color(0xFF3D7FE0);
   static const text = Color(0xFFFFFFFF);
+
+  // Manual dark/light mode color pairs (for screens that switch by hand
+  // instead of relying on ThemeData.brightness)
+  static const darkBg = background;
+  static const darkCard = cardBackground;
+  static const darkText = Color(0xFF121212);
+  static const lightBg = Color(0xFFF5F5F5);
+  static const lightCard = Color(0xFFFFFFFF);
+  static const lightText = Color(0xFFFFFFFF);
+  static const mutedText = Color(0xFF9E9E9E);
+
+  // Additional aliases some screens reference directly
+  static const darkBackground = background;
+  static const lightBackground = lightBg;
+  static const primary = seed;
+  static const textSecondary = mutedText;
+
+  // Dark-mode elevation scale (progressively lighter surfaces)
+  static const dark1 = Color(0xFF1A1A1A);
+  static const dark2 = Color(0xFF242424);
+  static const dark3 = Color(0xFF2E2E2E);
 }
 
 class AppTheme {

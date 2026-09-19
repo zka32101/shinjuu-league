@@ -13,9 +13,9 @@ class DefaultFirebaseOptions {
         return android;
       case TargetPlatform.iOS:
         return ios;
-      case TargetPlatform.web:
+      case TargetPlatform.fuchsia:
         throw UnsupportedError(
-          'DefaultFirebaseOptions has not been configured for web',
+          'DefaultFirebaseOptions has not been configured for fuchsia',
         );
       case TargetPlatform.windows:
         throw UnsupportedError(

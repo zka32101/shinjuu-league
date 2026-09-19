@@ -14,9 +14,68 @@ class FirestoreService {
     return _instance;
   }
 
-  FirestoreService._internal();
+  FirestoreService._internal() : _db = FirebaseFirestore.instance;
 
-  final _db = FirebaseFirestore.instance;
+  /// Test-only seam: builds a standalone (non-singleton) FirestoreService
+  /// backed by a caller-provided Firestore instance (e.g. FakeFirebaseFirestore),
+  /// so tests can exercise real query/collection logic without touching the
+  /// production Firebase singleton.
+  FirestoreService.forFirestore(FirebaseFirestore firestore) : _db = firestore;
+
+  final FirebaseFirestore _db;
+
+  /// Raw Firestore instance, for callers that need to build their own
+  /// query/reference chains beyond what the generic path-based methods below
+  /// support.
+  FirebaseFirestore get db => _db;
+
+  // ============ Generic Path-Based Methods ============
+  // (season/quest/achievement/skill-tree systems store nested per-user
+  // subcollections and access them by raw Firestore path rather than
+  // through a dedicated typed method per collection)
+
+  CollectionReference<Map<String, dynamic>> collection(String path) =>
+      _db.collection(path);
+
+  Future<Map<String, dynamic>?> get(String path) async {
+    final doc = await _db.doc(path).get();
+    return doc.data();
+  }
+
+  Future<void> set(String path, dynamic data) async {
+    await _db.doc(path).set(_toJsonMap(data));
+  }
+
+  /// Alias of [set] with named parameters, used by admin/audit services.
+  Future<void> setData({required String path, required dynamic data}) =>
+      set(path, data);
+
+  Future<void> update(String path, dynamic data) async {
+    await _db.doc(path).update(_toJsonMap(data));
+  }
+
+  /// Deletes the document at [path].
+  Future<void> deleteData({required String path}) async {
+    await _db.doc(path).delete();
+  }
+
+  /// Adds [data] as a new auto-ID document under the collection at [path].
+  Future<void> addData({
+    required String path,
+    required Map<String, dynamic> data,
+  }) async {
+    await _db.collection(path).add(data);
+  }
+
+  Future<List<Map<String, dynamic>>> getCollection(String path) async {
+    final snapshot = await _db.collection(path).get();
+    return snapshot.docs.map((d) => d.data()).toList();
+  }
+
+  Map<String, dynamic> _toJsonMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    return data.toJson() as Map<String, dynamic>;
+  }
 
   // ============ User Methods ============
   Future<User?> getUserById(String uid) async {
@@ -443,6 +502,138 @@ class FirestoreService {
       });
     } catch (e) {
       throw 'Failed to log event: $e';
+    }
+  }
+
+  // ============ Achievement Methods ============
+  /// Mark an achievement as unlocked for a user
+  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .doc(achievementId)
+          .set({
+        'achievementId': achievementId,
+        'unlockedAt': FieldValue.serverTimestamp(),
+        'isHidden': false,
+      }, SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to mark achievement unlocked: $e';
+    }
+  }
+
+  /// Increment user currency (earned from achievements or other sources)
+  Future<void> incrementUserCurrency(String userId, int amount) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'currency': FieldValue.increment(amount),
+      });
+    } catch (e) {
+      throw 'Failed to increment currency: $e';
+    }
+  }
+
+  /// Increment user achievement badges (cosmetic reward)
+  Future<void> incrementUserAchievementBadges(String userId, int count) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'achievementBadges': FieldValue.increment(count),
+      });
+    } catch (e) {
+      throw 'Failed to increment achievement badges: $e';
+    }
+  }
+
+  /// Add a cosmetic item to user's collection
+  Future<void> addUserCosmetic(String userId, String cosmeticId) async {
+    try {
+      await _db.collection('users').doc(userId).update({
+        'ownedCosmetics': FieldValue.arrayUnion([cosmeticId]),
+      });
+    } catch (e) {
+      throw 'Failed to add cosmetic: $e';
+    }
+  }
+
+  /// Get user achievement history
+  Future<List<Map<String, dynamic>>> getUserAchievements(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('achievements')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch achievements: $e';
+    }
+  }
+
+  // ============ Quest Methods ============
+  /// Save player quest progress to Firestore
+  Future<void> savePlayerQuest(String userId, dynamic playerQuest) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(playerQuest.questId)
+          .set(playerQuest.toJson(), SetOptions(merge: true));
+    } catch (e) {
+      throw 'Failed to save quest: $e';
+    }
+  }
+
+  /// Get a specific player quest
+  Future<dynamic> getPlayerQuest(String userId, String questId) async {
+    try {
+      final doc = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .doc(questId)
+          .get();
+      if (doc.exists) {
+        // Return raw data - caller handles deserialization
+        return doc.data();
+      }
+      return null;
+    } catch (e) {
+      throw 'Failed to fetch quest: $e';
+    }
+  }
+
+  /// Get player quests by frequency
+  Future<List<Map<String, dynamic>>> getPlayerQuestsByFrequency(
+    String userId,
+    dynamic frequency,
+  ) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .where('frequency', isEqualTo: frequency.toString())
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch quests by frequency: $e';
+    }
+  }
+
+  /// Get all player quests
+  Future<List<Map<String, dynamic>>> getAllPlayerQuests(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('quests')
+          .get();
+      return snapshot.docs.map((doc) => doc.data()).toList();
+    } catch (e) {
+      throw 'Failed to fetch all quests: $e';
     }
   }
 }

@@ -25,7 +25,7 @@ class SkillTreeViewModel extends StateNotifier<AsyncValue<SkillTree>> {
   Future<void> _init() async {
     final userId = _currentUserId;
     if (userId == null) {
-      state = const AsyncValue.data(SkillTree.create());
+      state = AsyncValue.data(SkillTree.create());
       return;
     }
 

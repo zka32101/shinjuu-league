@@ -9,7 +9,20 @@ class AuthService {
 
   AuthService._internal();
 
-  final _firebaseAuth = FirebaseAuth.instance;
+  /// Test-only seam: builds a standalone (non-singleton) AuthService backed
+  /// by a caller-provided FirebaseAuth (e.g. a mock), so tests can exercise
+  /// real logic without touching the production Firebase singleton.
+  AuthService.forFirebaseAuth(FirebaseAuth firebaseAuth)
+      : _firebaseAuthOverride = firebaseAuth;
+
+  FirebaseAuth? _firebaseAuthOverride;
+
+  /// Resolves the real Firebase-backed singleton lazily, on first actual
+  /// use, rather than eagerly in the constructor. This means simply
+  /// constructing an `AuthService()` (e.g. via its own singleton factory, or
+  /// as a default parameter deep in some other service's constructor) never
+  /// requires Firebase to already be initialized.
+  FirebaseAuth get _firebaseAuth => _firebaseAuthOverride ??= FirebaseAuth.instance;
 
   // Get current user
   User? get currentUser => _firebaseAuth.currentUser;
