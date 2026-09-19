@@ -56,25 +56,11 @@ void main() {
     });
 
     test('triggers Aha Moment on first kill during battle', () async {
-      final userData = User(
-        userId: userId,
-        displayName: 'Test Player',
-        eloRating: 1200,
-        statPoints: 0,
-        pathDiversity: 0,
-        seasonsParticipated: 0,
-        consistentSeasons: 0,
-        currentTier: 'Bronze',
-        totalBattles: 0,
-        wins: 0,
-      );
-      when(mockFirestore.getUser(userId)).thenAnswer((_) async => userData);
+      final userData = _buildTestUser(userId);
+      when(mockFirestore.getUserById(userId)).thenAnswer((_) async => userData);
 
-      when(mockAchievement.getProgress(userId, 'aha_moment'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'aha_moment',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'aha_moment'))
           .thenAnswer((_) async {});
@@ -101,25 +87,11 @@ void main() {
     });
 
     test('triggers Rising Star on battle win', () async {
-      final userData = User(
-        userId: userId,
-        displayName: 'Test Player',
-        eloRating: 1200,
-        statPoints: 0,
-        pathDiversity: 0,
-        seasonsParticipated: 0,
-        consistentSeasons: 0,
-        currentTier: 'Bronze',
-        totalBattles: 0,
-        wins: 0,
-      );
-      when(mockFirestore.getUser(userId)).thenAnswer((_) async => userData);
+      final userData = _buildTestUser(userId);
+      when(mockFirestore.getUserById(userId)).thenAnswer((_) async => userData);
 
-      when(mockAchievement.getProgress(userId, 'rising_star'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'rising_star',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'rising_star'))
           .thenAnswer((_) async {});
@@ -143,11 +115,8 @@ void main() {
     });
 
     test('triggers Stat Master at 50+ points', () async {
-      when(mockAchievement.getProgress(userId, 'stat_master'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'stat_master',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'stat_master'))
           .thenAnswer((_) async {});
@@ -169,11 +138,8 @@ void main() {
     });
 
     test('triggers Balanced Fighter with 3-path diversity', () async {
-      when(mockAchievement.getProgress(userId, 'balanced_fighter'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'balanced_fighter',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'balanced_fighter'))
           .thenAnswer((_) async {});
@@ -195,11 +161,8 @@ void main() {
     });
 
     test('triggers Season Warrior at 10 seasons', () async {
-      when(mockAchievement.getProgress(userId, 'season_warrior'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'season_warrior',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'season_warrior'))
           .thenAnswer((_) async {});
@@ -220,11 +183,8 @@ void main() {
     });
 
     test('triggers Consistency at 3+ seasons in Gold tier', () async {
-      when(mockAchievement.getProgress(userId, 'consistency'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'consistency',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'consistency'))
           .thenAnswer((_) async {});
@@ -245,12 +205,6 @@ void main() {
     });
 
     test('does not trigger Consistency below 3 seasons', () async {
-      when(mockAchievement.getProgress(userId, 'consistency'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'consistency',
-              ));
-
       final detector = AchievementTriggerDetector(
         achievementService: mockAchievement,
       );
@@ -270,12 +224,6 @@ void main() {
     });
 
     test('does not trigger Consistency in non-Gold tiers', () async {
-      when(mockAchievement.getProgress(userId, 'consistency'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'consistency',
-              ));
-
       final detector = AchievementTriggerDetector(
         achievementService: mockAchievement,
       );
@@ -295,12 +243,14 @@ void main() {
     });
 
     test('prevents re-unlocking already unlocked achievements', () async {
-      when(mockAchievement.getProgress(userId, 'aha_moment'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'aha_moment',
-                unlockedAt: DateTime.now().subtract(const Duration(days: 1)),
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => [
+                PlayerAchievement(
+                  userId: userId,
+                  achievementId: 'aha_moment',
+                  unlockedAt: DateTime.now().subtract(const Duration(days: 1)),
+                ),
+              ]);
 
       final detector = AchievementTriggerDetector(
         achievementService: mockAchievement,
@@ -316,25 +266,11 @@ void main() {
     });
 
     test('checks all triggers in batch for comprehensive detection', () async {
-      final userData = User(
-        userId: userId,
-        displayName: 'Test Player',
-        eloRating: 1200,
-        statPoints: 60,
-        pathDiversity: 3,
-        seasonsParticipated: 10,
-        consistentSeasons: 3,
-        currentTier: 'Gold',
-        totalBattles: 1,
-        wins: 1,
-      );
-      when(mockFirestore.getUser(userId)).thenAnswer((_) async => userData);
+      final userData = _buildTestUser(userId);
+      when(mockFirestore.getUserById(userId)).thenAnswer((_) async => userData);
 
-      when(mockAchievement.getProgress(any, any))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'test_achievement',
-              ));
+      when(mockAchievement.getUnlockedAchievements(any))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(any, any))
           .thenAnswer((_) async {});
@@ -365,7 +301,7 @@ void main() {
     });
 
     test('handles errors gracefully without crashing battle flow', () async {
-      when(mockFirestore.getUser(userId))
+      when(mockFirestore.getUserById(userId))
           .thenThrow(Exception('Database error'));
 
       final battle = Battle(
@@ -373,15 +309,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'mecha_test',
             kills: 1,
             deaths: 0,
             assists: 0,
-            damageDealt: 100,
+            score: 100,
           ),
         ],
         result: BattleResult.win,
@@ -396,25 +333,11 @@ void main() {
     });
 
     test('emits correct analytics events for unlocked achievements', () async {
-      final userData = User(
-        userId: userId,
-        displayName: 'Test Player',
-        eloRating: 1200,
-        statPoints: 50,
-        pathDiversity: 1,
-        seasonsParticipated: 1,
-        consistentSeasons: 0,
-        currentTier: 'Bronze',
-        totalBattles: 1,
-        wins: 1,
-      );
-      when(mockFirestore.getUser(userId)).thenAnswer((_) async => userData);
+      final userData = _buildTestUser(userId);
+      when(mockFirestore.getUserById(userId)).thenAnswer((_) async => userData);
 
-      when(mockAchievement.getProgress(userId, 'stat_master'))
-          .thenAnswer((_) async => PlayerAchievement(
-                userId: userId,
-                achievementId: 'stat_master',
-              ));
+      when(mockAchievement.getUnlockedAchievements(userId))
+          .thenAnswer((_) async => []);
 
       when(mockAchievement.unlockAchievement(userId, 'stat_master'))
           .thenAnswer((_) async {});
@@ -441,4 +364,24 @@ void main() {
       viewModel.dispose();
     });
   });
+}
+
+/// Minimal valid User for stubbing FirestoreService.getUserById in these
+/// tests; none of the achievement-trigger assertions read its fields (the
+/// trigger inputs like statPoints/pathDiversity are passed explicitly to
+/// AchievementTriggerDetector's methods instead).
+User _buildTestUser(String uid) {
+  final now = DateTime.now();
+  return User(
+    uid: uid,
+    name: 'Test Player',
+    rank: 0,
+    level: 1,
+    eloRating: 1200,
+    winRate: 0.0,
+    gems: 0,
+    gold: 0,
+    createdAt: now,
+    lastBattleAt: now,
+  );
 }
