@@ -299,7 +299,11 @@ class AuditLoggerService {
 
       return {
         'totalChanges': entries.length,
-        'period': period?.toString() ?? '30 days',
+        // Duration.toString() renders as "H:MM:SS.mmmmmm" (e.g. a 7-day
+        // period became "168:00:00.000000"), not a human-readable period -
+        // that format only accidentally looked right for the hardcoded
+        // '30 days' fallback when no period was passed at all.
+        'period': '${(period ?? const Duration(days: 30)).inDays} days',
         'actionCounts': actionCounts,
         'userCounts': userCounts,
         'topUser': userCounts.entries.isNotEmpty

@@ -13,15 +13,26 @@ BattleParticipantState _participant({
   bool isSelf = false,
   BaseStats? stats,
   int lane = 0,
+  SkillBuild? skillBuild,
+  String mechaId = 'mecha_default_01',
 }) {
+  // skillCooldowns is only populated from skills registered for this
+  // participant's mechaId (SkillSystemService.getSkillsForMecha), so
+  // skillBuild's skill ids must actually belong to that mecha's catalog -
+  // also, skillCooldowns is only populated from skillBuild inside the
+  // constructor itself - assigning `.skillBuild = ...` to an
+  // already-constructed BattleParticipantState (as production code never
+  // does) leaves skillCooldowns empty for those skill ids, so skillBuild
+  // must be passed here rather than set afterward.
   return BattleParticipantState(
     userId: userId,
-    mechaId: 'mecha_default_01',
+    mechaId: mechaId,
     isBot: !isSelf,
     isSelf: isSelf,
     team: team,
     lane: lane,
     baseStats: stats ?? BaseStats(hp: 100, atk: 50, spd: 40),
+    skillBuild: skillBuild,
   );
 }
 
@@ -435,20 +446,20 @@ void main() {
     });
 
     test('マナ不足ではスキルが使用できない', () {
+      final skill = SkillBuild(
+        skillId1: 'skill_east_01_q',
+        skillId2: 'skill_east_01_w',
+        skillId3: 'skill_east_01_e',
+        level1: 3, // レベル3 = コスト60
+      );
       final self = _participant(
         userId: 'self',
         team: 0,
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        skillBuild: skill,
+        mechaId: 'mecha_east_01',
       );
-      final skill =
-          SkillBuild(
-            skillId1: 'skill_east_01_q',
-            skillId2: 'skill_east_01_w',
-            skillId3: 'skill_east_01_e',
-            level1: 3, // レベル3 = コスト60
-          );
-      self.skillBuild = skill;
       self.resources = self.resources.spendMana(45); // マナ55に
 
       final enemy = _participant(userId: 'enemy', team: 1);
@@ -467,19 +478,19 @@ void main() {
     });
 
     test('スキル使用後はクールダウンが発生', () {
+      final skill = SkillBuild(
+        skillId1: 'skill_east_01_q',
+        skillId2: 'skill_east_01_w',
+        skillId3: 'skill_east_01_e',
+      );
       final self = _participant(
         userId: 'self',
         team: 0,
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        skillBuild: skill,
+        mechaId: 'mecha_east_01',
       );
-      final skill =
-          SkillBuild(
-            skillId1: 'skill_east_01_q',
-            skillId2: 'skill_east_01_w',
-            skillId3: 'skill_east_01_e',
-          );
-      self.skillBuild = skill;
 
       final enemy = _participant(userId: 'enemy', team: 1);
 
