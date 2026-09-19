@@ -86,33 +86,29 @@ class AchievementPushNotificationService {
   }
 
   /// Send local push notification for near-completion achievement
+  // Intentionally has no try/catch of its own: if showNotification() throws,
+  // that must propagate up to checkAndSendNearCompletionNotification()'s own
+  // catch, which is the single place that (a) logs the error exactly once
+  // and (b) is what stops the caller from marking this achievement as
+  // "notification sent" and logging a misleading "notification sent"
+  // analytics event for a push that actually failed to show.
   Future<void> _sendNotification(
     String userId,
     Achievement achievement,
     int progressPercentage,
   ) async {
-    try {
-      final title = '${achievement.name}があと少し！';
-      final body = '$progressPercentage%達成！残りわずかで報酬をゲット！';
+    final title = '${achievement.name}があと少し！';
+    final body = '$progressPercentage%達成！残りわずかで報酬をゲット！';
 
-      await _pushNotificationService.showNotification(
-        title: title,
-        body: body,
-        payload: {
-          'type': 'achievement_near_completion',
-          'achievement_id': achievement.achievementId,
-          'progress_percentage': progressPercentage.toString(),
-        },
-      );
-    } catch (e) {
-      // Log error (notification failure is non-critical)
-      _analyticsService.recordError(
-        e,
-        StackTrace.current,
-        reason: 'Failed to show achievement near-completion notification',
-        information: [achievement.achievementId],
-      );
-    }
+    await _pushNotificationService.showNotification(
+      title: title,
+      body: body,
+      payload: {
+        'type': 'achievement_near_completion',
+        'achievement_id': achievement.achievementId,
+        'progress_percentage': progressPercentage.toString(),
+      },
+    );
   }
 
   /// Reset notification tracking for a user (called on app restart or season reset)
