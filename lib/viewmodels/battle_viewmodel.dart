@@ -699,6 +699,12 @@ class BattleViewModel extends StateNotifier<BattleState> {
     }
   }
 
+  /// プレイヤーをレベルアップさせる（通常は内部のキル/経験値ロジックから呼ばれるが、
+  /// テストからスキル進行フローを直接駆動するためにも公開する）
+  void levelUpPlayer(String playerId) {
+    _skillCoordinator.levelUpPlayer(playerId);
+  }
+
   /// ユーザーが進化を確認した時に呼ぶ
   void confirmEvolution(String playerId, EvolutionType evolution) {
     _skillCoordinator.confirmEvolution(playerId, evolution);
