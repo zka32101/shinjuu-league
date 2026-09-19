@@ -43,14 +43,15 @@ void main() {
 
       // Setup default mock responses
       when(mockSkillTree.getSkillTree(any)).thenAnswer((_) async => null);
-      when(mockSkillTree.calculateStatModifiers(any)).thenReturn({});
-      when(mockFirestore.createBattle(any)).thenAnswer((_) async => {});
-      when(mockFirestore.updateBattle(any)).thenAnswer((_) async => {});
+      when(mockSkillTree.calculateStatModifiers(any as SkillTree)).thenReturn({});
+      when(mockFirestore.createBattle(any as Battle)).thenAnswer((_) async => {});
+      when(mockFirestore.updateBattle(any as Battle)).thenAnswer((_) async => {});
 
       // Create test match
       testMatch = MatchResult(
         matchId: 'test-e2e-001',
-        mode: BattleMode.quickMatch,
+        estimatedWaitSeconds: 5,
+        mode: BattleMode.quick,
         mapId: 'map_01',
         teamA: [
           MatchParticipant(
@@ -58,8 +59,8 @@ void main() {
             mechaId: 'leon',
             eloRating: 1500.0,
             isBot: false,
-            team: Team.a,
-            lane: Lane.top,
+            team: 0,
+            lane: 0,
           ),
         ],
         teamB: [
@@ -68,8 +69,8 @@ void main() {
             mechaId: 'frost',
             eloRating: 1500.0,
             isBot: true,
-            team: Team.b,
-            lane: Lane.top,
+            team: 1,
+            lane: 0,
           ),
         ],
       );
@@ -88,7 +89,7 @@ void main() {
       expect(viewModel.state.skillProgressionStates, isNotEmpty);
 
       // Verify battle start analytics was called
-      verify(mockAnalytics.logBattleStart('player1', 'quickMatch')).called(1);
+      verify(mockAnalytics.logBattleStart('player1', 'quick')).called(1);
     });
 
     test('Evolution selection event triggers at Lv3 with timing tracking',
@@ -346,7 +347,8 @@ void main() {
       for (final charId in characterIds) {
         final match = MatchResult(
           matchId: 'test-char-$charId',
-          mode: BattleMode.quickMatch,
+          estimatedWaitSeconds: 5,
+          mode: BattleMode.quick,
           mapId: 'map_01',
           teamA: [
             MatchParticipant(
@@ -354,8 +356,8 @@ void main() {
               mechaId: charId,
               eloRating: 1500.0,
               isBot: false,
-              team: Team.a,
-              lane: Lane.top,
+              team: 0,
+              lane: 0,
             ),
           ],
           teamB: [
@@ -364,8 +366,8 @@ void main() {
               mechaId: 'leon',
               eloRating: 1500.0,
               isBot: true,
-              team: Team.b,
-              lane: Lane.top,
+              team: 1,
+              lane: 0,
             ),
           ],
         );
@@ -389,7 +391,7 @@ void main() {
 
           // Verify character mecha is properly loaded
           final mecha = mechaById(charId);
-          expect(mecha.id, charId);
+          expect(mecha.mechaId, charId);
         } finally {
           testViewModel.dispose();
         }
@@ -473,7 +475,7 @@ void main() {
       viewModel.switchEvolution('player1', EvolutionType.defensive);
 
       // Verify both selections were tracked
-      final calls = verify(mockAnalytics.logCustomEvent(any,
+      final calls = verify(mockAnalytics.logCustomEvent(any as String,
           parameters: argThat(
             isA<Map<String, Object>>(),
             named: 'parameters',
@@ -497,7 +499,7 @@ void main() {
       );
 
       expect(player.userId, 'player1');
-      expect(player.team, Team.a);
+      expect(player.team, 0);
 
       // Skill progression state should exist for this player
       final skillState = viewModel.state.skillProgressionStates['player1'];

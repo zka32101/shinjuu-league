@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -48,9 +47,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(player1SkillTree))
             .thenReturn({'atk': 1.15, 'def': 1.0, 'spd': 1.0});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -78,9 +77,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.24, 'spd': 1.0});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -110,9 +109,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.0, 'spd': 1.09});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -143,9 +142,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.10, 'def': 1.16, 'spd': 1.06});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -176,9 +175,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.0, 'spd': 1.0});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -209,9 +208,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(playerASkillTree))
             .thenReturn({'atk': 1.10, 'def': 1.0, 'spd': 1.0});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('playerA');
@@ -243,9 +242,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.16, 'spd': 1.0});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -276,9 +275,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.0, 'spd': 1.06});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -313,9 +312,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(maxSkillTree))
             .thenReturn({'atk': 1.25, 'def': 1.40, 'spd': 1.15});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -353,9 +352,9 @@ void main() {
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.15, 'def': 1.24, 'spd': 1.09});
 
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -392,6 +391,7 @@ MatchResult _createTestMatch(String selfUserId) {
     matchId: 'test_match_e2e',
     mode: BattleMode.quick,
     mapId: 'map_1',
+    estimatedWaitSeconds: 5,
     teamA: [
       _createMatchParticipant(selfUserId, 'mecha_1', 0, 0, 1200.0, false),
     ],

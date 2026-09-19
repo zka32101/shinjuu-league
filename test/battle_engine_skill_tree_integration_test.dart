@@ -107,9 +107,9 @@ void main() {
 
         // Set evolution first (assume 1.1x multiplier)
         participant.evolution = Evolution(
-          from: 'normal',
-          to: 'fire',
-          statBoost: StatBoost(atkMultiplier: 1.1, defMultiplier: 1.0, hpMultiplier: 1.0, spdMultiplier: 1.0),
+          type: EvolutionType.attack,
+          statBoost: StatBoost(atkMultiplier: 1.1, hpMultiplier: 1.0, spdMultiplier: 1.0),
+          description: 'test evolution',
         );
 
         engine.setSkillTreeModifiers(
@@ -187,9 +187,9 @@ void main() {
         final participant = participants[0];
 
         participant.evolution = Evolution(
-          from: 'normal',
-          to: 'fire',
-          statBoost: StatBoost(atkMultiplier: 1.0, defMultiplier: 1.0, hpMultiplier: 1.15, spdMultiplier: 1.0),
+          type: EvolutionType.defense,
+          statBoost: StatBoost(atkMultiplier: 1.0, hpMultiplier: 1.15, spdMultiplier: 1.0),
+          description: 'test evolution',
         );
 
         engine.setSkillTreeModifiers(

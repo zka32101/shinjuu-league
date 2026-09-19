@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
@@ -18,32 +17,33 @@ void main() {
       // テスト用マッチを作成（5v5）
       match = MatchResult(
         matchId: 'test-match-001',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         mapId: 'map_01',
+        estimatedWaitSeconds: 5,
         teamA: [
           MatchParticipant(
             userId: 'self',
             mechaId: 'leon',
             eloRating: 1500.0,
             isBot: false,
-            team: Team.a,
-            lane: Lane.top,
+            team: 0,
+            lane: 0,
           ),
           MatchParticipant(
             userId: 'ally1',
             mechaId: 'wolf',
             eloRating: 1450.0,
             isBot: true,
-            team: Team.a,
-            lane: Lane.mid,
+            team: 0,
+            lane: 1,
           ),
           MatchParticipant(
             userId: 'ally2',
             mechaId: 'dragoon',
             eloRating: 1480.0,
             isBot: true,
-            team: Team.a,
-            lane: Lane.bot,
+            team: 0,
+            lane: 0,
           ),
         ],
         teamB: [
@@ -52,16 +52,16 @@ void main() {
             mechaId: 'frost',
             eloRating: 1550.0,
             isBot: true,
-            team: Team.b,
-            lane: Lane.top,
+            team: 1,
+            lane: 0,
           ),
           MatchParticipant(
             userId: 'opponent2',
             mechaId: 'phoenix',
             eloRating: 1520.0,
             isBot: true,
-            team: Team.b,
-            lane: Lane.mid,
+            team: 1,
+            lane: 1,
           ),
         ],
       );
@@ -108,7 +108,7 @@ void main() {
       // 自分のプレイヤーをレベルアップさせてLv3に
       final engine = viewModel.state.engine!;
       for (int i = 0; i < 2; i++) {
-        engine.levelUpPlayer('self');
+        viewModel.levelUpPlayer('self');
       }
 
       // イベントが発火するまで待機
@@ -251,7 +251,7 @@ void main() {
         expect(skillState.evolutionBonuses, isNotNull);
 
         // ULT 解放状態
-        expect(skillState.isUltUnlocked, isNotNull);
+        expect(skillState.isUltAvailable, isNotNull);
       }
     });
 
@@ -329,16 +329,17 @@ void main() {
       for (final charId in characters) {
         final testMatch = MatchResult(
           matchId: 'test-match-$charId',
-          mode: BattleMode.quickMatch,
+          mode: BattleMode.quick,
           mapId: 'map_01',
+          estimatedWaitSeconds: 5,
           teamA: [
             MatchParticipant(
               userId: 'self',
               mechaId: charId,
               eloRating: 1500.0,
               isBot: false,
-              team: Team.a,
-              lane: Lane.top,
+              team: 0,
+              lane: 0,
             ),
           ],
           teamB: [
@@ -347,8 +348,8 @@ void main() {
               mechaId: 'leon',
               eloRating: 1500.0,
               isBot: true,
-              team: Team.b,
-              lane: Lane.top,
+              team: 1,
+              lane: 0,
             ),
           ],
         );
