@@ -4,7 +4,11 @@ import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
 // Mock FirestoreService for testing
-class MockFirestoreService extends FirestoreService {
+// `implements` (not `extends`) because FirestoreService's only constructor
+// is a private-singleton factory that can't be super-called from here; the
+// noSuchMethod override below satisfies the interface for any member this
+// fake doesn't need to override.
+class MockFirestoreService implements FirestoreService {
   final Map<String, Map<String, dynamic>> _questData = {};
   final Map<String, int> _userCurrency = {};
   final Map<String, int> _userBadges = {};
@@ -55,6 +59,9 @@ class MockFirestoreService extends FirestoreService {
     _userCurrency.clear();
     _userBadges.clear();
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 void main() {
