@@ -42,6 +42,14 @@ class MockFeatureFlagsService extends Mock
       returnValueForMissingStub: <FeatureFlagMetadata>[],
     ) as List<FeatureFlagMetadata>;
   }
+
+  @override
+  FeatureFlagMetadata? getMetadata(String? featureName) {
+    return super.noSuchMethod(
+      Invocation.method(#getMetadata, [featureName]),
+      returnValueForMissingStub: null,
+    ) as FeatureFlagMetadata?;
+  }
 }
 
 class MockABTestCoordinator extends Mock implements ABTestCoordinator {}
@@ -80,6 +88,25 @@ void main() {
           killSwitch: false,
         ),
       ]);
+
+      // ConfigAdminService.setFeatureEnabled()/setFeatureRollout() both
+      // read _featureFlags.getMetadata(featureName) first and silently
+      // no-op (never calling enableFeature/disableFeature/
+      // setRolloutPercentage, never recording a change) when it's null.
+      // Mockito's default noSuchMethod returns null for any unstubbed
+      // method, so every Feature Flag Control test was silently a no-op
+      // until this was stubbed.
+      when(mockFlags.getMetadata(any)).thenReturn(
+        FeatureFlagMetadata(
+          name: 'test_feature',
+          description: 'Test feature',
+          enabled: true,
+          rolloutPercentage: 100,
+          abTestVariants: ['control', 'treatment'],
+          defaultVariant: 'control',
+          killSwitch: false,
+        ),
+      );
 
       adminService = ConfigAdminService(
         progressionConfig: mockConfig,
