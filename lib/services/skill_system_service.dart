@@ -1,9 +1,4 @@
 import 'package:shinjuu_league/data/models/skill_model.dart';
-// This file's own ItemDefinition/ItemRarity (percentage-based item catalog,
-// used directly by name below) come from resource_model.dart; item_model.dart
-// is only needed for its unrelated Item/ItemCatalog/.bonus lookup, so its own
-// (differently-shaped) ItemRarity is hidden to avoid an ambiguous import.
-import 'package:shinjuu_league/data/models/item_model.dart' hide ItemRarity;
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 
@@ -183,43 +178,35 @@ class SkillSystemService {
   }
 
   /// ステータスボーナスを計算（購入済みアイテムから）
-  /// 新しいItemモデルは percentage-based なので、baseStatsを渡して計算
+  ///
+  /// ownedItemIds はバトル内アイテムショップ（このサービス自身の _items
+  /// カタログ、item_sword_01 等の絶対値ボーナス）から購入したIDが渡される。
+  /// 以前はこの関数が無関係な item_model.dart の ItemCatalog（別のパーセ
+  /// ンテージ制アイテムモデル、weapon_iron_sword 等）を参照していたため、
+  /// ID が一切一致せず常に 0 ボーナスを返していた（バトル内アイテム購入が
+  /// 実質何のステータス効果も持たない実害バグだった）。
   static BaseStats calculateItemBonuses({
     required List<String> ownedItemIds,
-    BaseStats? baseStats,
   }) {
-    // デフォルトベース（アイテムのみから計算する場合）
-    baseStats ??= BaseStats(hp: 100, atk: 50, spd: 50);
-
-    double totalHpPercent = 0.0;
-    double totalAtkPercent = 0.0;
-    double totalSpdPercent = 0.0;
+    int totalHpBonus = 0;
+    int totalAtkBonus = 0;
+    int totalSpdBonus = 0;
 
     for (final itemId in ownedItemIds) {
-      final item = ItemCatalog.itemById(itemId);
-      if (item != null && item.bonus != null) {
-        if (item.bonus!.hpBonus != null) {
-          totalHpPercent += item.bonus!.hpBonus!;
-        }
-        if (item.bonus!.attackBonus != null) {
-          totalAtkPercent += item.bonus!.attackBonus!;
-        }
-        if (item.bonus!.defenseBonus != null) {
-          // defenseBonus は def の別スキルだが、一旦 hpBonus と同じ扱いで
-          totalHpPercent += item.bonus!.defenseBonus! / 2;
-        }
+      final item = getItemDefinition(itemId);
+      if (item != null) {
+        totalHpBonus += item.hpBonus;
+        totalAtkBonus += item.atkBonus;
+        totalSpdBonus += item.spdBonus;
+        // defBonus is intentionally not applied here: BaseStats has no def
+        // property (see mecha_model.dart's BaseStats: hp/atk/spd only).
       }
     }
 
-    // percentage から absolute 値に変換
-    final hpBonus = (baseStats.hp * (totalHpPercent / 100.0)).toInt();
-    final atkBonus = (baseStats.atk * (totalAtkPercent / 100.0)).toInt();
-    final spdBonus = (baseStats.spd * (totalSpdPercent / 100.0)).toInt();
-
     return BaseStats(
-      hp: hpBonus,
-      atk: atkBonus,
-      spd: spdBonus,
+      hp: totalHpBonus,
+      atk: totalAtkBonus,
+      spd: totalSpdBonus,
     );
   }
 }

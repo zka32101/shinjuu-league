@@ -137,7 +137,6 @@ class BattleParticipantState {
     final baseAtk = baseStats.atk * (evolution?.statBoost.atkMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
-      baseStats: BaseStats(hp: baseStats.hp, atk: baseAtk.toInt(), spd: baseStats.spd),
     );
     // スキルツリー修正倍率 + ジャングルモンスター討伐バフを適用（ベースATK + アイテムボーナス）に対して
     return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier * jungleBuffMultiplier;
@@ -147,7 +146,6 @@ class BattleParticipantState {
     final baseHp = baseStats.hp * (evolution?.statBoost.hpMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
-      baseStats: BaseStats(hp: baseHp.toInt(), atk: baseStats.atk, spd: baseStats.spd),
     );
     // スキルツリー修正倍率を適用（ベースHP + アイテムボーナス）に対して
     // 防御ツリーのボーナスは有効HPに影響する（体力の多さで防御力を高める）
@@ -158,7 +156,6 @@ class BattleParticipantState {
     final baseSpd = baseStats.spd * (evolution?.statBoost.spdMultiplier ?? 1.0);
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
-      baseStats: BaseStats(hp: baseStats.hp, atk: baseStats.atk, spd: baseSpd.toInt()),
     );
     // スキルツリー修正倍率を適用（ベースSPD + アイテムボーナス）に対して
     return (baseSpd + itemBonuses.spd) * skillTreeSpdMultiplier;
