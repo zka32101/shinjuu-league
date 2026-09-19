@@ -1,9 +1,11 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 
 void main() {
@@ -12,7 +14,9 @@ void main() {
     late MatchResult match;
 
     setUp(() {
-      viewModel = BattleViewModel();
+      viewModel = BattleViewModel(
+        firestoreService: FirestoreService.forFirestore(FakeFirebaseFirestore()),
+      );
 
       // テスト用マッチを作成（5v5）
       match = MatchResult(
@@ -354,7 +358,9 @@ void main() {
           ],
         );
 
-        final testViewModel = BattleViewModel();
+        final testViewModel = BattleViewModel(
+          firestoreService: FirestoreService.forFirestore(FakeFirebaseFirestore()),
+        );
 
         try {
           await testViewModel.prepareBattle(testMatch, 'self', 1500.0);
