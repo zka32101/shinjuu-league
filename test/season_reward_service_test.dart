@@ -52,7 +52,7 @@ void main() {
 
     group('distributeSeasonRewards', () {
       test('creates distribution with correct tier', () async {
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
 
         await service.distributeSeasonRewards(
           'season_1',
@@ -74,7 +74,7 @@ void main() {
       });
 
       test('distribution has 30-day claim window', () async {
-        when(mockFirestore.set(any, any)).thenAnswer((invocation) async {
+        when(mockFirestore.set(any as String, any)).thenAnswer((invocation) async {
           final distribution = invocation.positionalArguments[1] as SeasonRewardDistribution;
           final daysDifference = distribution.expiresAt.difference(DateTime.now()).inDays;
           expect(daysDifference, equals(30));
@@ -85,7 +85,7 @@ void main() {
 
       test('distribution starts unclaimed', () async {
         SeasonRewardDistribution? capturedDist;
-        when(mockFirestore.set(any, any)).thenAnswer((invocation) async {
+        when(mockFirestore.set(any as String, any)).thenAnswer((invocation) async {
           capturedDist = invocation.positionalArguments[1] as SeasonRewardDistribution;
         });
 
@@ -109,7 +109,7 @@ void main() {
         when(mockFirestore.get('users/user_123/season_rewards/season_1'))
             .thenAnswer((_) async => distribution.toJson());
 
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final result = await service.claimRewards('user_123', 'season_1');
         expect(result, isTrue);

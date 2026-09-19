@@ -39,7 +39,7 @@ void main() {
         ),
       );
 
-      when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+      when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
           .thenAnswer((_) async {});
 
       skillService = SkillProgressionBattleService();
@@ -560,7 +560,7 @@ void main() {
 
         // Verify all events were tracked with cohort context
         expect(
-          verify(mockAnalytics.logCustomEvent(any, parameters: any)).callCount,
+          verify(mockAnalytics.logCustomEvent(any as String, parameters: any)).callCount,
           greaterThanOrEqualTo(7),
         );
       });
@@ -568,7 +568,7 @@ void main() {
 
     group('Error Resilience', () {
       test('analytics errors do not interrupt progression', () async {
-        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics unavailable'));
 
         expect(

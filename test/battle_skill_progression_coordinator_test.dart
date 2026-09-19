@@ -134,7 +134,7 @@ void main() {
 
         coordinator.autoConfirmEvolution('player1');
 
-        verify(mockSkillService.confirmEvolution(any, any)).called(1);
+        verify(mockSkillService.confirmEvolution(any as String, any as EvolutionType)).called(1);
       });
     });
 

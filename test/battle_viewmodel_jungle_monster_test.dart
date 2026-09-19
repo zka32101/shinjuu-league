@@ -25,7 +25,7 @@ void main() {
       mockAnalyticsService = MockAnalyticsService();
       mockSkillTreeService = MockSkillTreeService();
 
-      when(mockSkillTreeService.getSkillTree(any)).thenAnswer((_) async => null);
+      when(mockSkillTreeService.getSkillTree(any as String)).thenAnswer((_) async => null);
       when(mockFirestoreService.createBattle(any as Battle))
           .thenAnswer((_) async => {});
       when(mockAnalyticsService.logBattleStart(any as String, any as String))

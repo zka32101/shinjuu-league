@@ -36,13 +36,23 @@ void main() {
       mockSkillTree = MockSkillTreeService();
       mockAchievement = MockAchievementService();
 
-      when(mockSkillTree.getSkillTree(any)).thenAnswer((_) async => null);
-      when(mockFirestore.updateBattle(any)).thenAnswer((_) async {});
-      when(mockAnalytics.logBattleEnd(any, any, any, any, any))
+      when(mockSkillTree.getSkillTree(any as String))
+          .thenAnswer((_) async => null);
+      when(mockFirestore.updateBattle(any as Battle)).thenAnswer((_) async {});
+      when(mockAnalytics.logBattleEnd(
+        any as String,
+        any as String,
+        any as String,
+        any as int,
+        any as int,
+      )).thenAnswer((_) async {});
+      when(mockAnalytics.logFirstRankedEntry(any as String))
           .thenAnswer((_) async {});
-      when(mockAnalytics.logFirstRankedEntry(any)).thenAnswer((_) async {});
-      when(mockAnalytics.logAchievementUnlocked(any, any, any))
-          .thenAnswer((_) async {});
+      when(mockAnalytics.logAchievementUnlocked(
+        any as String,
+        any as String,
+        any as String,
+      )).thenAnswer((_) async {});
       when(mockAnalytics.recordError(any, any,
           reason: anyNamed('reason'),
           information: anyNamed('information'))).thenAnswer((_) async {});
@@ -219,7 +229,7 @@ void main() {
 
       expect(result, isEmpty);
       verifyNever(
-        mockAchievement.unlockAchievement(any, any),
+        mockAchievement.unlockAchievement(any as String, any as String),
       );
     });
 
@@ -238,7 +248,7 @@ void main() {
 
       expect(result, isEmpty);
       verifyNever(
-        mockAchievement.unlockAchievement(any, any),
+        mockAchievement.unlockAchievement(any as String, any as String),
       );
     });
 
@@ -269,10 +279,10 @@ void main() {
       final userData = _buildTestUser(userId);
       when(mockFirestore.getUserById(userId)).thenAnswer((_) async => userData);
 
-      when(mockAchievement.getUnlockedAchievements(any))
+      when(mockAchievement.getUnlockedAchievements(any as String))
           .thenAnswer((_) async => []);
 
-      when(mockAchievement.unlockAchievement(any, any))
+      when(mockAchievement.unlockAchievement(any as String, any as String))
           .thenAnswer((_) async {});
 
       final detector = AchievementTriggerDetector(

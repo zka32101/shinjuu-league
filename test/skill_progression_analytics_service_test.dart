@@ -72,7 +72,7 @@ void main() {
       });
 
       test('silently handles exceptions', () async {
-        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Test exception'));
 
         // Should not throw
@@ -286,7 +286,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 4);
+        expect(verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters'))).callCount, 4);
       });
 
       test('tracks evolution bonus presence', () async {
@@ -560,7 +560,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 3);
+        expect(verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters'))).callCount, 3);
       });
     });
 
@@ -714,7 +714,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verifyNever(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')));
+        verifyNever(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')));
       });
 
       test('handles tie between evolution types', () async {
@@ -803,7 +803,7 @@ void main() {
         await analyticsService.logLevelUp('player1', 4, false);
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
               .callCount,
           3,
         );
@@ -827,7 +827,7 @@ void main() {
         await Future.wait(futures);
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
               .callCount,
           10,
         );

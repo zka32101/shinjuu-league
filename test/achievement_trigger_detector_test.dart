@@ -91,8 +91,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any,
-          any,
+          any as String,
+          any as String,
         ));
       });
 
@@ -179,9 +179,10 @@ void main() {
           currentTier: 'Bronze',
         );
 
+        expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any,
-          any,
+          any as String,
+          any as String,
         ));
       });
 
@@ -196,9 +197,10 @@ void main() {
           currentTier: 'Silver',
         );
 
+        expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any,
-          any,
+          any as String,
+          any as String,
         ));
       });
     });
@@ -257,9 +259,10 @@ void main() {
           tierChanged: false,
         );
 
+        expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any,
-          any,
+          any as String,
+          any as String,
         ));
       });
 
@@ -272,9 +275,10 @@ void main() {
           tierChanged: false,
         );
 
+        expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any,
-          any,
+          any as String,
+          any as String,
         ));
       });
     });
@@ -309,7 +313,7 @@ void main() {
         when(mockAchievementService.getUnlockedAchievements(userId))
             .thenAnswer((_) async => []);
 
-        when(mockAchievementService.unlockAchievement(any, any))
+        when(mockAchievementService.unlockAchievement(any as String, any as String))
             .thenAnswer((_) async {});
 
         final result = await detector.checkAllTriggersForBattle(
@@ -334,10 +338,10 @@ void main() {
       });
 
       test('handles multiple achievement unlocks', () async {
-        when(mockAchievementService.getUnlockedAchievements(any))
+        when(mockAchievementService.getUnlockedAchievements(any as String))
             .thenAnswer((_) async => []);
 
-        when(mockAchievementService.unlockAchievement(any, any))
+        when(mockAchievementService.unlockAchievement(any as String, any as String))
             .thenAnswer((_) async {});
 
         final result = await detector.checkAllTriggersForBattle(
@@ -361,7 +365,7 @@ void main() {
       });
 
       test('returns empty list on error', () async {
-        when(mockAchievementService.getUnlockedAchievements(any))
+        when(mockAchievementService.getUnlockedAchievements(any as String))
             .thenThrow(Exception('Service error'));
 
         final result = await detector.checkAllTriggersForBattle(

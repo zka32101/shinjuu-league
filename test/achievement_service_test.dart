@@ -47,7 +47,7 @@ void main() {
 
     group('unlockAchievement', () {
       test('unlocks achievement successfully', () async {
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
 
         await service.unlockAchievement('user_123', 'rising_star');
 

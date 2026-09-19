@@ -30,7 +30,7 @@ void main() {
         ),
       );
 
-      when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+      when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
           .thenAnswer((_) async {});
 
       analyticsService = SkillProgressionAnalyticsService(
@@ -405,7 +405,7 @@ void main() {
 
     group('Error Handling', () {
       test('logCohortAssignment handles errors gracefully', () async {
-        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -415,7 +415,7 @@ void main() {
       });
 
       test('logConfigurationChanged handles errors gracefully', () async {
-        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -461,7 +461,7 @@ void main() {
         );
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any, parameters: any))
+          verify(mockAnalytics.logCustomEvent(any as String, parameters: any))
               .callCount,
           greaterThanOrEqualTo(4),
         );

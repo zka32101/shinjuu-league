@@ -23,7 +23,7 @@ void main() {
       mockFlags = MockFeatureFlagsService();
       mockAnalytics = MockAnalyticsService();
 
-      when(mockFlags.getDifficultyCohort(any)).thenReturn('normal');
+      when(mockFlags.getDifficultyCohort(any as String)).thenReturn('normal');
 
       coordinator = ABTestCoordinator(
         featureFlags: mockFlags,

@@ -42,7 +42,7 @@ void main() {
       );
 
       // Setup default mock responses
-      when(mockSkillTree.getSkillTree(any)).thenAnswer((_) async => null);
+      when(mockSkillTree.getSkillTree(any as String)).thenAnswer((_) async => null);
       when(mockSkillTree.calculateStatModifiers(any as SkillTree)).thenReturn({});
       when(mockFirestore.createBattle(any as Battle)).thenAnswer((_) async => {});
       when(mockFirestore.updateBattle(any as Battle)).thenAnswer((_) async => {});

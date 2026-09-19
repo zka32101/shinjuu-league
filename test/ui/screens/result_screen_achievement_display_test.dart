@@ -35,11 +35,19 @@ void main() {
       mockReplay = MockReplayService();
       mockSkillTree = MockSkillTreeService();
 
-      when(mockAnalytics.logBattleEnd(any, any, any, any, any))
-          .thenAnswer((_) async {});
-      when(mockAnalytics.logAchievementUnlocked(any, any, any))
-          .thenAnswer((_) async {});
-      when(mockReplay.generateAndSave(any)).thenAnswer(
+      when(mockAnalytics.logBattleEnd(
+        any as String,
+        any as String,
+        any as String,
+        any as int,
+        any as int,
+      )).thenAnswer((_) async {});
+      when(mockAnalytics.logAchievementUnlocked(
+        any as String,
+        any as String,
+        any as String,
+      )).thenAnswer((_) async {});
+      when(mockReplay.generateAndSave(any as Battle)).thenAnswer(
         (_) async => Replay(
           replayId: 'replay_$battleId',
           battleId: battleId,
