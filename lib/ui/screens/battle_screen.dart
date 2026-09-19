@@ -6,18 +6,19 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
-import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
+import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/services/haptic_service.dart';
+import 'package:shinjuu_league/ui/widgets/battle_action_cluster.dart';
 import 'package:shinjuu_league/ui/widgets/minimap.dart';
 import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 import 'package:shinjuu_league/ui/widgets/resource_hud.dart';
-import 'package:shinjuu_league/ui/widgets/skill_buttons.dart';
 import 'package:shinjuu_league/ui/widgets/skill_progression_display.dart';
+import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/services/skill_system_service.dart';
 
 class BattleScreen extends ConsumerStatefulWidget {
@@ -48,11 +49,20 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
     super.dispose();
   }
 
-  void _onSkillTap(String skillId, List<String> _) {
+  void _onSkillTap(String skillId) {
     // targets パラメータは無視、ゲーム側で再度計算する（設計上の一貫性）
     final targets = _game.enemiesWithinSkillRadius();
     final viewModel = ref.read(battleViewModelProvider.notifier);
-    viewModel.attemptManualSkill(targets);
+    final activated = viewModel.attemptManualSkill(targets);
+
+    // クールダウン中は何も起きていないため、演出・SEも鳴らさない
+    // （鳴らすと「押したのに何も起きていない」のに効果音だけ鳴る見せかけの操作感になる）
+    if (!activated) {
+      HapticService.onButtonTap();
+      return;
+    }
+
+    HapticService.onSkillActivate();
 
     // スキルの種別を取得して、視覚効果＋音響効果に反映
     final skillDef = SkillSystemService.getSkillDefinition(skillId);
@@ -257,6 +267,13 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         context.pushReplacement(AppRoutes.result, extra: next.battle);
       }
 
+      // レベルアップ演出の瞬間にハプティクス+SEを鳴らす
+      final prevShowLevelUp = previous?.showLevelUpAnimation ?? false;
+      if (!prevShowLevelUp && next.showLevelUpAnimation) {
+        HapticService.onLevelUp();
+        AudioService().playLevelUpSe();
+      }
+
       // スキル進行イベント処理：進化選択画面が必要な場合
       final prevEvolutionEvent = previous?.pendingEvolutionSelectEvent;
       final nextEvolutionEvent = next.pendingEvolutionSelectEvent;
@@ -390,60 +407,6 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                       ),
                     ),
                   ),
-                Positioned(
-                  right: 24,
-                  bottom: 24,
-                  child: ValueListenableBuilder<AttackTarget?>(
-                    valueListenable: _game.attackTargetId,
-                    builder: (context, target, _) {
-                      final canAttack = target != null;
-                      final accentColor = target?.isMonster == true
-                          ? const Color(0xFF4ADE80)
-                          : Colors.redAccent;
-                      return GestureDetector(
-                        onTap: canAttack
-                            ? () {
-                                final notifier = ref.read(
-                                  battleViewModelProvider.notifier,
-                                );
-                                if (target.isMonster) {
-                                  notifier.attemptAttackMonster(target.id);
-                                } else {
-                                  notifier.attemptManualAttack(target.id);
-                                }
-                              }
-                            : null,
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 150),
-                          width: 72,
-                          height: 72,
-                          decoration: BoxDecoration(
-                            shape: BoxShape.circle,
-                            color: canAttack
-                                ? accentColor
-                                : Colors.grey.withValues(alpha: 0.4),
-                            boxShadow: canAttack
-                                ? [
-                                    BoxShadow(
-                                      color: accentColor.withValues(alpha: 0.6),
-                                      blurRadius: 12,
-                                      spreadRadius: 2,
-                                    ),
-                                  ]
-                                : null,
-                          ),
-                          child: Icon(
-                            target?.isMonster == true
-                                ? Icons.bug_report
-                                : Icons.flash_on,
-                            color: Colors.white,
-                            size: 32,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                ),
                 // ミニマップ：マップ全体を歩き回れるため、戦況把握を助ける俯瞰表示
                 Positioned(
                   top: 12,
@@ -455,37 +418,41 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     },
                   ),
                 ),
-                // スキルボタン表示（Q/W/E + クールタイム）
-                if (state.skillBuild != null)
-                  Positioned(
-                    right: 24,
-                    bottom: 120,
-                    child: Builder(
-                      builder: (context) {
-                        BattleParticipantState? participant;
-                        try {
-                          participant = engine.participants.firstWhere(
-                            (p) => p.userId == selfId,
-                          );
-                        } catch (_) {
-                          participant = null;
-                        }
+                // 操作クラスタ：通常攻撃(大)+スキル(小)をUNITE風に1つにまとめて配置
+                Positioned(
+                  right: 12,
+                  bottom: 12,
+                  child: ValueListenableBuilder<AttackTarget?>(
+                    valueListenable: _game.attackTargetId,
+                    builder: (context, target, _) {
+                      final skillDef = state.skillBuild != null
+                          ? SkillSystemService.getSkillDefinition(
+                              state.skillBuild!.skillId1,
+                            )
+                          : null;
 
-                        return SkillButtons(
-                          skillBuild: state.skillBuild!,
-                          resources: state.playerResources ??
-                              PlayerResources(
-                                currentMana: 100,
-                                maxMana: 100,
-                                gold: 0,
-                                ownedItemIds: [],
-                              ),
-                          cooldowns: participant?.skillCooldowns ?? {},
-                          onSkillTap: _onSkillTap,
-                        );
-                      },
-                    ),
+                      return BattleActionCluster(
+                        attackTarget: target,
+                        onAttackTap: () {
+                          if (target == null) return;
+                          HapticService.onButtonTap();
+                          final notifier = ref.read(
+                            battleViewModelProvider.notifier,
+                          );
+                          if (target.isMonster) {
+                            notifier.attemptAttackMonster(target.id);
+                          } else {
+                            notifier.attemptManualAttack(target.id);
+                          }
+                        },
+                        skillType: skillDef?.type,
+                        skillCooldownRemaining: state.skillCooldownRemaining,
+                        skillCooldownMax: BattleViewModel.manualSkillCooldownSeconds,
+                        onSkillTap: () => _onSkillTap(state.skillBuild!.skillId1),
+                      );
+                    },
                   ),
+                ),
               ],
             ),
           ),

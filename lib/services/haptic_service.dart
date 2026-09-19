@@ -6,9 +6,17 @@ class HapticService {
 
   static void onKill() => HapticFeedback.lightImpact();
 
+  static void onSkillActivate() => HapticFeedback.mediumImpact();
+
   static void onAhaMoment() => HapticFeedback.mediumImpact();
 
   static void onAchievementUnlock() => HapticFeedback.mediumImpact();
+
+  static Future<void> onLevelUp() async {
+    HapticFeedback.lightImpact();
+    await Future.delayed(const Duration(milliseconds: 90));
+    HapticFeedback.mediumImpact();
+  }
 
   static Future<void> onWin() async {
     HapticFeedback.heavyImpact();

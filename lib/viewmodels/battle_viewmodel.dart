@@ -39,6 +39,7 @@ class BattleState {
     required this.skillProgressionStates,
     required this.pendingEvolutionSelectEvent,
     required this.showLevelUpAnimation,
+    required this.skillCooldownRemaining,
   });
 
   factory BattleState.initial() => const BattleState(
@@ -61,6 +62,7 @@ class BattleState {
     skillProgressionStates: const {},
     pendingEvolutionSelectEvent: null,
     showLevelUpAnimation: false,
+    skillCooldownRemaining: 0.0,
   );
 
   final Battle? battle;
@@ -82,6 +84,9 @@ class BattleState {
   final Map<String, PlayerSkillStateSnapshot> skillProgressionStates;
   final EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent;
   final bool showLevelUpAnimation;
+  /// 手動スキル発動の残りクールダウン秒数（0なら発動可能）。UI側のスキルボタンが
+  /// 実際の連打防止クールダウンと乖離しないよう、tick毎に再計算して公開する。
+  final double skillCooldownRemaining;
 
   BattleState copyWith({
     Battle? battle,
@@ -103,6 +108,7 @@ class BattleState {
     Map<String, PlayerSkillStateSnapshot>? skillProgressionStates,
     EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent,
     bool? showLevelUpAnimation,
+    double? skillCooldownRemaining,
   }) {
     return BattleState(
       battle: battle ?? this.battle,
@@ -124,6 +130,7 @@ class BattleState {
       skillProgressionStates: skillProgressionStates ?? this.skillProgressionStates,
       pendingEvolutionSelectEvent: pendingEvolutionSelectEvent ?? this.pendingEvolutionSelectEvent,
       showLevelUpAnimation: showLevelUpAnimation ?? this.showLevelUpAnimation,
+      skillCooldownRemaining: skillCooldownRemaining ?? this.skillCooldownRemaining,
     );
   }
 }
@@ -366,6 +373,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
   DateTime? _lastManualSkillAt;
   static const _manualSkillCooldown = Duration(seconds: 6);
 
+  /// UI側でクールダウンリングの割合を計算するために公開する（秒数）。
+  static double get manualSkillCooldownSeconds =>
+      _manualSkillCooldown.inSeconds.toDouble();
+
   /// クールタイム中かどうか（UIのスキルボタン表示に使う）
   bool get isSkillOnCooldown {
     if (_lastManualSkillAt == null) return false;
@@ -373,13 +384,24 @@ class BattleViewModel extends StateNotifier<BattleState> {
         _manualSkillCooldown;
   }
 
+  double _computeSkillCooldownRemaining() {
+    if (_lastManualSkillAt == null) return 0.0;
+    final elapsedMs = DateTime.now().difference(_lastManualSkillAt!).inMilliseconds;
+    final remaining = _manualSkillCooldown.inMilliseconds - elapsedMs;
+    return remaining > 0 ? remaining / 1000.0 : 0.0;
+  }
+
   /// プレイヤーのスキル発動。範囲内の対象idはBattlefieldGame側で判定済みの前提。
-  void attemptManualSkill(List<String> targetIdsInRange) {
+  /// クールダウン中は何も起きないため、呼び出し側は戻り値を見て演出・SEの再生要否を
+  /// 判断すること（クールダウン中に演出だけ鳴ってしまう見せかけのフィードバックを防ぐ）。
+  bool attemptManualSkill(List<String> targetIdsInRange) {
     final engine = state.engine;
-    if (engine == null || isSkillOnCooldown) return;
+    if (engine == null || isSkillOnCooldown) return false;
 
     engine.manualSkill(_selfUserId, targetIdsInRange);
     _lastManualSkillAt = DateTime.now();
+    state = state.copyWith(skillCooldownRemaining: _computeSkillCooldownRemaining());
+    return true;
   }
 
   /// スキルビルドを選択して保存する（進化選択後、バトル開始前に呼ばれる想定）
@@ -517,7 +539,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
   }
 
   void _onTick(int second, BattleEngine engine) {
-    state = state.copyWith(elapsedSeconds: second);
+    state = state.copyWith(
+      elapsedSeconds: second,
+      skillCooldownRemaining: _computeSkillCooldownRemaining(),
+    );
     _updatePlayerResources();
 
     // スキル進行システムのクールダウン減速を更新

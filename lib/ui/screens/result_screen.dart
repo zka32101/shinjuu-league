@@ -21,17 +21,56 @@ class ResultScreen extends ConsumerStatefulWidget {
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends ConsumerState<ResultScreen> {
+class _ResultScreenState extends ConsumerState<ResultScreen>
+    with SingleTickerProviderStateMixin {
   bool _applied = false;
   int _burstTrigger = 0;
   Replay? _replay;
   bool _isGeneratingReplay = true;
+
+  late final AnimationController _entranceController;
+  late final Animation<double> _bannerScale;
+  late final Animation<double> _bannerOpacity;
+  late final Animation<Offset> _statSlide;
+  late final Animation<double> _statOpacity;
 
   bool get _isWin => widget.battle.result == BattleResult.win;
 
   @override
   void initState() {
     super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    // 勝敗バナーはUNITE風に少しオーバーシュートしてから収まる「叩きつけ」演出
+    _bannerScale = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+      ),
+    );
+    _bannerOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
+      ),
+    );
+    // スタッツカードはバナーに少し遅れてスライドインさせ、視線誘導の順番を作る
+    _statSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _statOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.4, 0.8, curve: Curves.easeIn),
+      ),
+    );
+    _entranceController.forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_applied) return;
       _applied = true;
@@ -56,6 +95,12 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _isGeneratingReplay = false;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
   }
 
   void _showAchievementUnlock(Achievement achievement) {
@@ -110,61 +155,94 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       color: AppColors.gold,
                       size: 200,
                     ),
-                  Column(
-                    children: [
-                      Text(
-                        battle.result.displayName,
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: resultColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        battle.eloChange >= 0
-                            ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
-                            : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: battle.eloChange >= 0
-                              ? AppColors.win
-                              : AppColors.loss,
-                        ),
-                      ),
-                      if (isSelfMvp) ...[
-                        const SizedBox(height: 8),
-                        Chip(
-                          avatar: const Icon(
-                            Icons.star,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'MVP',
+                  ScaleTransition(
+                    scale: _bannerScale,
+                    child: FadeTransition(
+                      opacity: _bannerOpacity,
+                      child: Column(
+                        children: [
+                          Text(
+                            battle.result.displayName,
                             style: TextStyle(
-                              color: Colors.white,
+                              fontSize: 40,
                               fontWeight: FontWeight.bold,
+                              color: resultColor,
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 16,
+                                  color: resultColor.withValues(alpha: 0.6),
+                                ),
+                              ],
                             ),
                           ),
-                          backgroundColor: AppColors.gold,
-                        ),
-                      ],
-                    ],
+                          const SizedBox(height: 8),
+                          Text(
+                            battle.eloChange >= 0
+                                ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
+                                : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: battle.eloChange >= 0
+                                  ? AppColors.win
+                                  : AppColors.loss,
+                            ),
+                          ),
+                          if (isSelfMvp) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.gold.withValues(alpha: 0.7),
+                                    blurRadius: 14,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Chip(
+                                avatar: const Icon(
+                                  Icons.star,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'MVP',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                backgroundColor: AppColors.gold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatColumn(label: 'キル', value: '${battle.kills}'),
-                      _StatColumn(label: 'デス', value: '${battle.deaths}'),
-                      _StatColumn(label: 'スコア', value: '${selfStats.score}'),
-                    ],
+              SlideTransition(
+                position: _statSlide,
+                child: FadeTransition(
+                  opacity: _statOpacity,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _StatColumn(label: 'キル', value: '${battle.kills}'),
+                          _StatColumn(label: 'デス', value: '${battle.deaths}'),
+                          _StatColumn(
+                            label: 'スコア',
+                            value: '${selfStats.score}',
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),

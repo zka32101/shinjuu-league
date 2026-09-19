@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
+import 'package:shinjuu_league/ui/widgets/particle_burst.dart';
 
 /// スキルスロット表示（Q/R/E/ULT）
 class SkillSlotDisplay extends StatelessWidget {
@@ -180,7 +181,7 @@ class _CharacterLevelDisplayState extends State<CharacterLevelDisplay>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.5, end: 1.0).animate(
+    _scaleAnimation = Tween<double>(begin: 0.3, end: 1.0).animate(
       CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
     );
 
@@ -222,54 +223,89 @@ class _CharacterLevelDisplayState extends State<CharacterLevelDisplay>
 
   @override
   Widget build(BuildContext context) {
-    final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-
-    return ScaleTransition(
-      scale: _scaleAnimation,
-      child: FadeTransition(
-        opacity: _opacityAnimation,
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            color: isDarkMode
-                ? Colors.grey[800]
-                : Colors.blue[50],
-            border: Border.all(
-              color: Colors.blue,
-              width: 2,
-            ),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Lv${widget.currentLevel}',
-                style: const TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.blue,
+    return Stack(
+      alignment: Alignment.center,
+      children: [
+        // 金色のパーティクルバーストでレベルアップの高揚感を演出
+        ParticleBurst(
+          trigger: widget.currentLevel,
+          color: Colors.amber,
+          size: 200,
+        ),
+        ScaleTransition(
+          scale: _scaleAnimation,
+          child: FadeTransition(
+            opacity: _opacityAnimation,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [Color(0xFF2A2440), Color(0xFF1A1830)],
                 ),
+                border: Border.all(color: Colors.amberAccent, width: 2),
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.amberAccent.withValues(alpha: 0.6),
+                    blurRadius: 20,
+                    spreadRadius: 2,
+                  ),
+                ],
               ),
-              if (widget.currentEvolution != null)
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      _getEvolutionEmoji(),
-                      style: const TextStyle(fontSize: 20),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  ShaderMask(
+                    shaderCallback: (bounds) => const LinearGradient(
+                      colors: [Color(0xFFFFE066), Color(0xFFFFA500)],
+                    ).createShader(bounds),
+                    child: const Text(
+                      'LEVEL UP!',
+                      style: TextStyle(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w900,
+                        letterSpacing: 2,
+                        color: Colors.white,
+                      ),
                     ),
-                    const SizedBox(width: 4),
-                    Text(
-                      widget.currentEvolution.toString().split('.').last,
-                      style: Theme.of(context).textTheme.labelSmall,
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Lv${widget.currentLevel}',
+                    style: const TextStyle(
+                      fontSize: 32,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                      shadows: [
+                        Shadow(blurRadius: 12, color: Colors.amberAccent),
+                      ],
                     ),
-                  ],
-                ),
-            ],
+                  ),
+                  if (widget.currentEvolution != null)
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _getEvolutionEmoji(),
+                          style: const TextStyle(fontSize: 20),
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          widget.currentEvolution.toString().split('.').last,
+                          style: Theme.of(
+                            context,
+                          ).textTheme.labelSmall?.copyWith(color: Colors.white70),
+                        ),
+                      ],
+                    ),
+                ],
+              ),
+            ),
           ),
         ),
-      ),
+      ],
     );
   }
 }
