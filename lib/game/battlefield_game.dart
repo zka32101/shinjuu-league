@@ -409,6 +409,7 @@ class BattlefieldGame extends FlameGame {
                 lane: p.lane,
                 isSelf: p.isSelf,
                 icon: icon,
+                mechaId: p.mechaId,
                 basePosition: screenPos,
               )
               // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
