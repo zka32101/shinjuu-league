@@ -38,8 +38,18 @@ class QuestService {
     bool isIncrement = false,
   }) async {
     try {
-      final playerQuest = await _firestoreService.getPlayerQuest(userId, questId);
-      if (playerQuest == null) return null;
+      // getPlayerQuest() returns raw Firestore JSON by design ("caller
+      // handles deserialization" -- see FirestoreService.getPlayerQuest()),
+      // matching how getAllPlayerQuests()/getPlayerQuestsByFrequency() are
+      // already deserialized below via PlayerQuest.fromJson(). This method
+      // was missing that step entirely, so `playerQuest` was a raw Map and
+      // every field access on it (.conditions, .isCompleted, ...) threw
+      // NoSuchMethodError at runtime.
+      final rawPlayerQuest = await _firestoreService.getPlayerQuest(userId, questId);
+      if (rawPlayerQuest == null) return null;
+      final playerQuest = PlayerQuest.fromJson(
+        Map<String, dynamic>.from(rawPlayerQuest as Map),
+      );
 
       // Update the matching condition
       final updatedConditions = playerQuest.conditions.map((condition) {
@@ -80,8 +90,12 @@ class QuestService {
     String questId,
   ) async {
     try {
-      final playerQuest = await _firestoreService.getPlayerQuest(userId, questId);
-      if (playerQuest == null || !playerQuest.canClaimReward) return null;
+      final rawPlayerQuest = await _firestoreService.getPlayerQuest(userId, questId);
+      if (rawPlayerQuest == null) return null;
+      final playerQuest = PlayerQuest.fromJson(
+        Map<String, dynamic>.from(rawPlayerQuest as Map),
+      );
+      if (!playerQuest.canClaimReward) return null;
 
       final quest = QuestCatalog.getById(questId);
       if (quest == null) return null;

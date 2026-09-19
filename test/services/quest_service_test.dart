@@ -343,7 +343,14 @@ void main() {
 
       final remaining = playerQuest.timeRemaining;
       expect(remaining, isNotNull);
-      expect(remaining!.inHours, equals(14)); // 24 - 10 hours
+      // timeRemaining is computed relative to DateTime.now() at call time,
+      // so it's always a hair under the nominal 14h (24 - 10) by however
+      // long elapsed between constructing playerQuest above and reading
+      // this getter. .inHours truncates rather than rounds, so asserting
+      // it equals exactly 14 is a coin flip between 13 and 14 depending on
+      // sub-millisecond test timing. Assert on minutes with a small
+      // tolerance instead.
+      expect(remaining!.inMinutes, closeTo(14 * 60, 1));
     });
   });
 }
