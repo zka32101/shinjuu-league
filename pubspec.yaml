@@ -116,5 +116,14 @@ flutter:
 # （アプリ自体のsdk制約を満たせなくなる）。analyzer単体を最新へ上書きすることで
 # riverpod_generator/build_runner/json_serializableのメジャーバージョンは
 # 変えずに済ませる（実行時の依存関係には一切影響しないビルド時ツールのみの変更）。
+#
+# dart_styleも合わせて上書きしている：dependency_overridesはanalyzerの
+# バージョンをpubの通常の制約解決から外して固定するため、他パッケージが
+# 宣言する互換範囲チェックを素通りしてしまう。ロック済みのdart_style 3.1.1は
+# 旧analyzerのASTクラス名（NamedExpression等、新版で再編済み）を直接参照して
+# おり、analyzerだけ14.x化するとビルドスクリプトのコンパイル自体が失敗する。
+# dart_style 3.1.13は pub.dev 上で analyzer '>=13.1.0 <15.0.0' に対応済みと
+# 宣言されているため、同じ3.1.x系列（パッチ番号のみ差）として合わせて上書きする。
 dependency_overrides:
   analyzer: ^14.0.0
+  dart_style: ^3.1.13
