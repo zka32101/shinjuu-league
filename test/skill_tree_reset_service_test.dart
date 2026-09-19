@@ -303,8 +303,14 @@ void main() {
         when(mockFirestore.get('users/user_123/season_snapshots/season_1'))
             .thenAnswer((_) async => null);
 
+        // compareSeasons() awaits both snapshots before checking either for
+        // null, so season_2 must also simulate a genuinely missing
+        // document (null) here -- an empty map isn't "missing", it's a
+        // malformed snapshot, and parsing it as SkillTreeSnapshot crashes
+        // with a type-cast error before the intended "missing snapshot"
+        // exception is ever reached.
         when(mockFirestore.get('users/user_123/season_snapshots/season_2'))
-            .thenAnswer((_) async => {});
+            .thenAnswer((_) async => null);
 
         expect(
           () => service.compareSeasons('user_123', 'season_1', 'season_2'),

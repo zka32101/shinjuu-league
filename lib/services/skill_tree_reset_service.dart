@@ -107,6 +107,13 @@ class SkillTreeResetService {
         remaining--;
       }
     }
+
+    // totalAllocatedPoints is a plain stored field, not derived from
+    // trees[].allocatedTiers -- it must be kept in sync explicitly, the
+    // same way _copyTreeState() does for CarryoverMode.full. Without this,
+    // a partial-carryover tree reports 0 total points despite the
+    // branches above actually holding the carried-over allocation.
+    newTree.totalAllocatedPoints = pointsToAllocate - remaining;
   }
 
   /// Full copy of tree state from previous to new

@@ -12,7 +12,16 @@ enum CarryoverMode {
 }
 
 /// Snapshot of skill tree state at a specific season
+///
+/// `explicitToJson: true` is required because this class has a nested
+/// SkillTree field. Without it, json_serializable's generated toJson()
+/// embeds the raw SkillTree object directly instead of calling .toJson()
+/// on it, which round-trips through fromJson() with a type-cast crash
+/// (and would fail a real Cloud Firestore write outright, since it isn't
+/// actually JSON-serializable). See the identical bug fixed in
+/// quest_model.dart's Quest/PlayerQuest for the full explanation.
 @freezed
+@JsonSerializable(explicitToJson: true)
 class SkillTreeSnapshot with _$SkillTreeSnapshot {
   const factory SkillTreeSnapshot({
     required String seasonId,
@@ -28,7 +37,12 @@ class SkillTreeSnapshot with _$SkillTreeSnapshot {
 }
 
 /// Reset record for a skill tree at season boundary
+///
+/// `explicitToJson: true` is required for the same reason as on
+/// [SkillTreeSnapshot] above: this class has nested SkillTree fields
+/// (previousTree, currentTree).
 @freezed
+@JsonSerializable(explicitToJson: true)
 class SkillTreeReset with _$SkillTreeReset {
   const SkillTreeReset._();
 
