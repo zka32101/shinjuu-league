@@ -214,9 +214,9 @@ class ItemService {
       double totalHpBonus = 0;
 
       for (final item in equippedItems) {
-        totalAttackBonus += item.bonus.attackBonus ?? 0;
-        totalDefenseBonus += item.bonus.defenseBonus ?? 0;
-        totalHpBonus += item.bonus.hpBonus ?? 0;
+        totalAttackBonus += item.bonus?.attackBonus ?? 0;
+        totalDefenseBonus += item.bonus?.defenseBonus ?? 0;
+        totalHpBonus += item.bonus?.hpBonus ?? 0;
       }
 
       return ItemBonus(

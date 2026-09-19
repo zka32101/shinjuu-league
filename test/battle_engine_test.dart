@@ -534,6 +534,145 @@ void main() {
     });
   });
 
+  group('JungleMonster (中立モンスター)', () {
+    test('モンスターを撃破するとゴール報酬と一定時間の攻撃バフを得る', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(engine.jungleMonsters.length, 2);
+      final monster = engine.jungleMonsters.first;
+      expect(monster.isAlive, isTrue);
+
+      final baseAtk = self.effectiveAtk;
+      final result = engine.attackJungleMonster('self', monster.id);
+
+      expect(result, isTrue);
+      expect(monster.isAlive, isFalse);
+      expect(monster.currentHp, 0);
+      expect(self.resources.gold, 50);
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+      expect(self.effectiveAtk, greaterThan(baseAtk));
+
+      engine.dispose();
+    });
+
+    test('異なるレーンのモンスターは攻撃できない', () {
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final otherLaneMonster = engine.jungleMonsters.firstWhere((m) => m.lane == 1);
+      final result = engine.attackJungleMonster('self', otherLaneMonster.id);
+
+      expect(result, isFalse);
+      expect(otherLaneMonster.currentHp, otherLaneMonster.maxHp);
+
+      engine.dispose();
+    });
+
+    test('存在しないモンスターIDを渡すと失敗する', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(engine.attackJungleMonster('self', 'nonexistent'), isFalse);
+      engine.dispose();
+    });
+
+    test('討伐後、respawnDelay 経過で満タンHPで復活する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final monster = engine.jungleMonsters.first;
+      engine.attackJungleMonster('self', monster.id);
+      expect(monster.isAlive, isFalse);
+
+      for (var i = 0; i < 29; i++) {
+        engine.tick();
+      }
+      expect(monster.isAlive, isFalse);
+
+      engine.tick(); // 30 tick目で復活
+      expect(monster.isAlive, isTrue);
+      expect(monster.currentHp, monster.maxHp);
+
+      engine.dispose();
+    });
+
+    test('討伐バフは一定時間後に失効する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      engine.attackJungleMonster('self', engine.jungleMonsters.first.id);
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+
+      for (var i = 0; i < 19; i++) {
+        engine.tick();
+      }
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+
+      engine.tick(); // 20 tick目で失効
+      expect(self.jungleBuffMultiplier, 1.0);
+
+      engine.dispose();
+    });
+
+    test('死亡中のプレイヤーはモンスターを攻撃できない', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true)
+        ..isAlive = false;
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(
+        engine.attackJungleMonster('self', engine.jungleMonsters.first.id),
+        isFalse,
+      );
+      engine.dispose();
+    });
+  });
+
   group('EloService', () {
     test('同レーティング同士の勝利で kFactor/2 分だけ上昇する', () {
       final change = EloService.calculateEloChange(

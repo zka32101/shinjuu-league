@@ -1,3 +1,5 @@
+import 'dart:ui' as ui;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -5,6 +7,7 @@ import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/game/mecha_glyph.dart';
 
 class MechaSelectScreen extends ConsumerWidget {
   const MechaSelectScreen({super.key});
@@ -115,13 +118,7 @@ class _MechaCard extends StatelessWidget {
                 ],
               ),
               const SizedBox(height: 8),
-              Icon(
-                mecha.origin == 'EAST'
-                    ? Icons.local_fire_department
-                    : Icons.ac_unit,
-                size: 48,
-                color: Theme.of(context).colorScheme.primary,
-              ),
+              _MechaPortrait(mecha: mecha, size: 64),
               const SizedBox(height: 8),
               Text(
                 mecha.name,
@@ -151,4 +148,69 @@ class _MechaCard extends StatelessWidget {
       ),
     );
   }
+}
+
+/// 実キャラクターアート素材の代わりに、ステータス由来の[MechaGlyph]で
+/// 球体ポートレートを自動生成して表示するウィジェット。
+/// バトル画面の[MechaToken]と同じ生成ロジックを使うため、選択画面と
+/// バトル中で同一キャラの見た目に一貫性が出る。
+class _MechaPortrait extends StatelessWidget {
+  const _MechaPortrait({required this.mecha, required this.size});
+
+  final Mecha mecha;
+  final double size;
+
+  @override
+  Widget build(BuildContext context) {
+    return SizedBox(
+      width: size,
+      height: size,
+      child: CustomPaint(painter: _MechaPortraitPainter(mecha)),
+    );
+  }
+}
+
+class _MechaPortraitPainter extends CustomPainter {
+  _MechaPortraitPainter(this.mecha) : glyph = MechaGlyph.forMecha(mecha);
+
+  final Mecha mecha;
+  final MechaGlyph glyph;
+
+  static const _eastBody = Color(0xFFE0533D);
+  static const _westBody = Color(0xFF3D7FE0);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final center = Offset(size.width / 2, size.height / 2);
+    final radius = size.shortestSide / 2 * 0.62;
+    final baseColor = mecha.origin == 'EAST' ? _eastBody : _westBody;
+
+    final lightColor = Color.lerp(baseColor, Colors.white, 0.55)!;
+    final darkColor = Color.lerp(baseColor, Colors.black, 0.45)!;
+    canvas.drawCircle(
+      center,
+      radius,
+      Paint()
+        ..shader = ui.Gradient.radial(
+          Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
+          radius * 1.3,
+          [lightColor, baseColor, darkColor],
+          const [0.0, 0.5, 1.0],
+        ),
+    );
+
+    glyph.paint(canvas, center, radius, 1.0);
+
+    canvas.drawCircle(
+      Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
+      radius * 0.22,
+      Paint()
+        ..color = Colors.white.withValues(alpha: 0.7)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2),
+    );
+  }
+
+  @override
+  bool shouldRepaint(covariant _MechaPortraitPainter oldDelegate) =>
+      oldDelegate.mecha.mechaId != mecha.mechaId;
 }

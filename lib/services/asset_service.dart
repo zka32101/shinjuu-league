@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart' show rootBundle;
 
 /// 資産（Lottie・SE・BGM）の一元管理
 /// 実アセットが無い場合でも安全に動作する設計
@@ -25,6 +26,9 @@ class AssetService {
   Future<void> init() async {
     try {
       loadState.value = AssetLoadState.loading;
+      // 再実行時にカウンターが誤って積み上がらないようリセット
+      _loadedCount = 0;
+      _totalCount = 0;
 
       // 「実ファイルが無くても動く」設計のため、
       // プリロードは段階的に試行し、失敗は握りつぶす
@@ -44,8 +48,6 @@ class AssetService {
 
   /// Lottie アニメーションのプリロード
   Future<void> _preloadAnimations() async {
-    _totalCount = 5; // プリロード予定のアニメーション数
-
     final animations = [
       'kill_burst.json',
       'win_celebration.json',
@@ -53,12 +55,14 @@ class AssetService {
       'aha_moment.json',
       'level_up.json',
     ];
+    _totalCount += animations.length;
 
     for (final name in animations) {
+      final path = 'assets/animations/$name';
       try {
-        final path = 'assets/animations/$name';
         // 実ファイルの有無を確認（アセットマニフェスト経由）
-        // 無い場合は DefaultAssetBundle.of が例外を投げる
+        // 無い場合は rootBundle.load が例外を投げる
+        await rootBundle.load(path);
         _assetCache['animation_$name'] = path;
         _loadedCount++;
       } catch (_) {
@@ -72,8 +76,6 @@ class AssetService {
 
   /// SE（効果音）のプリロード
   Future<void> _preloadSoundEffects() async {
-    _totalCount = 12;
-
     final effects = [
       'kill.mp3',
       'aha_moment.mp3',
@@ -88,10 +90,12 @@ class AssetService {
       'item_pickup.mp3',
       'error.mp3',
     ];
+    _totalCount += effects.length;
 
     for (final name in effects) {
+      final path = 'assets/sounds/$name';
       try {
-        final path = 'assets/sounds/$name';
+        await rootBundle.load(path);
         _assetCache['sound_$name'] = path;
         _loadedCount++;
       } catch (_) {
@@ -104,18 +108,18 @@ class AssetService {
 
   /// BGM（背景音楽）のプリロード
   Future<void> _preloadBGM() async {
-    _totalCount = 4;
-
     final bgmTracks = [
       'lobby.mp3',
       'matching.mp3',
       'battle.mp3',
       'result_win.mp3',
     ];
+    _totalCount += bgmTracks.length;
 
     for (final name in bgmTracks) {
+      final path = 'assets/sounds/$name';
       try {
-        final path = 'assets/sounds/$name';
+        await rootBundle.load(path);
         _assetCache['bgm_$name'] = path;
         _loadedCount++;
       } catch (_) {
@@ -177,6 +181,16 @@ class AssetService {
     _assetCache.clear();
     _loadedCount = 0;
     _totalCount = 0;
+  }
+
+  /// テスト専用: シングルトンの状態を完全に初期状態へ戻す。
+  /// 本番の `clearCache()` は意図的に `loadState` を変えない
+  /// （メモリ解放してもロード済み扱いは維持したいため）が、
+  /// テストではケース間の汚染を避けるためロード状態も含めて戻す必要がある。
+  @visibleForTesting
+  void resetForTesting() {
+    clearCache();
+    loadState.value = AssetLoadState.idle;
   }
 }
 

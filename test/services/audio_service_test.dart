@@ -1,8 +1,36 @@
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 
 void main() {
+  // AudioService lazily constructs a real `package:audioplayers`
+  // AudioPlayer on first use. Without an initialized binding and mocked
+  // platform channels, its internal fire-and-forget initialization throws
+  // asynchronously and fails whichever test happens to be running when it
+  // surfaces, rather than the test that actually triggered it.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  const globalChannel = MethodChannel('xyz.luan/audioplayers.global');
+  const playerChannel = MethodChannel('xyz.luan/audioplayers');
+  const globalEventChannel = EventChannel('xyz.luan/audioplayers.global/events');
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+  setUpAll(() {
+    messenger.setMockMethodCallHandler(globalChannel, (call) async => null);
+    messenger.setMockMethodCallHandler(playerChannel, (call) async => null);
+    messenger.setMockStreamHandler(
+      globalEventChannel,
+      MockStreamHandler.inline(onListen: (arguments, events) {}),
+    );
+  });
+
+  tearDownAll(() {
+    messenger.setMockMethodCallHandler(globalChannel, null);
+    messenger.setMockMethodCallHandler(playerChannel, null);
+    messenger.setMockStreamHandler(globalEventChannel, null);
+  });
+
   group('AudioService Phase 4', () {
     late AudioService audioService;
 

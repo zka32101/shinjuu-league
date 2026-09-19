@@ -151,7 +151,7 @@ class AchievementProgress {
 
 /// 実績カタログ（ゲーム内で実装される15の実績）
 class AchievementCatalog {
-  static const List<Achievement> allAchievements = [
+  static final List<Achievement> allAchievements = [
     // === チュートリアル ===
     Achievement(
       achievementId: 'tutorial_complete',

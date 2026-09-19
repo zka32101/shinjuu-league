@@ -31,7 +31,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         backgroundColor: AppColors.dark1,
       ),
       body: inventoryAsync.when(
-        loading: () => const LoadingSkeleton(),
+        loading: () => const LoadingSkeleton(height: 300),
         error: (error, st) => _buildErrorView(context, error),
         data: (items) => SingleChildScrollView(
           child: Column(

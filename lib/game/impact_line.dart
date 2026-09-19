@@ -11,7 +11,7 @@ class ImpactLine extends PositionComponent {
   final Vector2 from;
   final Vector2 to;
 
-  static const _lifetime = 0.18;
+  static const _lifetime = 0.22;
   double _elapsed = 0.0;
 
   @override
@@ -40,10 +40,24 @@ class ImpactLine extends PositionComponent {
     }
     path.lineTo(to.x, to.y);
 
-    final paint = Paint()
-      ..color = Colors.white.withValues(alpha: alpha * 0.85)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2.5;
-    canvas.drawPath(path, paint);
+    // 太くぼかしたグロー層を先に描き、稲妻に「発光している」厚みを出す
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.amberAccent.withValues(alpha: alpha * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 7
+        ..strokeCap = StrokeCap.round
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = Colors.white.withValues(alpha: alpha * 0.9)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3
+        ..strokeCap = StrokeCap.round,
+    );
   }
 }

@@ -129,3 +129,65 @@ class SkillBuild {
     'level3': level3,
   };
 }
+
+/// スキルツリーの1系統（攻撃/防御/速度）の進行状態
+class SkillTreeBranch {
+  int allocatedTiers;
+
+  SkillTreeBranch({this.allocatedTiers = 0});
+
+  /// このツリーに割り当てられた合計ポイント（＝解放済みティア数）
+  int get totalPoints => allocatedTiers;
+
+  /// 指定ティア（0始まり）がすでに割り当て済みか
+  bool isAllocated(int tierIndex) => tierIndex < allocatedTiers;
+
+  factory SkillTreeBranch.fromJson(Map<String, dynamic> json) {
+    return SkillTreeBranch(allocatedTiers: json['allocatedTiers'] as int? ?? 0);
+  }
+
+  Map<String, dynamic> toJson() => {'allocatedTiers': allocatedTiers};
+}
+
+/// プレイヤーのスキルツリー全体の進行状態（攻撃・防御・速度の3系統、計15ポイント）
+class SkillTree {
+  final List<SkillTreeBranch> trees; // [0]=攻撃, [1]=防御, [2]=速度
+  int totalAllocatedPoints;
+  int availablePoints;
+
+  SkillTree({
+    required this.trees,
+    this.totalAllocatedPoints = 0,
+    this.availablePoints = 0,
+  });
+
+  SkillTreeBranch get attackTree => trees[0];
+  SkillTreeBranch get defenseTree => trees[1];
+  SkillTreeBranch get speedTree => trees[2];
+
+  /// 全ツリー合計の割り当て済みポイント
+  int get totalPoints => totalAllocatedPoints;
+
+  factory SkillTree.create() => SkillTree(
+    trees: List.generate(3, (_) => SkillTreeBranch()),
+  );
+
+  factory SkillTree.fromJson(Map<String, dynamic> json) {
+    final treesJson = json['trees'] as List<dynamic>?;
+    return SkillTree(
+      trees: treesJson != null
+          ? treesJson
+              .map((t) => SkillTreeBranch.fromJson(t as Map<String, dynamic>))
+              .toList()
+          : List.generate(3, (_) => SkillTreeBranch()),
+      totalAllocatedPoints: json['totalAllocatedPoints'] as int? ?? 0,
+      availablePoints: json['availablePoints'] as int? ?? 0,
+    );
+  }
+
+  Map<String, dynamic> toJson() => {
+    'trees': trees.map((t) => t.toJson()).toList(),
+    'totalAllocatedPoints': totalAllocatedPoints,
+    'availablePoints': availablePoints,
+  };
+}
