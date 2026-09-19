@@ -53,6 +53,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 38, target: 50),
         );
 
@@ -64,8 +65,8 @@ void main() {
 
         expect(result, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         )).called(1);
       });
@@ -74,6 +75,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -94,6 +96,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 30, target: 50),
         );
 
@@ -105,8 +108,8 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         ));
       });
@@ -120,6 +123,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'instant_achievement',
+          unlockedAt: DateTime.now(),
         );
 
         final result = await service.checkAndSendNearCompletionNotification(
@@ -130,8 +134,8 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         ));
       });
@@ -145,8 +149,8 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         ));
       });
@@ -167,8 +171,8 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         ));
       });
@@ -179,6 +183,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -190,8 +195,8 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         ));
       });
@@ -203,6 +208,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -219,6 +225,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -239,8 +246,8 @@ void main() {
         expect(result2, isFalse);
 
         verify(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         )).called(1); // Only called once
       });
@@ -252,12 +259,14 @@ void main() {
         final playerAch1 = PlayerAchievement(
           userId: userId,
           achievementId: 'ach_1',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
         final playerAch2 = PlayerAchievement(
           userId: userId,
           achievementId: 'ach_2',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -275,22 +284,23 @@ void main() {
         expect(result1, isTrue);
         expect(result2, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         )).called(2); // Called twice
       });
 
       test('handles exceptions gracefully', () async {
         when(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         )).thenThrow(Exception('Push notification error'));
 
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -314,6 +324,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 25, target: 100),
         );
 
@@ -339,6 +350,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -359,6 +371,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -381,8 +394,8 @@ void main() {
 
         expect(result, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any,
-          body: any,
+          title: any as String,
+          body: any as String,
           payload: any,
         )).called(2); // Called twice
       });
@@ -393,6 +406,7 @@ void main() {
         final playerAch = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -412,6 +426,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -432,6 +447,7 @@ void main() {
         final playerAchievement = PlayerAchievement(
           userId: userId,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -457,12 +473,14 @@ void main() {
         final playerAch1 = PlayerAchievement(
           userId: userId,
           achievementId: 'ach_1',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
         final playerAch2 = PlayerAchievement(
           userId: userId,
           achievementId: 'ach_2',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
@@ -492,12 +510,14 @@ void main() {
         final playerAch1 = PlayerAchievement(
           userId: user1,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
         final playerAch2 = PlayerAchievement(
           userId: user2,
           achievementId: 'stat_master',
+          unlockedAt: DateTime.now(),
           progress: AchievementProgress(current: 40, target: 50),
         );
 
