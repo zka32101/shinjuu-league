@@ -5,10 +5,59 @@ import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logCustomEvent(String? eventName,
+      {Map<String, Object>? parameters}) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logCustomEvent, [eventName], {#parameters: parameters}),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  int get firstEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#firstEvolutionLevel),
+        returnValue: 3,
+        returnValueForMissingStub: 3,
+      ) as int;
+
+  @override
+  int get secondEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#secondEvolutionLevel),
+        returnValue: 6,
+        returnValueForMissingStub: 6,
+      ) as int;
+
+  @override
+  String get difficultyPreset => super.noSuchMethod(
+        Invocation.getter(#difficultyPreset),
+        returnValue: 'normal',
+        returnValueForMissingStub: 'normal',
+      ) as String;
+
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 void main() {
   group('SkillProgressionAnalyticsService with Cohort Tracking', () {
@@ -30,7 +79,7 @@ void main() {
         ),
       );
 
-      when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+      when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
           .thenAnswer((_) async {});
 
       analyticsService = SkillProgressionAnalyticsService(
@@ -341,7 +390,7 @@ void main() {
         expect(
           verify(mockAnalytics.logCustomEvent(
             'skill_progression_cohort_performance',
-            parameters: any,
+            parameters: anyNamed('parameters'),
           )).callCount,
           2,
         );
@@ -396,7 +445,7 @@ void main() {
         expect(
           verify(mockAnalytics.logCustomEvent(
             'skill_progression_cohort_evolution_impact',
-            parameters: any,
+            parameters: anyNamed('parameters'),
           )).callCount,
           2,
         );
@@ -405,7 +454,7 @@ void main() {
 
     group('Error Handling', () {
       test('logCohortAssignment handles errors gracefully', () async {
-        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -415,7 +464,7 @@ void main() {
       });
 
       test('logConfigurationChanged handles errors gracefully', () async {
-        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -461,7 +510,7 @@ void main() {
         );
 
         expect(
-          verify(mockAnalytics.logCustomEvent(any as String, parameters: any))
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
               .callCount,
           greaterThanOrEqualTo(4),
         );

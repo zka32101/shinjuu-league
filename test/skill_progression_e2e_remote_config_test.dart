@@ -10,10 +10,59 @@ import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dar
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logCustomEvent(String? eventName,
+      {Map<String, Object>? parameters}) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logCustomEvent, [eventName], {#parameters: parameters}),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  int get firstEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#firstEvolutionLevel),
+        returnValue: 3,
+        returnValueForMissingStub: 3,
+      ) as int;
+
+  @override
+  int get secondEvolutionLevel => super.noSuchMethod(
+        Invocation.getter(#secondEvolutionLevel),
+        returnValue: 6,
+        returnValueForMissingStub: 6,
+      ) as int;
+
+  @override
+  String get difficultyPreset => super.noSuchMethod(
+        Invocation.getter(#difficultyPreset),
+        returnValue: 'normal',
+        returnValueForMissingStub: 'normal',
+      ) as String;
+
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 void main() {
   group('End-to-End: Remote Config → All Layers → Analytics', () {
@@ -40,7 +89,7 @@ void main() {
         ),
       );
 
-      when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+      when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
           .thenAnswer((_) async {});
 
       skillService = SkillProgressionBattleService();
@@ -429,7 +478,7 @@ void main() {
         expect(
           verify(mockAnalytics.logCustomEvent(
             'skill_progression_cohort_assigned',
-            parameters: any,
+            parameters: anyNamed('parameters'),
           )).callCount,
           3,
         );
@@ -561,7 +610,7 @@ void main() {
 
         // Verify all events were tracked with cohort context
         expect(
-          verify(mockAnalytics.logCustomEvent(any as String, parameters: any)).callCount,
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount,
           greaterThanOrEqualTo(7),
         );
       });
@@ -569,7 +618,7 @@ void main() {
 
     group('Error Resilience', () {
       test('analytics errors do not interrupt progression', () async {
-        when(mockAnalytics.logCustomEvent(any as String, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics unavailable'));
 
         expect(
