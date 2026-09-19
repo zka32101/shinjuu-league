@@ -1,12 +1,20 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
+import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
-// Mock FirestoreService for testing
-class MockFirestoreService extends FirestoreService {
+// Mock FirestoreService for testing.
+// `implements` (not `extends`) because FirestoreService's only constructor
+// is a private-singleton factory that can't be super-called from here; the
+// noSuchMethod override below satisfies the interface for any member this
+// fake doesn't need to override.
+class MockFirestoreService implements FirestoreService {
   final Map<String, dynamic> _userData = {};
   final Map<String, Set<String>> _achievements = {};
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<void> markAchievementUnlocked(String userId, String achievementId) async {
@@ -29,6 +37,28 @@ class MockFirestoreService extends FirestoreService {
   Future<void> addUserCosmetic(String userId, String cosmeticId) async {
     _userData.putIfAbsent(userId, () => {'cosmetics': []});
     (_userData[userId]!['cosmetics'] as List<String>).add(cosmeticId);
+  }
+
+  // getPendingRewards() reads currency/cosmetics back off the User record,
+  // so reflect what the increment/cosmetic overrides above have recorded.
+  @override
+  Future<User?> getUserById(String userId) async {
+    final data = _userData[userId];
+    if (data == null) return null;
+    final now = DateTime.now();
+    return User(
+      uid: userId,
+      name: 'Test User',
+      rank: 0,
+      level: 1,
+      eloRating: 1200,
+      winRate: 0.0,
+      gems: 0,
+      gold: (data['currency'] as int?) ?? 0,
+      ownedSkinIds: List<String>.from(data['cosmetics'] as List? ?? const []),
+      createdAt: now,
+      lastBattleAt: now,
+    );
   }
 
   void resetMockData() {

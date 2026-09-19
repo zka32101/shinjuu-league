@@ -5,7 +5,6 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/skill_tree_viewmodel.dart';
-import 'package:shinjuu_league/data/providers/service_providers.dart';
 
 class MockSkillTreeService extends Mock implements SkillTreeService {}
 
@@ -17,7 +16,6 @@ class MockSkillTreeViewModel extends StateNotifier<AsyncValue<SkillTree>> {
               : const AsyncValue.loading(),
         );
 
-  @override
   Future<bool> allocateSkillPoint(int treeIndex, int tierIndex) async {
     final skillTree = state.value;
     if (skillTree == null) return false;
@@ -354,7 +352,7 @@ void main() {
       testWidgets('shows loading indicator while loading',
           (WidgetTester tester) async {
         await tester.pumpWidget(
-          const MaterialApp(
+          MaterialApp(
             home: Scaffold(
               body: SkillTreeProgressionScreenTest.LoadingState(),
             ),
@@ -368,7 +366,7 @@ void main() {
         const error = 'テストエラー';
 
         await tester.pumpWidget(
-          const MaterialApp(
+          MaterialApp(
             home: Scaffold(
               body: SkillTreeProgressionScreenTest.ErrorState(error: error),
             ),
@@ -464,43 +462,46 @@ abstract class SkillTreeProgressionScreenTest {
     final treeEmojis = ['⚔️', '🛡️', '⚡'];
     final treeNames = ['攻撃', '防御', '素早さ'];
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 12.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-        children: List.generate(
-          3,
-          (index) {
-            final isSelected = currentIndex == index;
-            return GestureDetector(
-              onTap: () => onTabSelected(index),
-              child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16.0,
-                  vertical: 8.0,
-                ),
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? Theme.of(ProviderContainer().context).primaryColor
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(12.0),
-                  border: Border.all(
-                    color: Theme.of(ProviderContainer().context).primaryColor,
-                    width: 2.0,
+    return Builder(
+      builder: (context) {
+        final primaryColor = Theme.of(context).primaryColor;
+        return Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            children: List.generate(
+              3,
+              (index) {
+                final isSelected = currentIndex == index;
+                return GestureDetector(
+                  onTap: () => onTabSelected(index),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16.0,
+                      vertical: 8.0,
+                    ),
+                    decoration: BoxDecoration(
+                      color: isSelected ? primaryColor : Colors.transparent,
+                      borderRadius: BorderRadius.circular(12.0),
+                      border: Border.all(
+                        color: primaryColor,
+                        width: 2.0,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(treeEmojis[index]),
+                        Text(treeNames[index]),
+                      ],
+                    ),
                   ),
-                ),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(treeEmojis[index]),
-                    Text(treeNames[index]),
-                  ],
-                ),
-              ),
-            );
-          },
-        ),
-      ),
+                );
+              },
+            ),
+          ),
+        );
+      },
     );
   }
 
@@ -637,8 +638,8 @@ abstract class SkillTreeProgressionScreenTest {
     );
   }
 
-  static const LoadingState = _LoadingState();
-  static ErrorState ErrorState({required String error}) => _ErrorState(error: error);
+  static Widget LoadingState() => const _LoadingState();
+  static Widget ErrorState({required String error}) => _ErrorState(error: error);
 }
 
 class _LoadingState extends StatelessWidget {

@@ -26,8 +26,10 @@ void main() {
       mockSkillTreeService = MockSkillTreeService();
 
       when(mockSkillTreeService.getSkillTree(any)).thenAnswer((_) async => null);
-      when(mockFirestoreService.createBattle(any)).thenAnswer((_) async => {});
-      when(mockAnalyticsService.logBattleStart(any, any)).thenAnswer((_) async => {});
+      when(mockFirestoreService.createBattle(any as Battle))
+          .thenAnswer((_) async => {});
+      when(mockAnalyticsService.logBattleStart(any as String, any as String))
+          .thenAnswer((_) async => {});
 
       battleViewModel = BattleViewModel(
         firestoreService: mockFirestoreService,
@@ -101,6 +103,7 @@ MatchResult _createTestMatch(String selfUserId) {
     matchId: 'test_match',
     mode: BattleMode.quick,
     mapId: 'map_1',
+    estimatedWaitSeconds: 5,
     teamA: [
       _createMatchParticipant(selfUserId, 'mecha_1', 0, 0, 1200.0, false),
     ],

@@ -185,13 +185,13 @@ void main() {
 
       test('handles creation errors', () async {
         when(mockService.createScheduledReport(
-          userId: any,
-          name: any,
-          format: any,
-          selectedFields: any,
-          frequency: any,
-          recipientEmails: any,
-          includeMetadata: any,
+          userId: anyNamed('userId') as String,
+          name: anyNamed('name') as String,
+          format: anyNamed('format') as ReportExportFormat,
+          selectedFields: anyNamed('selectedFields') as List<String>,
+          frequency: anyNamed('frequency') as ReportFrequency,
+          recipientEmails: anyNamed('recipientEmails') as List<String>,
+          includeMetadata: anyNamed('includeMetadata') as bool,
         )).thenThrow(Exception('Creation failed'));
 
         final result = await viewModel.createScheduledReport(
