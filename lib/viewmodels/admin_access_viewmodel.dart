@@ -60,11 +60,8 @@ class AdminAccessViewModel
 
   /// Check if current user has a specific permission
   bool hasPermission(AdminPermission permission) {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return false;
-
-    final data = asyncState.value;
-    if (data.currentUserId == null || data.currentUserRole == null) {
+    final data = state.valueOrNull;
+    if (data == null || data.currentUserId == null || data.currentUserRole == null) {
       return false;
     }
 
@@ -73,46 +70,28 @@ class AdminAccessViewModel
 
   /// Check if current user has any of the given permissions
   bool hasAnyPermission(List<AdminPermission> permissions) {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return false;
-
-    final data = asyncState.value;
-    if (data.currentUserId == null) return false;
+    final data = state.valueOrNull;
+    if (data == null || data.currentUserId == null) return false;
 
     return _roleService.hasAnyPermission(data.currentUserId!, permissions);
   }
 
   /// Check if current user has all of the given permissions
   bool hasAllPermissions(List<AdminPermission> permissions) {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return false;
-
-    final data = asyncState.value;
-    if (data.currentUserId == null) return false;
+    final data = state.valueOrNull;
+    if (data == null || data.currentUserId == null) return false;
 
     return _roleService.hasAllPermissions(data.currentUserId!, permissions);
   }
 
   /// Check if current user is an admin
-  bool get isAdmin {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return false;
-    return asyncState.value.isAdmin;
-  }
+  bool get isAdmin => state.valueOrNull?.isAdmin ?? false;
 
   /// Get current user's role
-  UserAdminRole? get currentUserRole {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return null;
-    return asyncState.value.currentUserRole;
-  }
+  UserAdminRole? get currentUserRole => state.valueOrNull?.currentUserRole;
 
   /// Get all admin users
-  List<UserAdminRole> get allAdminUsers {
-    final asyncState = state;
-    if (asyncState is! AsyncData) return [];
-    return asyncState.value.allAdminUsers;
-  }
+  List<UserAdminRole> get allAdminUsers => state.valueOrNull?.allAdminUsers ?? [];
 
   /// Assign role to a user (admin only)
   Future<bool> assignRoleToUser({
