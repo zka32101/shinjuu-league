@@ -143,7 +143,10 @@ class QuestService {
         userId,
         frequency,
       );
-      return quests.where((q) => q.isActive).toList();
+      return quests
+          .map((q) => PlayerQuest.fromJson(q))
+          .where((q) => q.isActive)
+          .toList();
     } catch (e) {
       print('Error fetching active quests: $e');
       return [];
@@ -153,7 +156,8 @@ class QuestService {
   /// Get all quests for a user (any state)
   Future<List<PlayerQuest>> getAllQuests(String userId) async {
     try {
-      return await _firestoreService.getAllPlayerQuests(userId);
+      final quests = await _firestoreService.getAllPlayerQuests(userId);
+      return quests.map((q) => PlayerQuest.fromJson(q)).toList();
     } catch (e) {
       print('Error fetching all quests: $e');
       return [];
