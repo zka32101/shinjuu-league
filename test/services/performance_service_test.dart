@@ -5,8 +5,15 @@ void main() {
   group('PerformanceService', () {
     late PerformanceService service;
 
-    setUp(() {
+    setUp(() async {
       service = PerformanceService();
+      // PerformanceService is a singleton, so its mutable state (slowFrames,
+      // _isEnabled) otherwise leaks across every test in this file. Without
+      // init(), measureFrameTime()'s `if (!_isEnabled) return 0` short
+      // circuit means it never records anything at all; without clearing
+      // slowFrames, later tests see frames appended by earlier ones.
+      await service.init();
+      service.slowFrames.clear();
     });
 
     test('singleton pattern returns same instance', () {
