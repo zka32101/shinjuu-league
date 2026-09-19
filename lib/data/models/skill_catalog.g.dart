@@ -44,7 +44,9 @@ Map<String, dynamic> _$$SkillDefinitionImplToJson(
   'skillId': instance.skillId,
   'name': instance.name,
   'slot': _$SkillSlotEnumMap[instance.slot]!,
-  'levelData': instance.levelData.map((k, e) => MapEntry(k.toString(), e)),
+  'levelData': instance.levelData.map(
+    (k, e) => MapEntry(k.toString(), e.toJson()),
+  ),
   'baseDescription': instance.baseDescription,
 };
 

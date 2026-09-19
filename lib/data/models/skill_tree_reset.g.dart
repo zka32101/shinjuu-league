@@ -6,12 +6,6 @@ part of 'skill_tree_reset.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-const _$CarryoverModeEnumMap = {
-  CarryoverMode.none: 'none',
-  CarryoverMode.partial: 'partial',
-  CarryoverMode.full: 'full',
-};
-
 _$SkillTreeSnapshotImpl _$$SkillTreeSnapshotImplFromJson(
   Map<String, dynamic> json,
 ) => _$SkillTreeSnapshotImpl(
@@ -63,6 +57,12 @@ Map<String, dynamic> _$$SkillTreeResetImplToJson(
   'resetAt': instance.resetAt.toIso8601String(),
   'carryoverMode': _$CarryoverModeEnumMap[instance.carryoverMode]!,
   'pointsCarriedOver': instance.pointsCarriedOver,
+};
+
+const _$CarryoverModeEnumMap = {
+  CarryoverMode.none: 'none',
+  CarryoverMode.partial: 'partial',
+  CarryoverMode.full: 'full',
 };
 
 _$ProgressDeltaImpl _$$ProgressDeltaImplFromJson(Map<String, dynamic> json) =>

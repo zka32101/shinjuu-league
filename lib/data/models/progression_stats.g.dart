@@ -42,7 +42,7 @@ Map<String, dynamic> _$$SeasonStatsImplToJson(_$SeasonStatsImpl instance) =>
       'gamesLost': instance.gamesLost,
       'totalPlayTime': instance.totalPlayTime.inMicroseconds,
       'winRate': instance.winRate,
-      'eloProgression': instance.eloProgression,
+      'eloProgression': instance.eloProgression.map((e) => e.toJson()).toList(),
       'seasonRewards': instance.seasonRewards,
     };
 
@@ -90,7 +90,7 @@ Map<String, dynamic> _$$AggregateStatsImplToJson(
   'totalGamesWon': instance.totalGamesWon,
   'careerWinRate': instance.careerWinRate,
   'totalRewardsClaimed': instance.totalRewardsClaimed,
-  'progression': instance.progression,
+  'progression': instance.progression.toJson(),
   'firstSeasonAt': instance.firstSeasonAt.toIso8601String(),
   'lastUpdatedAt': instance.lastUpdatedAt.toIso8601String(),
 };
@@ -140,7 +140,7 @@ Map<String, dynamic> _$$ProgressionStatsImplToJson(
   _$ProgressionStatsImpl instance,
 ) => <String, dynamic>{
   'userId': instance.userId,
-  'currentSeason': instance.currentSeason,
-  'allSeasons': instance.allSeasons,
-  'allTimeStats': instance.allTimeStats,
+  'currentSeason': instance.currentSeason?.toJson(),
+  'allSeasons': instance.allSeasons.map((e) => e.toJson()).toList(),
+  'allTimeStats': instance.allTimeStats.toJson(),
 };

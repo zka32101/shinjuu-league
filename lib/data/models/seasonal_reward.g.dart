@@ -6,8 +6,6 @@ part of 'seasonal_reward.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-
-
 _$SeasonalRewardImpl _$$SeasonalRewardImplFromJson(Map<String, dynamic> json) =>
     _$SeasonalRewardImpl(
       rewardId: json['rewardId'] as String,

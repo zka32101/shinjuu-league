@@ -48,7 +48,7 @@ Map<String, dynamic> _$$PlayerEvolutionStateImplToJson(
 ) => <String, dynamic>{
   'mechaId': instance.mechaId,
   'currentEvolution': _$EvolutionTypeEnumMap[instance.currentEvolution],
-  'evolutionHistory': instance.evolutionHistory,
+  'evolutionHistory': instance.evolutionHistory.map((e) => e.toJson()).toList(),
   'lastEvolutionLevel': instance.lastEvolutionLevel,
   'currentLevel': instance.currentLevel,
 };

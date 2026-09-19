@@ -1,0 +1,19 @@
+targets:
+  $default:
+    builders:
+      json_serializable:
+        options:
+          # Nested freezed/json_serializable objects and lists must be
+          # serialized via their own .toJson() rather than embedded as raw
+          # Dart objects (the latter isn't actually JSON and crashes on
+          # fromJson() round-trip, or fails a real Cloud Firestore write
+          # outright). This has to be set globally here rather than per
+          # class with `@JsonSerializable(explicitToJson: true)`, because
+          # stacking that annotation on a `@freezed` class makes
+          # json_serializable additionally generate a spurious top-level
+          # `_$XFromJson`/`_$XToJson` pair that collides with freezed's own
+          # same-named dispatcher functions (a duplicate_definition compile
+          # error) while leaving the real, freezed-invoked `_$$XImplToJson`
+          # unaffected. See quest_model.dart, seasonal_reward.dart, and
+          # skill_tree_reset.dart for the classes this fixes.
+          explicit_to_json: true

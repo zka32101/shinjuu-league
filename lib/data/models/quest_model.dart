@@ -77,16 +77,18 @@ class QuestReward with _$QuestReward {
 
 /// Base quest definition
 ///
-/// `explicitToJson: true` is required because this class has nested
-/// freezed-typed fields (`List<QuestCondition>`, `QuestReward`). Without it,
-/// json_serializable's generated toJson() embeds the raw nested objects
-/// directly instead of calling .toJson() on each of them, which silently
-/// produces JSON that isn't actually JSON-serializable (a raw Dart object
-/// where Cloud Firestore/dart:convert expects a Map) -- it round-trips
-/// through fromJson() with a type-cast crash, and a real Firestore
-/// .set(quest.toJson()) call would fail outright in production.
+/// This class has nested freezed-typed fields (`List<QuestCondition>`,
+/// `QuestReward`), so nested objects must be serialized via their own
+/// .toJson() rather than embedded as raw Dart objects. For a @freezed class,
+/// that's controlled by the project-wide `explicit_to_json: true` setting in
+/// build.yaml, NOT a per-class `@JsonSerializable(explicitToJson: true)`
+/// annotation -- stacking that annotation on top of `@freezed` makes
+/// json_serializable additionally generate a top-level `_$QuestFromJson`/
+/// `_$QuestToJson` pair that collides with freezed's own same-named
+/// dispatcher functions in quest_model.freezed.dart (a duplicate_definition
+/// compile error), while leaving the real, freezed-invoked
+/// `_$$QuestImplToJson` untouched (still buggy).
 @freezed
-@JsonSerializable(explicitToJson: true)
 class Quest with _$Quest {
   const Quest._();
 
@@ -128,10 +130,10 @@ class Quest with _$Quest {
 
 /// Player-specific quest progress
 ///
-/// `explicitToJson: true` is required here for the same reason as on
-/// [Quest] above: this class has a nested `List<QuestCondition>` field.
+/// Same nested-field concern as [Quest] above (a `List<QuestCondition>`
+/// field); see the note there for why this relies on build.yaml's
+/// `explicit_to_json: true` rather than a per-class annotation.
 @freezed
-@JsonSerializable(explicitToJson: true)
 class PlayerQuest with _$PlayerQuest {
   const PlayerQuest._();
 

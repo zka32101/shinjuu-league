@@ -6,30 +6,6 @@ part of 'quest_model.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-
-
-const _$QuestTypeEnumMap = {
-  QuestType.combat: 'combat',
-  QuestType.achievement: 'achievement',
-  QuestType.progression: 'progression',
-  QuestType.social: 'social',
-  QuestType.daily: 'daily',
-};
-
-const _$QuestFrequencyEnumMap = {
-  QuestFrequency.daily: 'daily',
-  QuestFrequency.weekly: 'weekly',
-  QuestFrequency.seasonal: 'seasonal',
-  QuestFrequency.oneTime: 'oneTime',
-};
-
-const _$QuestDifficultyEnumMap = {
-  QuestDifficulty.easy: 'easy',
-  QuestDifficulty.normal: 'normal',
-  QuestDifficulty.hard: 'hard',
-  QuestDifficulty.extreme: 'extreme',
-};
-
 _$QuestConditionImpl _$$QuestConditionImplFromJson(Map<String, dynamic> json) =>
     _$QuestConditionImpl(
       type: $enumDecode(_$QuestConditionTypeEnumMap, json['type']),
@@ -110,6 +86,28 @@ Map<String, dynamic> _$$QuestImplToJson(_$QuestImpl instance) =>
       'availableUntil': instance.availableUntil?.toIso8601String(),
       'displayOrder': instance.displayOrder,
     };
+
+const _$QuestTypeEnumMap = {
+  QuestType.combat: 'combat',
+  QuestType.achievement: 'achievement',
+  QuestType.progression: 'progression',
+  QuestType.social: 'social',
+  QuestType.daily: 'daily',
+};
+
+const _$QuestFrequencyEnumMap = {
+  QuestFrequency.daily: 'daily',
+  QuestFrequency.weekly: 'weekly',
+  QuestFrequency.seasonal: 'seasonal',
+  QuestFrequency.oneTime: 'oneTime',
+};
+
+const _$QuestDifficultyEnumMap = {
+  QuestDifficulty.easy: 'easy',
+  QuestDifficulty.normal: 'normal',
+  QuestDifficulty.hard: 'hard',
+  QuestDifficulty.extreme: 'extreme',
+};
 
 _$PlayerQuestImpl _$$PlayerQuestImplFromJson(Map<String, dynamic> json) =>
     _$PlayerQuestImpl(

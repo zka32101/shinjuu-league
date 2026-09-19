@@ -20,8 +20,8 @@ _$SeasonComparisonImpl _$$SeasonComparisonImplFromJson(
 Map<String, dynamic> _$$SeasonComparisonImplToJson(
   _$SeasonComparisonImpl instance,
 ) => <String, dynamic>{
-  'season1': instance.season1,
-  'season2': instance.season2,
+  'season1': instance.season1.toJson(),
+  'season2': instance.season2.toJson(),
   'tierChange': instance.tierChange,
   'pointsChangePerTree': instance.pointsChangePerTree,
 };

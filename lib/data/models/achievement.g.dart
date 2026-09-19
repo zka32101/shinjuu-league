@@ -78,7 +78,7 @@ Map<String, dynamic> _$$PlayerAchievementImplToJson(
   'userId': instance.userId,
   'achievementId': instance.achievementId,
   'unlockedAt': instance.unlockedAt.toIso8601String(),
-  'progress': instance.progress,
+  'progress': instance.progress?.toJson(),
   'isHidden': instance.isHidden,
 };
 
@@ -108,7 +108,7 @@ Map<String, dynamic> _$$AchievementUnlockEventImplToJson(
   _$AchievementUnlockEventImpl instance,
 ) => <String, dynamic>{
   'userId': instance.userId,
-  'achievement': instance.achievement,
+  'achievement': instance.achievement.toJson(),
   'unlockedAt': instance.unlockedAt.toIso8601String(),
   'isNewUnlock': instance.isNewUnlock,
 };
