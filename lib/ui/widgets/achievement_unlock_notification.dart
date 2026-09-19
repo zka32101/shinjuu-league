@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/config/theme.dart';
@@ -28,6 +30,7 @@ class _AchievementUnlockNotificationState
   late AnimationController _animationController;
   late Animation<double> _scaleAnimation;
   late Animation<double> _opacityAnimation;
+  Timer? _autoDismissTimer;
 
   @override
   void initState() {
@@ -48,8 +51,13 @@ class _AchievementUnlockNotificationState
 
     _animationController.forward();
 
-    // Auto-dismiss after duration
-    Future.delayed(widget.displayDuration, () {
+    // Auto-dismiss after duration. Stored as a Timer (rather than a bare
+    // Future.delayed) so dispose() can actually cancel it -- otherwise it
+    // keeps firing after the widget is gone (the `if (mounted)` guard below
+    // only prevents a crash, it doesn't stop the timer itself from still
+    // being pending, which flutter_test's tearDown treats as a leak/failure
+    // whenever the widget is disposed before displayDuration elapses).
+    _autoDismissTimer = Timer(widget.displayDuration, () {
       if (mounted) {
         _animationController.reverse().then((_) {
           if (mounted) {
@@ -63,6 +71,7 @@ class _AchievementUnlockNotificationState
 
   @override
   void dispose() {
+    _autoDismissTimer?.cancel();
     _animationController.dispose();
     super.dispose();
   }

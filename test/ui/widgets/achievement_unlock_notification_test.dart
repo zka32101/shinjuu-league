@@ -165,27 +165,55 @@ void main() {
         ),
       );
 
-      // Find the ScaleTransition
-      expect(find.byType(ScaleTransition), findsOneWidget);
+      // Find the ScaleTransition. Scoped to inside
+      // AchievementUnlockNotification: MaterialApp's default page transition
+      // builder (ZoomPageTransitionsBuilder) also wraps its initial route in
+      // a ScaleTransition, so an unscoped find.byType(ScaleTransition) finds
+      // two widgets, not one.
+      expect(
+        find.descendant(
+          of: find.byType(AchievementUnlockNotification),
+          matching: find.byType(ScaleTransition),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets('dismisses on barrier tap', (WidgetTester tester) async {
+      // Barrier-tap-to-dismiss is a property of the showDialog() route (via
+      // barrierDismissible: true in showAchievementUnlock()), not something
+      // AchievementUnlockNotification implements itself -- it has no
+      // GestureDetector of its own. Pumping the bare widget directly (as
+      // this test previously did) has no barrier/ModalBarrier at all, so
+      // `find.byType(GestureDetector).first` found nothing. Route it
+      // through showAchievementUnlock() like real call sites do, and tap
+      // the actual ModalBarrier the dialog route creates.
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
             body: Center(
-              child: AchievementUnlockNotification(
-                achievement: testAchievement,
-                playerAchievement: testPlayerAchievement,
-                displayDuration: const Duration(seconds: 10),
+              child: ElevatedButton(
+                onPressed: () {
+                  showAchievementUnlock(
+                    tester.element(find.byType(Scaffold)),
+                    testAchievement,
+                    testPlayerAchievement,
+                    displayDuration: const Duration(seconds: 10),
+                  );
+                },
+                child: const Text('Show'),
               ),
             ),
           ),
         ),
       );
 
-      // Tap outside the dialog
-      await tester.tap(find.byType(GestureDetector).first);
+      await tester.tap(find.text('Show'));
+      await tester.pumpAndSettle();
+      expect(find.byType(Dialog), findsOneWidget);
+
+      // Tap outside the dialog (the barrier)
+      await tester.tapAt(const Offset(10, 10));
       await tester.pumpAndSettle();
 
       // Dialog should close
