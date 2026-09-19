@@ -159,7 +159,14 @@ void main() {
         ),
       );
 
-      await tester.pumpAndSettle();
+      // Not pumpAndSettle(): _particleController.repeat() runs indefinitely
+      // for as long as the ceremony dialog is shown (by design, so the
+      // particle effect keeps animating), so the widget tree never actually
+      // settles. Advance past the (unrelated) main animation's own duration
+      // instead — with a little headroom so the completion microtask that
+      // invokes onComplete has actually run by the time we assert.
+      await tester.pump(const Duration(milliseconds: 100));
+      await tester.pump(const Duration(milliseconds: 50));
       expect(callbackCalled, isTrue);
     });
 
@@ -227,7 +234,12 @@ void main() {
             body: SeasonEndCeremonyWidget(
               fromTier: 'Unknown',
               toTier: 'Silver',
-              isPromotion: true,
+              // isPromotion:true would also render 8 promotion-particle '⭐'
+              // texts (see _buildPromotionParticles), which are unrelated to
+              // the tier-emoji fallback under test and would make '⭐' match
+              // more than once. Demotion particles use a different glyph
+              // ('❄️'), so isPromotion:false isolates the fallback emoji.
+              isPromotion: false,
             ),
           ),
         ),
@@ -377,7 +389,12 @@ void main() {
       );
 
       await tester.tap(find.text('Show Ceremony'));
-      await tester.pumpAndSettle();
+      // Not pumpAndSettle(): the 100ms ceremony duration is short enough
+      // that settling would run past onComplete, which pops the dialog
+      // itself — by the time settling finished, "Gold" would already be
+      // gone. A single pump() shows the just-opened dialog while it's still
+      // up, matching the "respects custom duration in helper" test below.
+      await tester.pump();
 
       expect(find.text('Gold'), findsOneWidget);
     });
