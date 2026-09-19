@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/progression_stats.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/progression_analytics_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
@@ -398,14 +399,14 @@ SkillTreeSnapshot _createSnapshot(
 }
 
 // Minimal SkillTree for testing
-dynamic _createDummySkillTree() {
-  return {
-    'trees': [
-      {'allocatedTiers': 1},
-      {'allocatedTiers': 1},
-      {'allocatedTiers': 1},
+SkillTree _createDummySkillTree() {
+  return SkillTree(
+    trees: [
+      SkillTreeBranch(allocatedTiers: 1),
+      SkillTreeBranch(allocatedTiers: 1),
+      SkillTreeBranch(allocatedTiers: 1),
     ],
-    'totalAllocatedPoints': 3,
-    'availablePoints': 0,
-  };
+    totalAllocatedPoints: 3,
+    availablePoints: 0,
+  );
 }
