@@ -33,8 +33,8 @@ class Achievement with _$Achievement {
     required String iconUrl,
     required AchievementRewardTier rewardTier,
     required int maxProgress,             // Max progress for progress-based
-    bool isProgressBased = false,         // False = instant unlock, True = cumulative
-    bool isHidden = false,                // Hidden until progress > 0
+    @Default(false) bool isProgressBased, // False = instant unlock, True = cumulative
+    @Default(false) bool isHidden,        // Hidden until progress > 0
     DateTime? unlockedAfter,              // Time-gate (null = available now)
   }) = _Achievement;
 
@@ -86,7 +86,7 @@ class PlayerAchievement with _$PlayerAchievement {
     required String achievementId,
     required DateTime unlockedAt,
     AchievementProgress? progress,      // Null = instant unlock, Present = progress-based
-    bool isHidden = false,               // Still hidden if 0% progress
+    @Default(false) bool isHidden,      // Still hidden if 0% progress
   }) = _PlayerAchievement;
 
   factory PlayerAchievement.fromJson(Map<String, dynamic> json) =>
@@ -131,7 +131,7 @@ class AchievementUnlockEvent with _$AchievementUnlockEvent {
     required String userId,
     required Achievement achievement,
     required DateTime unlockedAt,
-    bool isNewUnlock = true,           // True if first time, False if already unlocked
+    @Default(true) bool isNewUnlock,   // True if first time, False if already unlocked
   }) = _AchievementUnlockEvent;
 
   factory AchievementUnlockEvent.fromJson(Map<String, dynamic> json) =>

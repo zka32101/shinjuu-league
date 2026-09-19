@@ -48,7 +48,7 @@ class QuestCondition with _$QuestCondition {
   const factory QuestCondition({
     required QuestConditionType type,
     required int target,              // Goal value
-    int current = 0,                  // Current progress
+    @Default(0) int current,          // Current progress
   }) = _QuestCondition;
 
   factory QuestCondition.fromJson(Map<String, dynamic> json) =>
@@ -66,9 +66,9 @@ class QuestCondition with _$QuestCondition {
 class QuestReward with _$QuestReward {
   const factory QuestReward({
     required int currency,            // Gold/gems
-    int experiencePoints = 0,         // XP for level progression
-    int achievementBadges = 0,        // Cosmetic badges
-    List<String> cosmetics = const [], // Cosmetic item IDs
+    @Default(0) int experiencePoints, // XP for level progression
+    @Default(0) int achievementBadges, // Cosmetic badges
+    @Default(const []) List<String> cosmetics, // Cosmetic item IDs
   }) = _QuestReward;
 
   factory QuestReward.fromJson(Map<String, dynamic> json) =>

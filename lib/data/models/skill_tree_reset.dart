@@ -1,5 +1,5 @@
 import 'package:freezed_annotation/freezed_annotation.dart';
-import 'package:shinjuu_league/data/models/skill_tree.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 
 part 'skill_tree_reset.freezed.dart';
 part 'skill_tree_reset.g.dart';

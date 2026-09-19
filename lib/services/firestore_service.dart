@@ -18,6 +18,37 @@ class FirestoreService {
 
   final _db = FirebaseFirestore.instance;
 
+  // ============ Generic Path-Based Methods ============
+  // (season/quest/achievement/skill-tree systems store nested per-user
+  // subcollections and access them by raw Firestore path rather than
+  // through a dedicated typed method per collection)
+
+  CollectionReference<Map<String, dynamic>> collection(String path) =>
+      _db.collection(path);
+
+  Future<Map<String, dynamic>?> get(String path) async {
+    final doc = await _db.doc(path).get();
+    return doc.data();
+  }
+
+  Future<void> set(String path, dynamic data) async {
+    await _db.doc(path).set(_toJsonMap(data));
+  }
+
+  Future<void> update(String path, dynamic data) async {
+    await _db.doc(path).update(_toJsonMap(data));
+  }
+
+  Future<List<Map<String, dynamic>>> getCollection(String path) async {
+    final snapshot = await _db.collection(path).get();
+    return snapshot.docs.map((d) => d.data()).toList();
+  }
+
+  Map<String, dynamic> _toJsonMap(dynamic data) {
+    if (data is Map<String, dynamic>) return data;
+    return data.toJson() as Map<String, dynamic>;
+  }
+
   // ============ User Methods ============
   Future<User?> getUserById(String uid) async {
     try {
