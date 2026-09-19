@@ -25,20 +25,34 @@ class AnalyticsFilter {
     this.sortOrder = SortOrder.descending,
   });
 
+  // Sentinel so copyWith can tell "not passed" (keep the current value)
+  // apart from "explicitly passed null" (clear that filter) - a plain
+  // `String? x` parameter with `x ?? this.x` can't distinguish the two, so
+  // e.g. `copyWith(operationType: null)` (used to clear the operation-type
+  // filter) fell straight back to the old value and could never actually
+  // clear it.
+  static const Object _unset = Object();
+
   /// Create a copy with modified fields
   AnalyticsFilter copyWith({
-    String? operationType,
-    String? userId,
-    String? resourceType,
-    String? searchKeyword,
+    Object? operationType = _unset,
+    Object? userId = _unset,
+    Object? resourceType = _unset,
+    Object? searchKeyword = _unset,
     SortField? sortBy,
     SortOrder? sortOrder,
   }) {
     return AnalyticsFilter(
-      operationType: operationType ?? this.operationType,
-      userId: userId ?? this.userId,
-      resourceType: resourceType ?? this.resourceType,
-      searchKeyword: searchKeyword ?? this.searchKeyword,
+      operationType: identical(operationType, _unset)
+          ? this.operationType
+          : operationType as String?,
+      userId: identical(userId, _unset) ? this.userId : userId as String?,
+      resourceType: identical(resourceType, _unset)
+          ? this.resourceType
+          : resourceType as String?,
+      searchKeyword: identical(searchKeyword, _unset)
+          ? this.searchKeyword
+          : searchKeyword as String?,
       sortBy: sortBy ?? this.sortBy,
       sortOrder: sortOrder ?? this.sortOrder,
     );
