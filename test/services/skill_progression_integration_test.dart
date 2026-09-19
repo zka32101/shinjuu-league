@@ -376,7 +376,12 @@ void main() {
       for (int i = 0; i < 2; i++) {
         service.levelUpPlayer('player1');
       }
-      expect(service.getNextEvolutionLevel('player1'), equals(3));
+      // getNextEvolutionLevel() returns the threshold STRICTLY ABOVE the
+      // given level (see SkillEvolutionService.getNextEvolutionLevel),
+      // so once currentLevel reaches 3 exactly, "next" is already 6 - not 3
+      // again, even though the Lv3 evolution choice hasn't been confirmed
+      // yet.
+      expect(service.getNextEvolutionLevel('player1'), equals(6));
 
       service.confirmEvolution('player1', EvolutionType.offensive);
       expect(service.getNextEvolutionLevel('player1'), equals(6));
@@ -384,12 +389,16 @@ void main() {
 
     test('debugDumpSkillStates returns all player info', () {
       service.initializePlayer(playerId: 'player1', mechaId: 'leon');
+      // confirmEvolution() is a no-op below Lv3 (see its own currentLevel
+      // >= 3 guard), so reach Lv3 before confirming - otherwise
+      // current_evolution stays null.
+      service.levelUpPlayer('player1');
       service.levelUpPlayer('player1');
       service.confirmEvolution('player1', EvolutionType.offensive);
 
       final dump = service.debugDumpSkillStates();
       expect(dump['player1'], isNotNull);
-      expect(dump['player1']['current_level'], equals(2));
+      expect(dump['player1']['current_level'], equals(3));
       expect(dump['player1']['current_evolution'],
           contains('offensive'));
     });

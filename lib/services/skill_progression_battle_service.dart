@@ -155,10 +155,20 @@ class SkillProgressionBattleService {
 
     // 進化選択が必要な場合は通知
     if (updated.isEvolutionLocked) {
+      // Which selection point this is (Lv3=first, Lv6=second) must be
+      // determined from the level just reached, not from
+      // evolutionState.lastEvolutionLevel - that field only updates once the
+      // player actually *confirms* a choice (selectEvolutionAtLv3 /
+      // updateEvolutionAtLv6), so at the moment this event fires it still
+      // reflects the *previous* confirmed evolution (0 before Lv3 is ever
+      // confirmed, 3 once Lv3 has been confirmed and the player is now
+      // arriving at Lv6) - comparing it against 3 misidentified both the
+      // Lv3 arrival (lastEvolutionLevel still 0, not 3) and the Lv6 arrival
+      // (lastEvolutionLevel still 3, matching the == 3 check meant for Lv3).
       _evolutionRequiredController.add(EvolutionRequiredEvent(
         playerId: playerId,
         level: updated.state.currentLevel,
-        evolutionType: updated.state.evolutionState.lastEvolutionLevel == 3
+        evolutionType: updated.state.currentLevel == 3
           ? EvolutionSelectionType.first
           : EvolutionSelectionType.second,
       ));

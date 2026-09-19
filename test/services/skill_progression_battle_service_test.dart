@@ -385,13 +385,16 @@ void main() {
       service.initializePlayer(playerId: 'player1', mechaId: 'leon');
       service.initializePlayer(playerId: 'player2', mechaId: 'dragoon');
 
+      // confirmEvolution() is a no-op unless isEvolutionLocked is set, which
+      // only happens on arrival at Lv3/Lv6 - reach Lv3 first.
+      service.levelUpPlayer('player1');
       service.levelUpPlayer('player1');
       service.confirmEvolution('player1', EvolutionType.offensive);
 
       final dump = service.debugDumpBattleProgression();
 
       expect(dump['player1'], isNotNull);
-      expect(dump['player1']['current_level'], equals(2));
+      expect(dump['player1']['current_level'], equals(3));
       expect(dump['player1']['current_evolution'], contains('offensive'));
       expect(dump['player2'], isNotNull);
       expect(dump['player2']['current_level'], equals(1));
