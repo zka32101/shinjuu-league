@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
-import 'package:shinjuu_league/services/skill_progression_coordinator.dart';
+import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/viewmodels/battle_skill_progression_viewmodel.dart';
 
 void main() {
