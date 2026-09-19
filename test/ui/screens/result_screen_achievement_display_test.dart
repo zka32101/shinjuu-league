@@ -16,6 +16,33 @@ import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/ui/screens/result_screen.dart';
+import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
+
+/// ResultScreen's achievement banner reads
+/// `battleViewModelProvider`.newlyUnlockedAchievements directly (see
+/// result_screen.dart), not any constructor argument, so a test that wants
+/// the banner to show has to override that provider with a fixed state -
+/// building an Achievement list alone (as some tests here previously did)
+/// never reached the widget.
+class _FixedBattleViewModel extends BattleViewModel {
+  _FixedBattleViewModel(
+    BattleState fixedState, {
+    required FirestoreService firestoreService,
+    required AnalyticsService analyticsService,
+  }) : super(firestoreService: firestoreService, analyticsService: analyticsService) {
+    state = fixedState;
+  }
+}
+
+Override _battleStateWithAchievements(List<Achievement> achievements) {
+  return battleViewModelProvider.overrideWith(
+    (ref) => _FixedBattleViewModel(
+      BattleState.initial().copyWith(newlyUnlockedAchievements: achievements),
+      firestoreService: FirestoreService.forFirestore(FakeFirebaseFirestore()),
+      analyticsService: MockAnalyticsService(),
+    ),
+  );
+}
 
 class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 
@@ -23,7 +50,8 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 /// several other Firebase-backed singletons (FirestoreService, AuthService,
 /// RankingService, SeasonService). Override all of them with fakes so widget
 /// tests never require Firebase.initializeApp().
-ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
+ProviderContainer _fakeFirestoreContainer({List<Override> extraOverrides = const []}) =>
+    ProviderContainer(
       overrides: [
         firestoreServiceProvider.overrideWithValue(
           FirestoreService.forFirestore(FakeFirebaseFirestore()),
@@ -37,6 +65,7 @@ ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
         seasonServiceProvider.overrideWithValue(
           SeasonService(firestore: FakeFirebaseFirestore()),
         ),
+        ...extraOverrides,
       ],
     );
 
@@ -176,7 +205,9 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: _fakeFirestoreContainer(),
+          container: _fakeFirestoreContainer(
+            extraOverrides: [_battleStateWithAchievements(achievements)],
+          ),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -519,6 +550,19 @@ void main() {
 
     testWidgets('achievement card is clickable',
         (WidgetTester tester) async {
+      final achievements = [
+        Achievement(
+          achievementId: 'aha_moment',
+          category: AchievementCategory.milestone,
+          name: 'Aha Moment',
+          description: 'Get your first kill',
+          iconUrl: 'assets/icons/aha_moment.png',
+          rewardTier: AchievementRewardTier.bronze,
+          maxProgress: 1,
+          isProgressBased: false,
+        ),
+      ];
+
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -544,7 +588,9 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: _fakeFirestoreContainer(),
+          container: _fakeFirestoreContainer(
+            extraOverrides: [_battleStateWithAchievements(achievements)],
+          ),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -555,6 +601,19 @@ void main() {
 
       // Achievement section should be present
       expect(find.text('🏆 新しい成果を解除した！'), findsOneWidget);
+
+      // Tapping the card should open the achievement detail dialog
+      // (_showAchievementUnlock in result_screen.dart). The card lives
+      // inside nested scroll views (the whole result content scrolls, and
+      // the achievement row itself scrolls horizontally), so ensure it's
+      // actually laid out on-screen before tapping it.
+      final ahaMomentCard = find.text('Aha Moment');
+      await tester.ensureVisible(ahaMomentCard);
+      await tester.pumpAndSettle();
+      await tester.tap(ahaMomentCard);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(Dialog), findsOneWidget);
     });
   });
 }

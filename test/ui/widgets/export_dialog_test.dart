@@ -157,6 +157,12 @@ void main() {
 
       expect(detailsCheckbox, findsOneWidget);
 
+      // 'details' is the last field in a scrollable list inside the dialog,
+      // so it can render below the visible viewport - scroll it into view
+      // before tapping, or the tap offset misses it entirely.
+      await tester.ensureVisible(detailsCheckbox);
+      await tester.pumpAndSettle();
+
       // Tap to select
       await tester.tap(detailsCheckbox);
       await tester.pumpAndSettle();
@@ -252,6 +258,10 @@ void main() {
         );
 
         if (checkbox.evaluate().isNotEmpty) {
+          // The field list scrolls, so later entries can render below the
+          // visible viewport - scroll each into view before tapping it.
+          await tester.ensureVisible(checkbox);
+          await tester.pumpAndSettle();
           await tester.tap(checkbox);
           await tester.pumpAndSettle();
         }

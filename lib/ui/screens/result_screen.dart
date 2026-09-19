@@ -57,12 +57,13 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
       ),
     );
     // スタッツカードはバナーに少し遅れてスライドインさせ、視線誘導の順番を作る
-    _statSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
-      CurvedAnimation(
-        parent: _entranceController,
-        curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
-      ),
-    );
+    _statSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero)
+        .animate(
+          CurvedAnimation(
+            parent: _entranceController,
+            curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+          ),
+        );
     _statOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
       CurvedAnimation(
         parent: _entranceController,
@@ -108,9 +109,7 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
       context: context,
       barrierDismissible: true,
       barrierColor: Colors.black.withOpacity(0.3),
-      builder: (context) => _AchievementUnlockCard(
-        achievement: achievement,
-      ),
+      builder: (context) => _AchievementUnlockCard(achievement: achievement),
     );
   }
 
@@ -146,172 +145,201 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
           padding: const EdgeInsets.all(24),
           child: Column(
             children: [
-              Stack(
-                alignment: Alignment.center,
-                children: [
-                  if (_isWin)
-                    ParticleBurst(
-                      trigger: _burstTrigger,
-                      color: AppColors.gold,
-                      size: 200,
-                    ),
-                  ScaleTransition(
-                    scale: _bannerScale,
-                    child: FadeTransition(
-                      opacity: _bannerOpacity,
-                      child: Column(
+              // The amount of content above (win animation, stats, a
+              // variable-length achievements row, share card) can exceed
+              // the screen height on many devices - this used to overflow
+              // silently whenever newlyUnlockedAchievements was non-empty,
+              // since the Column itself had no scroll wrapper. Wrapped in
+              // Expanded+SingleChildScrollView so it scrolls instead, with
+              // the "return to lobby" button pinned below it.
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      Stack(
+                        alignment: Alignment.center,
                         children: [
-                          Text(
-                            battle.result.displayName,
-                            style: TextStyle(
-                              fontSize: 40,
-                              fontWeight: FontWeight.bold,
-                              color: resultColor,
-                              shadows: [
-                                Shadow(
-                                  blurRadius: 16,
-                                  color: resultColor.withValues(alpha: 0.6),
-                                ),
-                              ],
+                          if (_isWin)
+                            ParticleBurst(
+                              trigger: _burstTrigger,
+                              color: AppColors.gold,
+                              size: 200,
+                            ),
+                          ScaleTransition(
+                            scale: _bannerScale,
+                            child: FadeTransition(
+                              opacity: _bannerOpacity,
+                              child: Column(
+                                children: [
+                                  Text(
+                                    battle.result.displayName,
+                                    style: TextStyle(
+                                      fontSize: 40,
+                                      fontWeight: FontWeight.bold,
+                                      color: resultColor,
+                                      shadows: [
+                                        Shadow(
+                                          blurRadius: 16,
+                                          color: resultColor.withValues(
+                                            alpha: 0.6,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 8),
+                                  Text(
+                                    battle.eloChange >= 0
+                                        ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
+                                        : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
+                                    style: TextStyle(
+                                      fontSize: 18,
+                                      color: battle.eloChange >= 0
+                                          ? AppColors.win
+                                          : AppColors.loss,
+                                    ),
+                                  ),
+                                  if (isSelfMvp) ...[
+                                    const SizedBox(height: 8),
+                                    Container(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(20),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: AppColors.gold.withValues(
+                                              alpha: 0.7,
+                                            ),
+                                            blurRadius: 14,
+                                            spreadRadius: 1,
+                                          ),
+                                        ],
+                                      ),
+                                      child: Chip(
+                                        avatar: const Icon(
+                                          Icons.star,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                        label: const Text(
+                                          'MVP',
+                                          style: TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                        backgroundColor: AppColors.gold,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
                             ),
                           ),
-                          const SizedBox(height: 8),
-                          Text(
-                            battle.eloChange >= 0
-                                ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
-                                : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
-                            style: TextStyle(
-                              fontSize: 18,
-                              color: battle.eloChange >= 0
-                                  ? AppColors.win
-                                  : AppColors.loss,
-                            ),
-                          ),
-                          if (isSelfMvp) ...[
-                            const SizedBox(height: 8),
-                            Container(
-                              decoration: BoxDecoration(
-                                borderRadius: BorderRadius.circular(20),
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: AppColors.gold.withValues(alpha: 0.7),
-                                    blurRadius: 14,
-                                    spreadRadius: 1,
+                        ],
+                      ),
+                      const SizedBox(height: 24),
+                      SlideTransition(
+                        position: _statSlide,
+                        child: FadeTransition(
+                          opacity: _statOpacity,
+                          child: Card(
+                            child: Padding(
+                              padding: const EdgeInsets.all(16),
+                              child: Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceEvenly,
+                                children: [
+                                  _StatColumn(
+                                    label: 'キル',
+                                    value: '${battle.kills}',
+                                  ),
+                                  _StatColumn(
+                                    label: 'デス',
+                                    value: '${battle.deaths}',
+                                  ),
+                                  _StatColumn(
+                                    label: 'スコア',
+                                    value: '${selfStats.score}',
                                   ),
                                 ],
                               ),
-                              child: Chip(
-                                avatar: const Icon(
-                                  Icons.star,
-                                  color: Colors.white,
-                                  size: 18,
-                                ),
-                                label: const Text(
-                                  'MVP',
-                                  style: TextStyle(
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                                backgroundColor: AppColors.gold,
-                              ),
                             ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-              const SizedBox(height: 24),
-              SlideTransition(
-                position: _statSlide,
-                child: FadeTransition(
-                  opacity: _statOpacity,
-                  child: Card(
-                    child: Padding(
-                      padding: const EdgeInsets.all(16),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          _StatColumn(label: 'キル', value: '${battle.kills}'),
-                          _StatColumn(label: 'デス', value: '${battle.deaths}'),
-                          _StatColumn(
-                            label: 'スコア',
-                            value: '${selfStats.score}',
                           ),
-                        ],
+                        ),
                       ),
-                    ),
+                      const SizedBox(height: 16),
+                      // Newly unlocked achievements
+                      Consumer(
+                        builder: (context, ref, child) {
+                          final battleState = ref.watch(
+                            battleViewModelProvider,
+                          );
+                          final unlockedAchievements =
+                              battleState.newlyUnlockedAchievements;
+
+                          if (unlockedAchievements.isEmpty) {
+                            return const SizedBox.shrink();
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                '🏆 新しい成果を解除した！',
+                                style: Theme.of(context).textTheme.titleSmall
+                                    ?.copyWith(
+                                      color: AppColors.gold,
+                                      fontWeight: FontWeight.bold,
+                                    ),
+                              ),
+                              const SizedBox(height: 12),
+                              SizedBox(
+                                height: 140,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: unlockedAchievements.length,
+                                  separatorBuilder: (_, __) =>
+                                      const SizedBox(width: 8),
+                                  itemBuilder: (context, index) {
+                                    final achievement =
+                                        unlockedAchievements[index];
+                                    return _AchievementCard(
+                                      achievement: achievement,
+                                      onTap: () =>
+                                          _showAchievementUnlock(achievement),
+                                    );
+                                  },
+                                ),
+                              ),
+                              const SizedBox(height: 16),
+                            ],
+                          );
+                        },
+                      ),
+                      Card(
+                        child: ListTile(
+                          leading: _isGeneratingReplay
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                  ),
+                                )
+                              : const Icon(Icons.share),
+                          title: const Text('戦績をシェア'),
+                          subtitle: Text(
+                            _isGeneratingReplay ? 'リプレイ生成中…' : 'SNSでシェアする',
+                          ),
+                          enabled: !_isGeneratingReplay,
+                          onTap: _isGeneratingReplay ? null : _shareReplay,
+                        ),
+                      ),
+                    ],
                   ),
                 ),
               ),
               const SizedBox(height: 16),
-              // Newly unlocked achievements
-              Consumer(
-                builder: (context, ref, child) {
-                  final battleState =
-                      ref.watch(battleViewModelProvider);
-                  final unlockedAchievements =
-                      battleState.newlyUnlockedAchievements;
-
-                  if (unlockedAchievements.isEmpty) {
-                    return const SizedBox.shrink();
-                  }
-
-                  return Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        '🏆 新しい成果を解除した！',
-                        style:
-                            Theme.of(context).textTheme.titleSmall?.copyWith(
-                                  color: AppColors.gold,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                      ),
-                      const SizedBox(height: 12),
-                      SizedBox(
-                        height: 140,
-                        child: ListView.separated(
-                          scrollDirection: Axis.horizontal,
-                          itemCount: unlockedAchievements.length,
-                          separatorBuilder: (_, __) =>
-                              const SizedBox(width: 8),
-                          itemBuilder: (context, index) {
-                            final achievement =
-                                unlockedAchievements[index];
-                            return _AchievementCard(
-                              achievement: achievement,
-                              onTap: () =>
-                                  _showAchievementUnlock(achievement),
-                            );
-                          },
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                    ],
-                  );
-                },
-              ),
-              Card(
-                child: ListTile(
-                  leading: _isGeneratingReplay
-                      ? const SizedBox(
-                          width: 20,
-                          height: 20,
-                          child: CircularProgressIndicator(strokeWidth: 2),
-                        )
-                      : const Icon(Icons.share),
-                  title: const Text('戦績をシェア'),
-                  subtitle: Text(
-                    _isGeneratingReplay ? 'リプレイ生成中…' : 'SNSでシェアする',
-                  ),
-                  enabled: !_isGeneratingReplay,
-                  onTap: _isGeneratingReplay ? null : _shareReplay,
-                ),
-              ),
-              const Spacer(),
               CustomButton(
                 label: 'ロビーへ戻る',
                 onPressed: () => context.go(AppRoutes.lobby),
@@ -347,10 +375,7 @@ class _AchievementCard extends StatelessWidget {
   final Achievement achievement;
   final VoidCallback? onTap;
 
-  const _AchievementCard({
-    required this.achievement,
-    this.onTap,
-  });
+  const _AchievementCard({required this.achievement, this.onTap});
 
   Color _getRewardTierColor(AchievementRewardTier tier) {
     switch (tier) {
@@ -406,17 +431,14 @@ class _AchievementCard extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text(
-                '🏆',
-                style: TextStyle(fontSize: 32),
-              ),
+              const Text('🏆', style: TextStyle(fontSize: 32)),
               const SizedBox(height: 8),
               Expanded(
                 child: Text(
                   achievement.name,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.labelSmall?.copyWith(fontWeight: FontWeight.bold),
                   textAlign: TextAlign.center,
                   maxLines: 2,
                   overflow: TextOverflow.ellipsis,
@@ -426,16 +448,17 @@ class _AchievementCard extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: _getRewardTierColor(achievement.rewardTier)
-                      .withOpacity(0.3),
+                  color: _getRewardTierColor(
+                    achievement.rewardTier,
+                  ).withOpacity(0.3),
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
                   'タップで詳細',
                   style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        color: _getRewardTierColor(achievement.rewardTier),
-                      ),
+                    fontSize: 10,
+                    color: _getRewardTierColor(achievement.rewardTier),
+                  ),
                 ),
               ),
             ],
@@ -452,8 +475,7 @@ class _AchievementUnlockCard extends StatefulWidget {
   const _AchievementUnlockCard({required this.achievement});
 
   @override
-  State<_AchievementUnlockCard> createState() =>
-      _AchievementUnlockCardState();
+  State<_AchievementUnlockCard> createState() => _AchievementUnlockCardState();
 }
 
 class _AchievementUnlockCardState extends State<_AchievementUnlockCard>
@@ -469,9 +491,10 @@ class _AchievementUnlockCardState extends State<_AchievementUnlockCard>
       vsync: this,
     );
 
-    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
-      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
-    );
+    _scaleAnimation = Tween<double>(
+      begin: 0.8,
+      end: 1.0,
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.elasticOut));
 
     _controller.forward();
   }
@@ -517,25 +540,21 @@ class _AchievementUnlockCardState extends State<_AchievementUnlockCard>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Text(
-                '🏆',
-                style: TextStyle(fontSize: 48),
-              ),
+              const Text('🏆', style: TextStyle(fontSize: 48)),
               const SizedBox(height: 16),
               Text(
                 '成果を解除した！',
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color:
-                          _getRewardTierColor(widget.achievement.rewardTier),
-                      fontWeight: FontWeight.bold,
-                    ),
+                  color: _getRewardTierColor(widget.achievement.rewardTier),
+                  fontWeight: FontWeight.bold,
+                ),
               ),
               const SizedBox(height: 12),
               Text(
                 widget.achievement.name,
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
-                    ),
+                  fontWeight: FontWeight.bold,
+                ),
                 textAlign: TextAlign.center,
               ),
               const SizedBox(height: 12),

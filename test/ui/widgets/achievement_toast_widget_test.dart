@@ -88,8 +88,18 @@ void main() {
         ),
       );
 
-      expect(find.byType(SlideTransition), findsOneWidget);
-      expect(find.byType(FadeTransition), findsOneWidget);
+      // Scope to AchievementToastWidget's own subtree: MaterialApp's default
+      // page route transition also renders SlideTransition/FadeTransition
+      // widgets of its own, so an unscoped find.byType() picks those up too.
+      final toastFinder = find.byType(AchievementToastWidget);
+      expect(
+        find.descendant(of: toastFinder, matching: find.byType(SlideTransition)),
+        findsOneWidget,
+      );
+      expect(
+        find.descendant(of: toastFinder, matching: find.byType(FadeTransition)),
+        findsOneWidget,
+      );
     });
 
     testWidgets('handles different reward tiers',
@@ -318,6 +328,22 @@ void main() {
       final controller1 = StreamController<AchievementToastNotification>();
       final controller2 = StreamController<String>();
 
+      final achievement = Achievement(
+        achievementId: 'test_align',
+        category: AchievementCategory.milestone,
+        name: 'Test',
+        description: 'Test',
+        iconUrl: 'assets/test.png',
+        rewardTier: AchievementRewardTier.common,
+        maxProgress: 1,
+        isProgressBased: false,
+      );
+      final notification = AchievementToastNotification(
+        achievement: achievement,
+        createdAt: DateTime.now(),
+        id: 'toast_align',
+      );
+
       await tester.pumpWidget(
         MaterialApp(
           home: Scaffold(
@@ -333,6 +359,12 @@ void main() {
           ),
         ),
       );
+
+      // AchievementToastOverlay renders SizedBox.shrink() (no Align) while
+      // there are no displayed toasts - add one so the Align wrapper (and
+      // its alignment) actually exists to verify.
+      controller1.add(notification);
+      await tester.pumpAndSettle();
 
       // Verify alignment widget
       expect(find.byType(Align), findsOneWidget);
