@@ -4,7 +4,26 @@ import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 
-class MockAchievementService extends Mock implements AchievementService {}
+class MockAchievementService extends Mock implements AchievementService {
+  @override
+  Future<void> unlockAchievement(String? userId, String? achievementId) {
+    return super.noSuchMethod(
+      Invocation.method(#unlockAchievement, [userId, achievementId]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<List<PlayerAchievement>> getUnlockedAchievements(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getUnlockedAchievements, [userId]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+}
 
 void main() {
   group('AchievementTriggerDetector', () {
@@ -91,8 +110,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any as String,
-          any as String,
+          any,
+          any,
         ));
       });
 
@@ -181,8 +200,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any as String,
-          any as String,
+          any,
+          any,
         ));
       });
 
@@ -199,8 +218,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any as String,
-          any as String,
+          any,
+          any,
         ));
       });
     });
@@ -261,8 +280,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any as String,
-          any as String,
+          any,
+          any,
         ));
       });
 
@@ -277,8 +296,8 @@ void main() {
 
         expect(result, isEmpty);
         verifyNever(mockAchievementService.unlockAchievement(
-          any as String,
-          any as String,
+          any,
+          any,
         ));
       });
     });
@@ -313,7 +332,7 @@ void main() {
         when(mockAchievementService.getUnlockedAchievements(userId))
             .thenAnswer((_) async => []);
 
-        when(mockAchievementService.unlockAchievement(any as String, any as String))
+        when(mockAchievementService.unlockAchievement(any, any))
             .thenAnswer((_) async {});
 
         final result = await detector.checkAllTriggersForBattle(
@@ -338,10 +357,10 @@ void main() {
       });
 
       test('handles multiple achievement unlocks', () async {
-        when(mockAchievementService.getUnlockedAchievements(any as String))
+        when(mockAchievementService.getUnlockedAchievements(any))
             .thenAnswer((_) async => []);
 
-        when(mockAchievementService.unlockAchievement(any as String, any as String))
+        when(mockAchievementService.unlockAchievement(any, any))
             .thenAnswer((_) async {});
 
         final result = await detector.checkAllTriggersForBattle(
@@ -365,7 +384,7 @@ void main() {
       });
 
       test('returns empty list on error', () async {
-        when(mockAchievementService.getUnlockedAchievements(any as String))
+        when(mockAchievementService.getUnlockedAchievements(any))
             .thenThrow(Exception('Service error'));
 
         final result = await detector.checkAllTriggersForBattle(
