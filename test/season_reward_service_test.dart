@@ -114,8 +114,16 @@ void main() {
       test('distribution has 30-day claim window', () async {
         when(mockFirestore.set(any, any)).thenAnswer((invocation) async {
           final distribution = invocation.positionalArguments[1] as SeasonRewardDistribution;
-          final daysDifference = distribution.expiresAt.difference(DateTime.now()).inDays;
-          expect(daysDifference, equals(30));
+          // expiresAt is `now.add(Duration(days: 30))` computed inside
+          // distributeSeasonRewards(); by the time this callback's own
+          // DateTime.now() runs, a little real time has always elapsed, so
+          // the difference is always a hair under 30 days. .inDays
+          // truncates rather than rounds, making it a coin flip between 29
+          // and 30 depending on sub-millisecond test timing. Compare in
+          // hours with a small tolerance instead.
+          final hoursDifference =
+              distribution.expiresAt.difference(DateTime.now()).inHours;
+          expect(hoursDifference, closeTo(30 * 24, 1));
         });
 
         await service.distributeSeasonRewards('season_1', 'user_123', 'Gold');

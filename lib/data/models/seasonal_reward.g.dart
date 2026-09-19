@@ -55,7 +55,7 @@ Map<String, dynamic> _$$SeasonRewardDistributionImplToJson(
   'seasonId': instance.seasonId,
   'userId': instance.userId,
   'finalTier': instance.finalTier,
-  'rewards': instance.rewards,
+  'rewards': instance.rewards.map((e) => e.toJson()).toList(),
   'distributedAt': instance.distributedAt.toIso8601String(),
   'claimedAt': instance.claimedAt?.toIso8601String(),
   'expiresAt': instance.expiresAt.toIso8601String(),
