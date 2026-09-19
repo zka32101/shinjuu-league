@@ -15,13 +15,13 @@ void main() {
           userId: 'player1',
           team: 0,
           lane: 0,
-          baseStats: BaseStats(hp: 100, atk: 20, def: 10, spd: 15),
+          baseStats: BaseStats(hp: 100, atk: 20, spd: 15),
         ),
         _participant(
           userId: 'enemy1',
           team: 1,
           lane: 0,
-          baseStats: BaseStats(hp: 100, atk: 20, def: 10, spd: 15),
+          baseStats: BaseStats(hp: 100, atk: 20, spd: 15),
           isBot: true,
         ),
       ];
@@ -238,9 +238,9 @@ void main() {
         final participant = participants[0];
 
         participant.evolution = Evolution(
-          from: 'normal',
-          to: 'lightning',
-          statBoost: StatBoost(atkMultiplier: 1.0, defMultiplier: 1.0, hpMultiplier: 1.0, spdMultiplier: 1.10),
+          type: EvolutionType.mobility,
+          statBoost: StatBoost(atkMultiplier: 1.0, hpMultiplier: 1.0, spdMultiplier: 1.10),
+          description: 'test evolution',
         );
 
         engine.setSkillTreeModifiers(
