@@ -17,6 +17,13 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          # channel:stable（バージョン指定なし）だとGitHubランナー側のFlutterが
+          # 更新されるたびにDart SDKも自動的に前進し、pubspec.lockでロック済みの
+          # analyzer（riverpod_generator/build_runner等が使う推移的依存）が
+          # 内部でサポートする言語バージョンを超えてクラッシュ/ハングする問題が
+          # 発生した（詳細はgit log参照）。pubspec.yamlのsdk制約(^3.12.2)ちょうど
+          # に対応するFlutterバージョンへ固定し、ロック済み依存関係との整合性を保つ。
+          flutter-version: '3.44.9'
           channel: stable
           cache: true
 
