@@ -77,6 +77,10 @@ void main() {
     });
 
     group('getAchievementById', () {
+      // AchievementViewModel resolves this by scanning
+      // getPlayerAchievements(userId) (AchievementService.getProgress
+      // returns an AchievementProgress, not a PlayerAchievement, so the
+      // view model doesn't use it for this lookup).
       test('returns achievement when found', () async {
         final achievement = PlayerAchievement(
           userId: userId,
@@ -84,8 +88,8 @@ void main() {
           unlockedAt: DateTime.now(),
         );
 
-        when(mockService.getProgress(userId, 'ach_1'))
-            .thenAnswer((_) async => achievement);
+        when(mockService.getPlayerAchievements(userId))
+            .thenAnswer((_) async => [achievement]);
 
         final result = await viewModel.getAchievementById('ach_1');
 
@@ -94,8 +98,8 @@ void main() {
       });
 
       test('returns null when not found', () async {
-        when(mockService.getProgress(userId, 'nonexistent'))
-            .thenAnswer((_) async => null);
+        when(mockService.getPlayerAchievements(userId))
+            .thenAnswer((_) async => []);
 
         final result = await viewModel.getAchievementById('nonexistent');
 
@@ -103,7 +107,7 @@ void main() {
       });
 
       test('handles exception gracefully', () async {
-        when(mockService.getProgress(userId, 'ach_1'))
+        when(mockService.getPlayerAchievements(userId))
             .thenThrow(Exception('Error'));
 
         final result = await viewModel.getAchievementById('ach_1');
@@ -256,13 +260,16 @@ void main() {
 
     group('getProgressPercentage', () {
       test('returns progress percentage for achievement', () async {
-        when(mockService.getProgress(userId, 'ach_1'))
-            .thenAnswer((_) async => PlayerAchievement(
+        when(mockService.getPlayerAchievements(userId)).thenAnswer(
+          (_) async => [
+            PlayerAchievement(
               userId: userId,
               achievementId: 'ach_1',
               unlockedAt: DateTime.now(),
               progress: AchievementProgress(current: 50, target: 100),
-            ));
+            ),
+          ],
+        );
 
         final result = await viewModel.getProgressPercentage('ach_1');
 
@@ -270,8 +277,8 @@ void main() {
       });
 
       test('returns 0 when achievement not found', () async {
-        when(mockService.getProgress(userId, 'nonexistent'))
-            .thenAnswer((_) async => null);
+        when(mockService.getPlayerAchievements(userId))
+            .thenAnswer((_) async => []);
 
         final result = await viewModel.getProgressPercentage('nonexistent');
 
@@ -281,12 +288,15 @@ void main() {
 
     group('isAchievementUnlocked', () {
       test('returns true for unlocked achievement', () async {
-        when(mockService.getProgress(userId, 'ach_1'))
-            .thenAnswer((_) async => PlayerAchievement(
+        when(mockService.getPlayerAchievements(userId)).thenAnswer(
+          (_) async => [
+            PlayerAchievement(
               userId: userId,
               achievementId: 'ach_1',
               unlockedAt: DateTime.now(),
-            ));
+            ),
+          ],
+        );
 
         final result = await viewModel.isAchievementUnlocked('ach_1');
 
@@ -294,8 +304,8 @@ void main() {
       });
 
       test('returns false for locked achievement', () async {
-        when(mockService.getProgress(userId, 'ach_1'))
-            .thenAnswer((_) async => null);
+        when(mockService.getPlayerAchievements(userId))
+            .thenAnswer((_) async => []);
 
         final result = await viewModel.isAchievementUnlocked('ach_1');
 
