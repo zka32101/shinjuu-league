@@ -4,9 +4,16 @@ import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
+// `EvolutionType` here refers to the skill-progression system's version
+// (offensive/defensive/support, from skill_catalog.dart) used by
+// confirmEvolution/switchEvolution; evolution_model.dart's own EvolutionType
+// (attack/defense/mobility) is unrelated and only its `Evolution`/`StatBoost`
+// classes are needed from that import, so it's hidden here to avoid
+// ambiguity.
+import 'package:shinjuu_league/data/models/evolution_model.dart' hide EvolutionType;
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
+import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
@@ -146,9 +153,11 @@ class BattleViewModel extends StateNotifier<BattleState> {
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _analyticsService = analyticsService ?? AnalyticsService(),
        _skillTreeService = skillTreeService ?? SkillTreeService(),
-       _achievementService = achievementService ?? AchievementService(),
+       _achievementService = achievementService ??
+           AchievementService(firestoreService ?? FirestoreService()),
        _triggerDetector = AchievementTriggerDetector(
-         achievementService: achievementService ?? AchievementService(),
+         achievementService: achievementService ??
+             AchievementService(firestoreService ?? FirestoreService()),
        ),
        super(BattleState.initial()) {
     _skillProgressionAnalytics = SkillProgressionAnalyticsService(
@@ -495,7 +504,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
       unawaited(
         _skillProgressionAnalytics.logSkillUsed(
           event.playerId,
-          event.skillSlot,
+          event.slot,
           event.currentLevel,
           event.damageDealt,
           event.hasEvolutionBonus,
@@ -621,20 +630,29 @@ class BattleViewModel extends StateNotifier<BattleState> {
   ) async {
     try {
       // Gather battle data for trigger detection
+      final selfStats = finishedBattle.playerStats.firstWhere(
+        (p) => p.userId == _selfUserId,
+        orElse: () => finishedBattle.playerStats.first,
+      );
       final kills = finishedBattle.kills;
       final deaths = finishedBattle.deaths;
-      final assists = finishedBattle.assists;
-      final damageDealt = finishedBattle.damageDealt;
+      final assists = selfStats.assists;
+      // No per-battle damage total is tracked on Battle/PlayerStats yet;
+      // score is the closest existing proxy for "impact dealt".
+      final damageDealt = selfStats.score;
       final totalBattles = 1; // This will be updated by UserViewModel
       final winCount = finishedBattle.result == BattleResult.win ? 1 : 0;
 
-      // Get player's current stats for progress-based achievements
-      final userData = await _firestoreService.getUser(_selfUserId);
-      final statPoints = userData?.statPoints ?? 0;
-      final pathDiversity = userData?.pathDiversity ?? 0;
-      final seasonsParticipated = userData?.seasonsParticipated ?? 0;
-      final consistentSeasons = userData?.consistentSeasons ?? 0;
-      final currentTier = userData?.currentTier ?? 'Bronze';
+      // Get player's current stats for progress-based achievements.
+      // TODO: statPoints/pathDiversity/seasonsParticipated/consistentSeasons/
+      // currentTier aren't tracked on User yet (no season/skill-tree fields
+      // there today) — use safe defaults until that data is wired up.
+      await _firestoreService.getUserById(_selfUserId);
+      const statPoints = 0;
+      const pathDiversity = 0;
+      const seasonsParticipated = 0;
+      const consistentSeasons = 0;
+      const currentTier = 'Bronze';
 
       // Check all achievement triggers
       final unlockedAchievements =
@@ -672,11 +690,11 @@ class BattleViewModel extends StateNotifier<BattleState> {
       }
     } catch (e) {
       // Log error but don't fail the battle result
-      await _analyticsService.recordError(
+      _analyticsService.recordError(
         e,
         null,
         reason: 'Achievement trigger detection failed',
-        information: 'userId: $_selfUserId',
+        information: ['userId: $_selfUserId'],
       );
     }
   }

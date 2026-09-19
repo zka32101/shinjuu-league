@@ -126,7 +126,7 @@ final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) 
 });
 
 final achievementServiceProvider = Provider<AchievementService>((ref) {
-  return AchievementService();
+  return AchievementService(ref.watch(firestoreServiceProvider));
 });
 
 // Phase 7 Sprint 1: Season & Ranking System
@@ -157,15 +157,12 @@ final achievementToastNotificationServiceProvider = Provider<AchievementToastNot
 });
 
 // Phase 10 Step 11: Achievement Unlock Detection & Reward Distribution
-final battleEngineServiceProvider = Provider<BattleEngineService>((ref) {
-  return BattleEngineService();
-});
-
-final achievementDetectorServiceProvider = Provider.autoDispose<AchievementDetectorService>((ref) {
-  return AchievementDetectorService(
-    battleEngine: ref.watch(battleEngineServiceProvider),
-  );
-});
+//
+// AchievementDetectorService is intentionally NOT wired through a Riverpod
+// provider here: it needs a live per-match BattleEngine (battleId/mode/
+// mapId/participants), which only exists once a battle has actually
+// started, so callers construct it directly with that instance instead
+// (see BattleViewModel).
 
 final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref) {
   return AchievementRewardService(

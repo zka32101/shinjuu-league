@@ -1,5 +1,4 @@
 import 'package:shinjuu_league/config/skill_progression_config.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 
@@ -528,11 +527,11 @@ class SkillProgressionAnalyticsService {
     String errorDetail,
   ) async {
     try {
-      await _analyticsService.recordError(
+      _analyticsService.recordError(
         Exception(errorType),
         null,
         reason: 'Skill progression error',
-        information: 'userId: $userId, type: $errorType, detail: $errorDetail',
+        information: [userId, errorType, errorDetail],
       );
     } catch (e) {
       // エラーは無言で処理

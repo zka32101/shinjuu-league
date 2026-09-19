@@ -18,6 +18,11 @@ class FirestoreService {
 
   final _db = FirebaseFirestore.instance;
 
+  /// Raw Firestore instance, for callers that need to build their own
+  /// query/reference chains beyond what the generic path-based methods below
+  /// support.
+  FirebaseFirestore get db => _db;
+
   // ============ Generic Path-Based Methods ============
   // (season/quest/achievement/skill-tree systems store nested per-user
   // subcollections and access them by raw Firestore path rather than
@@ -35,8 +40,25 @@ class FirestoreService {
     await _db.doc(path).set(_toJsonMap(data));
   }
 
+  /// Alias of [set] with named parameters, used by admin/audit services.
+  Future<void> setData({required String path, required dynamic data}) =>
+      set(path, data);
+
   Future<void> update(String path, dynamic data) async {
     await _db.doc(path).update(_toJsonMap(data));
+  }
+
+  /// Deletes the document at [path].
+  Future<void> deleteData({required String path}) async {
+    await _db.doc(path).delete();
+  }
+
+  /// Adds [data] as a new auto-ID document under the collection at [path].
+  Future<void> addData({
+    required String path,
+    required Map<String, dynamic> data,
+  }) async {
+    await _db.collection(path).add(data);
   }
 
   Future<List<Map<String, dynamic>>> getCollection(String path) async {

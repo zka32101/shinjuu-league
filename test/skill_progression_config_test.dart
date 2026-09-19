@@ -15,11 +15,11 @@ void main() {
       config = SkillProgressionConfig();
 
       // Default mock behavior: return default values
-      when(mockRemoteConfig.getDouble(any)).thenReturn(1.0);
-      when(mockRemoteConfig.getInt(any)).thenReturn(0);
-      when(mockRemoteConfig.getBool(any)).thenReturn(true);
-      when(mockRemoteConfig.getString(any)).thenReturn('normal');
-      when(mockRemoteConfig.setDefaults(any)).thenAnswer((_) async {});
+      when(mockRemoteConfig.getDouble(any as String)).thenReturn(1.0);
+      when(mockRemoteConfig.getInt(any as String)).thenReturn(0);
+      when(mockRemoteConfig.getBool(any as String)).thenReturn(true);
+      when(mockRemoteConfig.getString(any as String)).thenReturn('normal');
+      when(mockRemoteConfig.setDefaults(any as Map<String, dynamic>)).thenAnswer((_) async {});
       when(mockRemoteConfig.fetchAndActivate()).thenAnswer((_) async => false);
     });
 
@@ -28,7 +28,7 @@ void main() {
         await config.initialize(mockRemoteConfig);
 
         expect(config.isInitialized, isTrue);
-        verify(mockRemoteConfig.setDefaults(any)).called(1);
+        verify(mockRemoteConfig.setDefaults(any as Map<String, dynamic>)).called(1);
         verify(mockRemoteConfig.fetchAndActivate()).called(1);
       });
 
@@ -409,7 +409,7 @@ void main() {
       test('getters handle Remote Config exceptions gracefully', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getDouble(any))
+        when(mockRemoteConfig.getDouble(any as String))
             .thenThrow(Exception('Invalid value'));
 
         // Should return default without throwing
@@ -420,7 +420,7 @@ void main() {
       test('boolean getters handle exceptions', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getBool(any))
+        when(mockRemoteConfig.getBool(any as String))
             .thenThrow(Exception('Type mismatch'));
 
         // Should return default without throwing
@@ -431,7 +431,7 @@ void main() {
       test('string getters handle exceptions', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getString(any))
+        when(mockRemoteConfig.getString(any as String))
             .thenThrow(Exception('Missing value'));
 
         // Should return default without throwing

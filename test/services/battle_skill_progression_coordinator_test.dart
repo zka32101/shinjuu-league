@@ -365,6 +365,8 @@ void main() {
         slot: SkillSlot.q,
         damageDealt: 250,
         isCritical: false,
+        currentLevel: 3,
+        hasEvolutionBonus: false,
       );
 
       expect(event.playerId, equals('player1'));

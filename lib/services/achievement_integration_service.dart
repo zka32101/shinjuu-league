@@ -89,11 +89,14 @@ class AchievementIntegrationService {
       _logUnlockContext(userId, event, rewards);
     } catch (e) {
       // Log error but don't crash the battle
-      await _analyticsService.recordError(
+      _analyticsService.recordError(
         e,
         null,
         reason: 'Achievement unlock processing failed',
-        information: 'achievementId: ${event.achievement.achievementId}, userId: $userId',
+        information: [
+          'achievementId: ${event.achievement.achievementId}',
+          'userId: $userId',
+        ],
       );
     }
   }

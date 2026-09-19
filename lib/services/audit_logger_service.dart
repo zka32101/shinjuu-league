@@ -1,4 +1,5 @@
 import 'package:shinjuu_league/data/models/admin_role.dart';
+import 'package:shinjuu_league/services/admin_role_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
 /// Audit Logger Service (Phase 33 Part 1).
@@ -203,16 +204,32 @@ class AuditLoggerService {
     }
   }
 
-  /// Get all audit log entries (with pagination)
+  /// Get all audit log entries (with pagination, optionally scoped to a time range)
   Future<List<Map<String, dynamic>>> getAuditLog({
     int limit = 100,
     String? startAfter,
+    DateTime? startTime,
+    DateTime? endTime,
   }) async {
     try {
-      var query = _firestoreService
-          .collection('audit_log')
-          .orderBy('timestamp', descending: true)
-          .limit(limit);
+      var query = _firestoreService.collection('audit_log').orderBy(
+            'timestamp',
+            descending: true,
+          );
+
+      if (startTime != null) {
+        query = query.where(
+          'timestamp',
+          isGreaterThanOrEqualTo: startTime.toIso8601String(),
+        );
+      }
+      if (endTime != null) {
+        query = query.where(
+          'timestamp',
+          isLessThanOrEqualTo: endTime.toIso8601String(),
+        );
+      }
+      query = query.limit(limit);
 
       final snapshot = await query.get();
 

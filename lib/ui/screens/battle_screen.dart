@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
@@ -102,11 +101,11 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     SkillSlot.q: 200,
                     SkillSlot.r: 180,
                     SkillSlot.e: 150,
-                    SkillSlot.ult: selfSkillState.isUltUnlocked ? 500 : 0,
+                    SkillSlot.ult: selfSkillState.isUltAvailable ? 500 : 0,
                   },
                   currentEvolution: selfSkillState.currentEvolution,
                   evolutionBonuses: selfSkillState.evolutionBonuses,
-                  isUltAvailable: selfSkillState.isUltUnlocked,
+                  isUltAvailable: selfSkillState.isUltAvailable,
                   isUltCharging: selfSkillState.isUltCharging,
                   onSkillTap: (slot) {
                     // スキルタップハンドラ（将来の拡張用）
@@ -153,7 +152,7 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const Text('Lv${event.level}に達しました！進化を選択してください。'),
+            Text('Lv${event.level}に達しました！進化を選択してください。'),
             const SizedBox(height: 16),
             Wrap(
               spacing: 12,

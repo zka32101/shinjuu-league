@@ -77,7 +77,7 @@ class FeatureFlagsService {
   };
 
   FeatureFlagsService({SkillProgressionConfig? config})
-      : _config = config ?? SkillProgressionConfig.instance;
+      : _config = config ?? SkillProgressionConfig();
 
   /// Check if a feature is enabled for a user.
   ///

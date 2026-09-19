@@ -6,7 +6,7 @@ import 'package:shinjuu_league/services/battle_engine_service.dart';
 /// Detects when achievements should unlock based on game events
 /// Listens to BattleEngine streams and emits AchievementUnlockEvent when conditions are met
 class AchievementDetectorService {
-  final BattleEngineService _battleEngine;
+  final BattleEngine _battleEngine;
   final Map<String, bool> _unlockedThisSession = {}; // Track unlocked achievements per session
 
   late StreamController<AchievementUnlockEvent> _unlockController;
@@ -15,7 +15,7 @@ class AchievementDetectorService {
   StreamSubscription? _tickSubscription;
 
   AchievementDetectorService({
-    required BattleEngineService battleEngine,
+    required BattleEngine battleEngine,
   }) : _battleEngine = battleEngine {
     _unlockController = StreamController<AchievementUnlockEvent>.broadcast();
     _resetSessionState();
@@ -62,7 +62,7 @@ class AchievementDetectorService {
 
     // First kill detection
     if (!_unlockedThisSession.containsKey('first_kill') &&
-        event.killerId == userId) {
+        event.attackerId == userId) {
       _unlockedThisSession['first_kill'] = true;
       _emitUnlock(
         userId,

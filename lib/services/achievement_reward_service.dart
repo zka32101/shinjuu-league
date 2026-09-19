@@ -111,9 +111,11 @@ class AchievementRewardService {
       if (userData == null) return {};
 
       return {
-        'currency': userData.currency ?? 0,
-        'badges': userData.achievementBadges ?? 0,
-        'cosmetics': userData.ownedCosmetics ?? [],
+        'currency': userData.gold,
+        // No dedicated achievement-badge/cosmetic-inventory fields exist on
+        // User yet; ownedSkinIds is the closest analogue we have today.
+        'badges': 0,
+        'cosmetics': userData.ownedSkinIds,
       };
     } catch (e) {
       print('Error fetching pending rewards: $e');

@@ -43,12 +43,16 @@ class SkillUsedEvent extends BattleSkillEvent {
   final SkillSlot slot;
   final int damageDealt;
   final bool isCritical;
+  final int currentLevel;
+  final bool hasEvolutionBonus;
 
   SkillUsedEvent({
     required String playerId,
     required this.slot,
     required this.damageDealt,
     this.isCritical = false,
+    required this.currentLevel,
+    required this.hasEvolutionBonus,
   }) : super(playerId);
 }
 
@@ -169,6 +173,8 @@ class BattleSkillProgressionCoordinator {
       playerId: playerId,
       slot: slot,
       damageDealt: effectiveDamage,
+      currentLevel: progress.state.currentLevel,
+      hasEvolutionBonus: progress.state.evolutionState.currentEvolution != null,
     ));
 
     return true;
