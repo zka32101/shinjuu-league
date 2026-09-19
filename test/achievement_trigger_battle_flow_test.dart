@@ -332,7 +332,12 @@ void main() {
 
       final result = await detector.checkSeasonalTriggers(
         userId,
-        seasonsParticipated: 10,
+        // seasonsParticipated must stay below 10 here, or it would also
+        // satisfy the unrelated Season Warrior threshold
+        // (`seasonsParticipated >= 10` in checkSeasonalTriggers) and make
+        // `result` non-empty regardless of this test's actual target (a
+        // non-Gold tier not triggering Consistency).
+        seasonsParticipated: 3,
         consistentSeasons: 3,
         currentTier: 'Silver',
         tierChanged: false,

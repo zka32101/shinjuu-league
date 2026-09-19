@@ -209,7 +209,12 @@ void main() {
           () async {
         final result = await detector.checkProgressTriggers(
           userId,
-          statPoints: 50,
+          // statPoints must stay below 50 here, or it would also satisfy
+          // the unrelated Stat Master threshold (see the `statPoints >= 50`
+          // check right above the pathDiversity one in
+          // checkProgressTriggers) and make `result` non-empty regardless
+          // of this test's actual target (insufficient path diversity).
+          statPoints: 10,
           pathDiversity: 2,
           seasonsParticipated: 1,
           consistentSeasons: 0,
