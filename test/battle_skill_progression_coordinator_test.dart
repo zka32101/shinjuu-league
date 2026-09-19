@@ -5,6 +5,7 @@ import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
+import 'package:shinjuu_league/services/skill_progression_service.dart';
 
 class MockSkillProgressionBattleService extends Mock
     implements SkillProgressionBattleService {
@@ -63,6 +64,23 @@ class MockSkillProgressionConfig extends Mock
       ),
     ) as ProgressionDifficultyModifiers;
   }
+}
+
+/// autoConfirmEvolution() だけを検証するための最小限のフィクスチャ。
+/// isEvolutionLocked=true + 指定レベルの進化ロック中プレイヤー状態を作る。
+BattleSkillProgressionState _lockedProgressAt(int level, {String playerId = 'player1'}) {
+  return BattleSkillProgressionState(
+    userId: playerId,
+    state: SkillProgressionState(
+      playerId: playerId,
+      mechaId: 'mecha_default_01',
+      currentLevel: level,
+      evolutionState: PlayerEvolutionState.initial(
+        mechaId: 'mecha_default_01',
+        currentLevel: level,
+      ),
+    ),
+  )..isEvolutionLocked = true;
 }
 
 void main() {
@@ -145,6 +163,8 @@ void main() {
       test('confirms evolution at first evolution level from config', () {
         when(mockConfig.firstEvolutionLevel).thenReturn(3);
         when(mockConfig.secondEvolutionLevel).thenReturn(6);
+        when(mockSkillService.getProgress('player1'))
+            .thenReturn(_lockedProgressAt(3));
 
         coordinator = BattleSkillProgressionCoordinator(
           skillService: mockSkillService,
@@ -162,6 +182,8 @@ void main() {
       test('switches evolution at second evolution level from config', () {
         when(mockConfig.firstEvolutionLevel).thenReturn(3);
         when(mockConfig.secondEvolutionLevel).thenReturn(6);
+        when(mockSkillService.getProgress('player1'))
+            .thenReturn(_lockedProgressAt(6));
 
         coordinator = BattleSkillProgressionCoordinator(
           skillService: mockSkillService,
@@ -179,6 +201,8 @@ void main() {
       test('respects custom first evolution level from config', () {
         when(mockConfig.firstEvolutionLevel).thenReturn(2);
         when(mockConfig.secondEvolutionLevel).thenReturn(5);
+        when(mockSkillService.getProgress('player1'))
+            .thenReturn(_lockedProgressAt(2));
 
         coordinator = BattleSkillProgressionCoordinator(
           skillService: mockSkillService,
@@ -358,19 +382,16 @@ void main() {
     });
 
     group('Disposal', () {
-      test('dispose closes skill event controller', () {
+      test('dispose closes skill event controller', () async {
         coordinator.dispose();
 
-        expect(
-          () => coordinator.skillEvents.listen((_) {}),
-          throwsA(
-            isA<StateError>().having(
-              (e) => e.message,
-              'message',
-              contains('closed'),
-            ),
-          ),
-        );
+        // skillEvents is backed by a broadcast StreamController. Listening to
+        // an already-closed broadcast stream does not throw (that's only the
+        // case for single-subscription controllers); it simply completes
+        // immediately, so the correct way to observe "dispose closed the
+        // controller" is to assert the stream is done, not that listening
+        // throws.
+        await expectLater(coordinator.skillEvents, emitsDone);
       });
 
       test('dispose calls skill service dispose', () {

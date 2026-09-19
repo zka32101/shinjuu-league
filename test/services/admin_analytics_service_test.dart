@@ -51,7 +51,12 @@ void main() {
           {'logId': 'log2', 'action': 'UPDATE_FEATURE'},
           {'logId': 'log3', 'action': 'DISABLE_FEATURE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final count = await analyticsService.getTotalOperationCount();
 
@@ -59,7 +64,12 @@ void main() {
       });
 
       test('getTotalOperationCount returns 0 on empty logs', () async {
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => []);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => []);
 
         final count = await analyticsService.getTotalOperationCount();
 
@@ -67,7 +77,12 @@ void main() {
       });
 
       test('getTotalOperationCount returns 0 on exception', () async {
-        when(mockAuditLoggerService.getAuditLog()).thenThrow(Exception('Test error'));
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenThrow(Exception('Test error'));
 
         final count = await analyticsService.getTotalOperationCount();
 
@@ -81,7 +96,12 @@ void main() {
           {'action': 'UPDATE_FEATURE'},
           {'action': 'DELETE_FEATURE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final breakdown = await analyticsService.getOperationsByType();
 
@@ -96,7 +116,12 @@ void main() {
           {'logId': 'log2'}, // missing action
           {'action': 'UPDATE_FEATURE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final breakdown = await analyticsService.getOperationsByType();
 
@@ -111,7 +136,12 @@ void main() {
           {'userId': 'user1'},
           {'userId': 'user2'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final breakdown = await analyticsService.getOperationsByUser();
 
@@ -125,7 +155,12 @@ void main() {
           {'resourceType': 'feature_flag'},
           {'resourceType': 'difficulty'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final breakdown = await analyticsService.getOperationsByResourceType();
 
@@ -147,7 +182,12 @@ void main() {
             'userId': 'user2',
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final trend = await analyticsService.getHourlyOperationTrend();
 
@@ -156,7 +196,12 @@ void main() {
       });
 
       test('getHourlyOperationTrend returns empty on exception', () async {
-        when(mockAuditLoggerService.getAuditLog()).thenThrow(Exception('Test error'));
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenThrow(Exception('Test error'));
 
         final trend = await analyticsService.getHourlyOperationTrend();
 
@@ -175,7 +220,12 @@ void main() {
             'userId': 'user2',
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final trend = await analyticsService.getDailyOperationTrend();
 
@@ -188,7 +238,12 @@ void main() {
           {'timestamp': 'invalid-timestamp', 'userId': 'user1'},
           {'timestamp': DateTime.now().toIso8601String(), 'userId': 'user2'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final trend = await analyticsService.getDailyOperationTrend();
 
@@ -203,7 +258,12 @@ void main() {
           {'userId': 'user2', 'action': 'UPDATE_FEATURE'},
           {'userId': 'user1', 'action': 'DELETE_FEATURE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final activity = await analyticsService.getUserActivity('user1');
 
@@ -215,7 +275,12 @@ void main() {
         final logs = [
           {'userId': 'user2', 'action': 'CREATE_FEATURE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final activity = await analyticsService.getUserActivity('user1');
 
@@ -231,7 +296,12 @@ void main() {
           {'userId': 'user2'},
           {'userId': 'user3'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final mostActive = await analyticsService.getMostActiveAdmins(limit: 2);
 
@@ -247,7 +317,12 @@ void main() {
           10,
           (i) => {'userId': 'user${i % 5}'},
         );
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final mostActive = await analyticsService.getMostActiveAdmins(limit: 3);
 
@@ -265,7 +340,12 @@ void main() {
           {'userId': 'user1', 'timestamp': now.add(Duration(seconds: 30)).toIso8601String()},
           {'userId': 'user2', 'timestamp': now.toIso8601String()},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final anomalies = await analyticsService.detectHighFrequencyOperations(
           timeWindow: Duration(minutes: 5),
@@ -282,7 +362,12 @@ void main() {
           {'userId': 'user2'},
           {'userId': 'user3'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final anomalies = await analyticsService.detectHighFrequencyOperations(
           threshold: 10,
@@ -298,7 +383,12 @@ void main() {
           {'resourceType': 'admin_role', 'action': 'UPDATE_ROLE'},
           {'resourceType': 'feature_flag', 'action': 'REVOKE_ROLE'},
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final unusual = await analyticsService.getUnusualOperations();
 
@@ -330,7 +420,12 @@ void main() {
             // missing resourceType
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final integrity = await analyticsService.getAuditTrailIntegrity();
 
@@ -350,7 +445,12 @@ void main() {
             'resourceType': 'feature',
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final integrity = await analyticsService.getAuditTrailIntegrity();
 
@@ -360,7 +460,12 @@ void main() {
 
       test('getAuditRetentionStats returns retention info', () async {
         final logs = List.generate(100, (i) => {'logId': 'log$i'});
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final stats = await analyticsService.getAuditRetentionStats();
 
@@ -387,7 +492,12 @@ void main() {
             'logId': 'log2',
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final summary = await analyticsService.getDashboardSummary();
 
@@ -411,7 +521,12 @@ void main() {
             'logId': 'log1',
           },
         ];
-        when(mockAuditLoggerService.getAuditLog()).thenAnswer((_) async => logs);
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenAnswer((_) async => logs);
 
         final summary =
             await analyticsService.getDashboardSummary(startTime: startTime, endTime: endTime);
@@ -421,7 +536,12 @@ void main() {
       });
 
       test('getDashboardSummary handles errors gracefully', () async {
-        when(mockAuditLoggerService.getAuditLog()).thenThrow(Exception('Test error'));
+        when(mockAuditLoggerService.getAuditLog(
+          limit: anyNamed('limit'),
+          startAfter: anyNamed('startAfter'),
+          startTime: anyNamed('startTime'),
+          endTime: anyNamed('endTime'),
+        )).thenThrow(Exception('Test error'));
 
         final summary = await analyticsService.getDashboardSummary();
 

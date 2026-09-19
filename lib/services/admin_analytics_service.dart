@@ -449,7 +449,7 @@ class AdminAnalyticsService {
       final totalOps = operationsByUser.values
           .fold<int>(0, (sum, count) => sum + count);
 
-      return {
+      final result = <String, dynamic>{
         'timeRange': {
           'startTime': startTime?.toIso8601String(),
           'endTime': endTime?.toIso8601String(),
@@ -471,6 +471,17 @@ class AdminAnalyticsService {
         'mostActiveAdmins': mostActive,
         'auditIntegrity': integrity,
       };
+
+      // Each sub-metric swallows its own audit-log failures and returns a
+      // safe empty default, so a systemic outage (e.g. the audit logger
+      // itself is down) would otherwise be invisible here. getAuditTrailIntegrity
+      // is the one sub-call that still surfaces its exception message, so use
+      // it to detect and propagate an overall failure signal.
+      if (integrity['status'] == 'ERROR' && integrity['error'] != null) {
+        result['error'] = integrity['error'];
+      }
+
+      return result;
     } catch (e) {
       return {
         'error': e.toString(),

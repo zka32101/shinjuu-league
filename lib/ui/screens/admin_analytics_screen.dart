@@ -144,9 +144,11 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
                 ),
               ],
             ),
-            CustomButton(
-              label: 'Change Range',
-              onPressed: _onDateRangeChanged,
+            IntrinsicWidth(
+              child: CustomButton(
+                label: 'Change Range',
+                onPressed: _onDateRangeChanged,
+              ),
             ),
           ],
         ),

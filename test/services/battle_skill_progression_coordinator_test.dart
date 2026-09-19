@@ -252,7 +252,13 @@ void main() {
       expect(snapshot, isNotNull);
       expect(snapshot!.playerId, equals('player1'));
       expect(snapshot.currentLevel, equals(1));
-      expect(snapshot.skillCooldowns, isNotEmpty);
+      // skillCooldowns is a sparse map that only tracks slots that have
+      // actually been used (see SkillProgressionState.useSkill) — a freshly
+      // initialized player with no skill uses yet has no entries at all,
+      // and every consumer (skill_progression_display.dart,
+      // battle_skill_progression_viewmodel.dart) already reads it via
+      // `?? 0.0`, so an empty map here is the correct "all skills ready" state.
+      expect(snapshot.skillCooldowns, isEmpty);
       expect(snapshot.evolutionBonuses, isNotEmpty);
     });
 
