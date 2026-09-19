@@ -25,7 +25,7 @@ class ItemBonus {
   final double? defenseBonus; // 防御力ボーナス（%）
   final double? hpBonus; // 体力ボーナス（%）
 
-  ItemBonus({
+  const ItemBonus({
     this.attackBonus,
     this.defenseBonus,
     this.hpBonus,
@@ -68,20 +68,20 @@ class Item {
   final String description;
   final ItemType type;
   final ItemRarity rarity;
-  final ItemBonus bonus;
+  final ItemBonus? bonus;
   final int purchasePrice; // ゴールド
-  final DateTime acquiredAt;
+  final DateTime? acquiredAt;
   final bool isEquipped;
 
-  Item({
+  const Item({
     required this.itemId,
     required this.name,
     required this.description,
     required this.type,
     required this.rarity,
-    required this.bonus,
+    this.bonus,
     required this.purchasePrice,
-    required this.acquiredAt,
+    this.acquiredAt,
     this.isEquipped = false,
   });
 

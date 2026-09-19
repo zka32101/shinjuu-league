@@ -24,9 +24,13 @@ Item _$ItemFromJson(Map<String, dynamic> json) => Item(
   description: json['description'] as String,
   type: $enumDecode(_$ItemTypeEnumMap, json['type']),
   rarity: $enumDecode(_$ItemRarityEnumMap, json['rarity']),
-  bonus: ItemBonus.fromJson(json['bonus'] as Map<String, dynamic>),
+  bonus: json['bonus'] == null
+      ? null
+      : ItemBonus.fromJson(json['bonus'] as Map<String, dynamic>),
   purchasePrice: (json['purchasePrice'] as num).toInt(),
-  acquiredAt: DateTime.parse(json['acquiredAt'] as String),
+  acquiredAt: json['acquiredAt'] == null
+      ? null
+      : DateTime.parse(json['acquiredAt'] as String),
   isEquipped: json['isEquipped'] as bool? ?? false,
 );
 
@@ -38,7 +42,7 @@ Map<String, dynamic> _$ItemToJson(Item instance) => <String, dynamic>{
   'rarity': _$ItemRarityEnumMap[instance.rarity]!,
   'bonus': instance.bonus,
   'purchasePrice': instance.purchasePrice,
-  'acquiredAt': instance.acquiredAt.toIso8601String(),
+  'acquiredAt': instance.acquiredAt?.toIso8601String(),
   'isEquipped': instance.isEquipped,
 };
 

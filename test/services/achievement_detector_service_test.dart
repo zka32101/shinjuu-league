@@ -5,8 +5,19 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/services/achievement_detector_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
-// Mock BattleEngineService for testing
-class MockBattleEngineService extends BattleEngineService {
+// Mock BattleEngine for testing. BattleEngine's real constructor needs
+// per-match data (battleId/mode/mapId/participants) that this test doesn't
+// care about; the streams are overridden below and driven manually instead
+// of by BattleEngine's own tick loop.
+class MockBattleEngineService extends BattleEngine {
+  MockBattleEngineService()
+      : super(
+          battleId: 'test_battle',
+          mode: BattleMode.quick,
+          mapId: 'test_map',
+          participants: const [],
+        );
+
   final _testCombatController = StreamController<CombatEvent>.broadcast();
   final _testDamageController = StreamController<DamageEvent>.broadcast();
   final _testTickController = StreamController<int>.broadcast();
@@ -66,10 +77,9 @@ void main() {
       // Simulate a combat event
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: testUserId,
+          attackerId: testUserId,
           victimId: 'enemy_123',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 
@@ -85,10 +95,9 @@ void main() {
       // Simulate multiple combat events
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: testUserId,
+          attackerId: testUserId,
           victimId: 'enemy_1',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 
@@ -107,10 +116,9 @@ void main() {
 
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: testUserId,
+          attackerId: testUserId,
           victimId: 'enemy_123',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 
@@ -130,11 +138,10 @@ void main() {
       for (int i = 0; i < 3; i++) {
         battleEngine.testEmitCombatEvent(
           CombatEvent(
-            killerId: testUserId,
-            victimId: 'enemy_$i',
-            timestamp: DateTime.now(),
-            damageDealt: 100,
-          ),
+          attackerId: testUserId,
+          victimId: 'enemy_$i',
+          tickSecond: 1,
+        ),
         );
         await Future.delayed(const Duration(milliseconds: 50));
       }
@@ -149,10 +156,9 @@ void main() {
 
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: testUserId,
+          attackerId: testUserId,
           victimId: 'enemy_1',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 
@@ -187,10 +193,9 @@ void main() {
 
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: testUserId,
+          attackerId: testUserId,
           victimId: 'enemy_123',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 
@@ -223,10 +228,9 @@ void main() {
 
       battleEngine.testEmitCombatEvent(
         CombatEvent(
-          killerId: 'user_1',
+          attackerId: 'user_1',
           victimId: 'enemy_1',
-          timestamp: DateTime.now(),
-          damageDealt: 100,
+          tickSecond: 1,
         ),
       );
 

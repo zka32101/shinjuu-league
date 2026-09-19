@@ -71,15 +71,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 1,
             deaths: 0,
             assists: 0,
-            damageDealt: 100,
+            score: 100,
           ),
         ],
         result: BattleResult.win,
@@ -89,10 +90,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -108,15 +110,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 0,
             deaths: 5,
             assists: 0,
-            damageDealt: 50,
+            score: 50,
           ),
         ],
         result: BattleResult.loss,
@@ -126,10 +129,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -146,15 +150,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 1,
             deaths: 0,
             assists: 0,
-            damageDealt: 100,
+            score: 100,
           ),
         ],
         result: BattleResult.win,
@@ -164,10 +169,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -183,15 +189,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 2,
             deaths: 1,
             assists: 1,
-            damageDealt: 300,
+            score: 300,
           ),
         ],
         result: BattleResult.win,
@@ -201,10 +208,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -221,15 +229,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 5,
             deaths: 2,
             assists: 3,
-            damageDealt: 500,
+            score: 500,
           ),
         ],
         result: BattleResult.win,
@@ -239,10 +248,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -261,22 +271,24 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 10,
             deaths: 1,
             assists: 5,
-            damageDealt: 800,
+            score: 800,
           ),
           PlayerStats(
             userId: 'bot_001',
+            mechaId: 'test_mecha_bot',
             kills: 2,
             deaths: 5,
             assists: 1,
-            damageDealt: 200,
+            score: 200,
           ),
         ],
         result: BattleResult.win,
@@ -286,10 +298,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -306,15 +319,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 5,
             deaths: 2,
             assists: 2,
-            damageDealt: 500,
+            score: 500,
           ),
         ],
         result: BattleResult.win,
@@ -324,17 +338,18 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
       await tester.pumpAndSettle();
 
       // Should show positive Elo change
-      expect(find.text(contains('Elo +16')), findsOneWidget);
+      expect(find.textContaining('Elo +16'), findsOneWidget);
     });
 
     testWidgets('shows Elo change negative for loss',
@@ -344,15 +359,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 1,
             deaths: 5,
             assists: 0,
-            damageDealt: 150,
+            score: 150,
           ),
         ],
         result: BattleResult.loss,
@@ -362,17 +378,18 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
       await tester.pumpAndSettle();
 
       // Should show negative Elo change
-      expect(find.text(contains('Elo -12')), findsOneWidget);
+      expect(find.textContaining('Elo -12'), findsOneWidget);
     });
 
     testWidgets('shows return to lobby button',
@@ -382,15 +399,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 3,
             deaths: 2,
             assists: 1,
-            damageDealt: 300,
+            score: 300,
           ),
         ],
         result: BattleResult.win,
@@ -400,10 +418,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
@@ -420,15 +439,16 @@ void main() {
         userId: userId,
         opponentIds: const ['bot_001'],
         mapId: 'map_default',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         durationSeconds: 300,
         playerStats: [
           PlayerStats(
             userId: userId,
+            mechaId: 'test_mecha',
             kills: 1,
             deaths: 0,
             assists: 0,
-            damageDealt: 100,
+            score: 100,
           ),
         ],
         result: BattleResult.win,
@@ -438,10 +458,11 @@ void main() {
       );
 
       await tester.pumpWidget(
-        ProviderContainer(
+        UncontrolledProviderScope(
+          container: ProviderContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
-          ),
+        ),
         ),
       );
 
