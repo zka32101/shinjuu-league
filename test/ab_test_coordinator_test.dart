@@ -6,10 +6,65 @@ import 'package:shinjuu_league/services/feature_flags_service.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 
-class MockFeatureFlagsService extends Mock implements FeatureFlagsService {}
+class MockFeatureFlagsService extends Mock implements FeatureFlagsService {
+  @override
+  String getDifficultyCohort(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyCohort, [userId]),
+      returnValue: 'normal',
+      returnValueForMissingStub: 'normal',
+    ) as String;
+  }
+
+  @override
+  bool isFeatureEnabled(String? userId, String? featureName) {
+    return super.noSuchMethod(
+      Invocation.method(#isFeatureEnabled, [userId, featureName]),
+      returnValue: false,
+      returnValueForMissingStub: false,
+    ) as bool;
+  }
+
+  @override
+  String getVariant(String? userId, String? featureName) {
+    return super.noSuchMethod(
+      Invocation.method(#getVariant, [userId, featureName]),
+      returnValue: 'control',
+      returnValueForMissingStub: 'control',
+    ) as String;
+  }
+}
 
 class MockAnalyticsService extends Mock
-    implements SkillProgressionAnalyticsService {}
+    implements SkillProgressionAnalyticsService {
+  @override
+  Future<void> logABTestVariantAssignment(
+    String? userId,
+    String? experimentId,
+    String? variantName,
+    bool? isControl,
+  ) {
+    return super.noSuchMethod(
+      Invocation.method(#logABTestVariantAssignment,
+          [userId, experimentId, variantName, isControl]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logCustomEvent(
+    String? userId,
+    String? eventName,
+    Map<String, dynamic>? parameters,
+  ) {
+    return super.noSuchMethod(
+      Invocation.method(#logCustomEvent, [userId, eventName, parameters]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
     implements SkillProgressionConfig {}
@@ -24,7 +79,7 @@ void main() {
       mockFlags = MockFeatureFlagsService();
       mockAnalytics = MockAnalyticsService();
 
-      when(mockFlags.getDifficultyCohort(any as String)).thenReturn('normal');
+      when(mockFlags.getDifficultyCohort(any)).thenReturn('normal');
 
       coordinator = ABTestCoordinator(
         featureFlags: mockFlags,
@@ -152,8 +207,8 @@ void main() {
         verify(mockAnalytics.logABTestVariantAssignment(
           userId,
           experimentId,
-          any as String,
-          any as bool,
+          any,
+          any,
         )).called(1);
       });
 
@@ -168,8 +223,8 @@ void main() {
         verify(mockAnalytics.logABTestVariantAssignment(
           userId,
           experimentId,
-          any as String,
-          any as bool,
+          any,
+          any,
         )).called(1);
       });
 
@@ -406,7 +461,7 @@ void main() {
               .having(
                   (p) => p.containsKey('variant'), 'has variant', isTrue)
               .having((p) => p.containsKey('cohort'), 'has cohort', isTrue))
-              as Map<String, dynamic>,
+,
         )).called(1);
       });
 
@@ -430,7 +485,7 @@ void main() {
                   isTrue)
               .having((p) => p.containsKey('feature_variant'),
                   'has feature_variant', isTrue))
-              as Map<String, dynamic>,
+,
         )).called(1);
       });
 
@@ -447,7 +502,7 @@ void main() {
           'event_with_cohort',
           argThat(isA<Map<String, dynamic>>()
               .having((p) => p['cohort'], 'cohort', equals('normal')))
-              as Map<String, dynamic>,
+,
         )).called(1);
       });
     });

@@ -3,7 +3,61 @@ import 'package:mockito/mockito.dart';
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 
-class MockFirebaseRemoteConfig extends Mock implements FirebaseRemoteConfig {}
+class MockFirebaseRemoteConfig extends Mock implements FirebaseRemoteConfig {
+  @override
+  double getDouble(String? key) {
+    return super.noSuchMethod(
+      Invocation.method(#getDouble, [key]),
+      returnValue: 0.0,
+      returnValueForMissingStub: 0.0,
+    ) as double;
+  }
+
+  @override
+  int getInt(String? key) {
+    return super.noSuchMethod(
+      Invocation.method(#getInt, [key]),
+      returnValue: 0,
+      returnValueForMissingStub: 0,
+    ) as int;
+  }
+
+  @override
+  bool getBool(String? key) {
+    return super.noSuchMethod(
+      Invocation.method(#getBool, [key]),
+      returnValue: false,
+      returnValueForMissingStub: false,
+    ) as bool;
+  }
+
+  @override
+  String getString(String? key) {
+    return super.noSuchMethod(
+      Invocation.method(#getString, [key]),
+      returnValue: '',
+      returnValueForMissingStub: '',
+    ) as String;
+  }
+
+  @override
+  Future<void> setDefaults(Map<String, dynamic>? defaultParameters) {
+    return super.noSuchMethod(
+      Invocation.method(#setDefaults, [defaultParameters]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<bool> fetchAndActivate() {
+    return super.noSuchMethod(
+      Invocation.method(#fetchAndActivate, []),
+      returnValue: Future<bool>.value(false),
+      returnValueForMissingStub: Future<bool>.value(false),
+    ) as Future<bool>;
+  }
+}
 
 void main() {
   group('SkillProgressionConfig', () {
@@ -15,11 +69,11 @@ void main() {
       config = SkillProgressionConfig();
 
       // Default mock behavior: return default values
-      when(mockRemoteConfig.getDouble(any as String)).thenReturn(1.0);
-      when(mockRemoteConfig.getInt(any as String)).thenReturn(0);
-      when(mockRemoteConfig.getBool(any as String)).thenReturn(true);
-      when(mockRemoteConfig.getString(any as String)).thenReturn('normal');
-      when(mockRemoteConfig.setDefaults(any as Map<String, dynamic>)).thenAnswer((_) async {});
+      when(mockRemoteConfig.getDouble(any)).thenReturn(1.0);
+      when(mockRemoteConfig.getInt(any)).thenReturn(0);
+      when(mockRemoteConfig.getBool(any)).thenReturn(true);
+      when(mockRemoteConfig.getString(any)).thenReturn('normal');
+      when(mockRemoteConfig.setDefaults(any)).thenAnswer((_) async {});
       when(mockRemoteConfig.fetchAndActivate()).thenAnswer((_) async => false);
     });
 
@@ -28,7 +82,7 @@ void main() {
         await config.initialize(mockRemoteConfig);
 
         expect(config.isInitialized, isTrue);
-        verify(mockRemoteConfig.setDefaults(any as Map<String, dynamic>)).called(1);
+        verify(mockRemoteConfig.setDefaults(any)).called(1);
         verify(mockRemoteConfig.fetchAndActivate()).called(1);
       });
 
@@ -409,7 +463,7 @@ void main() {
       test('getters handle Remote Config exceptions gracefully', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getDouble(any as String))
+        when(mockRemoteConfig.getDouble(any))
             .thenThrow(Exception('Invalid value'));
 
         // Should return default without throwing
@@ -420,7 +474,7 @@ void main() {
       test('boolean getters handle exceptions', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getBool(any as String))
+        when(mockRemoteConfig.getBool(any))
             .thenThrow(Exception('Type mismatch'));
 
         // Should return default without throwing
@@ -431,7 +485,7 @@ void main() {
       test('string getters handle exceptions', () async {
         await config.initialize(mockRemoteConfig);
 
-        when(mockRemoteConfig.getString(any as String))
+        when(mockRemoteConfig.getString(any))
             .thenThrow(Exception('Missing value'));
 
         // Should return default without throwing

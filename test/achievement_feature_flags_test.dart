@@ -3,7 +3,43 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/achievement_feature_flags.dart';
 import 'package:shinjuu_league/services/remote_config_service.dart';
 
-class MockRemoteConfigService extends Mock implements RemoteConfigService {}
+class MockRemoteConfigService extends Mock implements RemoteConfigService {
+  @override
+  int getInt(String? key, {int? defaultValue}) {
+    return super.noSuchMethod(
+      Invocation.method(#getInt, [key], {#defaultValue: defaultValue}),
+      returnValue: 0,
+      returnValueForMissingStub: 0,
+    ) as int;
+  }
+
+  @override
+  String getString(String? key, {String? defaultValue}) {
+    return super.noSuchMethod(
+      Invocation.method(#getString, [key], {#defaultValue: defaultValue}),
+      returnValue: '',
+      returnValueForMissingStub: '',
+    ) as String;
+  }
+
+  @override
+  bool getBool(String? key, {bool? defaultValue}) {
+    return super.noSuchMethod(
+      Invocation.method(#getBool, [key], {#defaultValue: defaultValue}),
+      returnValue: false,
+      returnValueForMissingStub: false,
+    ) as bool;
+  }
+
+  @override
+  double getDouble(String? key, {double? defaultValue}) {
+    return super.noSuchMethod(
+      Invocation.method(#getDouble, [key], {#defaultValue: defaultValue}),
+      returnValue: 0.0,
+      returnValueForMissingStub: 0.0,
+    ) as double;
+  }
+}
 
 void main() {
   group('AchievementFeatureFlags', () {
@@ -17,7 +53,7 @@ void main() {
 
     group('Unlock Threshold ABtests', () {
       test('getAhaMomentKillRequirement returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(2);
 
         final result = flags.getAhaMomentKillRequirement();
@@ -25,7 +61,7 @@ void main() {
       });
 
       test('getAhaMomentKillRequirement falls back to default 1', () {
-        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(1);
 
         final result = flags.getAhaMomentKillRequirement();
@@ -33,7 +69,7 @@ void main() {
       });
 
       test('getStatMasterPointRequirement returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(75);
 
         final result = flags.getStatMasterPointRequirement();
@@ -41,7 +77,7 @@ void main() {
       });
 
       test('getStatMasterPointRequirement falls back to default 50', () {
-        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(50);
 
         final result = flags.getStatMasterPointRequirement();
@@ -49,7 +85,7 @@ void main() {
       });
 
       test('getBalancedFighterPointsPerTree returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue')))
             .thenReturn(20);
 
         final result = flags.getBalancedFighterPointsPerTree();
@@ -57,7 +93,7 @@ void main() {
       });
 
       test('getBalancedFighterPointsPerTree falls back to default 15', () {
-        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue')))
             .thenReturn(15);
 
         final result = flags.getBalancedFighterPointsPerTree();
@@ -65,7 +101,7 @@ void main() {
       });
 
       test('getSeasonWarriorSeasonRequirement returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(12);
 
         final result = flags.getSeasonWarriorSeasonRequirement();
@@ -73,7 +109,7 @@ void main() {
       });
 
       test('getSeasonWarriorSeasonRequirement falls back to default 10', () {
-        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(10);
 
         final result = flags.getSeasonWarriorSeasonRequirement();
@@ -81,7 +117,7 @@ void main() {
       });
 
       test('getConsistencySeasonRequirement returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(4);
 
         final result = flags.getConsistencySeasonRequirement();
@@ -89,7 +125,7 @@ void main() {
       });
 
       test('getConsistencySeasonRequirement falls back to default 3', () {
-        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(3);
 
         final result = flags.getConsistencySeasonRequirement();
@@ -97,7 +133,7 @@ void main() {
       });
 
       test('getConsistencyMinimumTier returns Remote Config value', () {
-        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue') as String))
+        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue')))
             .thenReturn('Silver');
 
         final result = flags.getConsistencyMinimumTier();
@@ -105,7 +141,7 @@ void main() {
       });
 
       test('getConsistencyMinimumTier falls back to default Gold', () {
-        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue') as String))
+        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue')))
             .thenReturn('Gold');
 
         final result = flags.getConsistencyMinimumTier();
@@ -115,7 +151,7 @@ void main() {
 
     group('Reward Tier ABtests', () {
       test('getBronzeCurrencyReward returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(40);
 
         final result = flags.getBronzeCurrencyReward();
@@ -123,7 +159,7 @@ void main() {
       });
 
       test('getBronzeCurrencyReward falls back to default 50', () {
-        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(50);
 
         final result = flags.getBronzeCurrencyReward();
@@ -131,7 +167,7 @@ void main() {
       });
 
       test('getSilverCurrencyReward returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(150);
 
         final result = flags.getSilverCurrencyReward();
@@ -139,7 +175,7 @@ void main() {
       });
 
       test('getSilverCurrencyReward falls back to default 100', () {
-        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(100);
 
         final result = flags.getSilverCurrencyReward();
@@ -147,7 +183,7 @@ void main() {
       });
 
       test('getGoldCurrencyReward returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(350);
 
         final result = flags.getGoldCurrencyReward();
@@ -155,7 +191,7 @@ void main() {
       });
 
       test('getGoldCurrencyReward falls back to default 250', () {
-        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(250);
 
         final result = flags.getGoldCurrencyReward();
@@ -163,7 +199,7 @@ void main() {
       });
 
       test('getPlatinumCurrencyReward returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(750);
 
         final result = flags.getPlatinumCurrencyReward();
@@ -171,7 +207,7 @@ void main() {
       });
 
       test('getPlatinumCurrencyReward falls back to default 500', () {
-        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(500);
 
         final result = flags.getPlatinumCurrencyReward();
@@ -181,7 +217,7 @@ void main() {
 
     group('Notification ABtests', () {
       test('isPushNotificationEnabled returns true from Remote Config', () {
-        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
 
         final result = flags.isPushNotificationEnabled();
@@ -189,7 +225,7 @@ void main() {
       });
 
       test('isPushNotificationEnabled returns false from Remote Config', () {
-        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(false);
 
         final result = flags.isPushNotificationEnabled();
@@ -197,7 +233,7 @@ void main() {
       });
 
       test('isPushNotificationEnabled falls back to default true', () {
-        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
 
         final result = flags.isPushNotificationEnabled();
@@ -205,7 +241,7 @@ void main() {
       });
 
       test('getPushNotificationThresholdPercent returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue')))
             .thenReturn(50);
 
         final result = flags.getPushNotificationThresholdPercent();
@@ -213,7 +249,7 @@ void main() {
       });
 
       test('getPushNotificationThresholdPercent falls back to default 75', () {
-        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue')))
             .thenReturn(75);
 
         final result = flags.getPushNotificationThresholdPercent();
@@ -221,7 +257,7 @@ void main() {
       });
 
       test('isSeasonEndCeremonyEnabled returns true from Remote Config', () {
-        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
 
         final result = flags.isSeasonEndCeremonyEnabled();
@@ -229,7 +265,7 @@ void main() {
       });
 
       test('isSeasonEndCeremonyEnabled falls back to default true', () {
-        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
 
         final result = flags.isSeasonEndCeremonyEnabled();
@@ -237,7 +273,7 @@ void main() {
       });
 
       test('getSeasonEndCeremonyDurationSeconds returns Remote Config value', () {
-        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue')))
             .thenReturn(5);
 
         final result = flags.getSeasonEndCeremonyDurationSeconds();
@@ -245,7 +281,7 @@ void main() {
       });
 
       test('getSeasonEndCeremonyDurationSeconds falls back to default 3', () {
-        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue')))
             .thenReturn(3);
 
         final result = flags.getSeasonEndCeremonyDurationSeconds();
@@ -322,33 +358,33 @@ void main() {
 
     group('Debug Utilities', () {
       test('debugDumpAllFlags returns all flag values as map', () {
-        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('aha_moment_kill_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(1);
-        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('stat_master_points_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(50);
-        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('balanced_fighter_points_per_tree', defaultValue: anyNamed('defaultValue')))
             .thenReturn(15);
-        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_warrior_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(10);
-        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('consistency_seasons_requirement', defaultValue: anyNamed('defaultValue')))
             .thenReturn(3);
-        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue') as String))
+        when(mockRemoteConfig.getString('consistency_minimum_tier', defaultValue: anyNamed('defaultValue')))
             .thenReturn('Gold');
-        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('bronze_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(50);
-        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('silver_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(100);
-        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('gold_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(250);
-        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('platinum_currency_reward', defaultValue: anyNamed('defaultValue')))
             .thenReturn(500);
-        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('achievement_push_notification_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
-        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('achievement_push_notification_threshold', defaultValue: anyNamed('defaultValue')))
             .thenReturn(75);
-        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool('season_end_ceremony_enabled', defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
-        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt('season_end_ceremony_duration_seconds', defaultValue: anyNamed('defaultValue')))
             .thenReturn(3);
 
         final dump = flags.debugDumpAllFlags();
@@ -373,11 +409,11 @@ void main() {
 
       test('debugDumpAllFlags contains expected keys', () {
         // Setup all mocks with defaults
-        when(mockRemoteConfig.getInt(any as String, defaultValue: anyNamed('defaultValue') as int))
+        when(mockRemoteConfig.getInt(any, defaultValue: anyNamed('defaultValue')))
             .thenReturn(1);
-        when(mockRemoteConfig.getString(any as String, defaultValue: anyNamed('defaultValue') as String))
+        when(mockRemoteConfig.getString(any, defaultValue: anyNamed('defaultValue')))
             .thenReturn('Gold');
-        when(mockRemoteConfig.getBool(any as String, defaultValue: anyNamed('defaultValue') as bool))
+        when(mockRemoteConfig.getBool(any, defaultValue: anyNamed('defaultValue')))
             .thenReturn(true);
 
         final dump = flags.debugDumpAllFlags();
