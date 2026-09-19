@@ -5,9 +5,111 @@ import 'package:shinjuu_league/services/achievement_analytics_integration.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 
-class MockAchievementService extends Mock implements AchievementService {}
+class MockAchievementService extends Mock implements AchievementService {
+  @override
+  Future<int> getUnlockCount(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getUnlockCount, [userId]),
+      returnValue: Future<int>.value(0),
+      returnValueForMissingStub: Future<int>.value(0),
+    ) as Future<int>;
+  }
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+  @override
+  Future<double> getCompletionPercentage(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getCompletionPercentage, [userId]),
+      returnValue: Future<double>.value(0.0),
+      returnValueForMissingStub: Future<double>.value(0.0),
+    ) as Future<double>;
+  }
+
+  @override
+  Future<List<PlayerAchievement>> getAchievementsByCategory(
+      String? userId, AchievementCategory? category) {
+    return super.noSuchMethod(
+      Invocation.method(#getAchievementsByCategory, [userId, category]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+}
+
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logAchievementUnlocked(
+      String? userId, String? achievementId, String? rarity) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logAchievementUnlocked, [userId, achievementId, rarity]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logAchievementProgress(String? userId, String? achievementId,
+      int? currentProgress, int? targetProgress) {
+    return super.noSuchMethod(
+      Invocation.method(#logAchievementProgress,
+          [userId, achievementId, currentProgress, targetProgress]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logAchievementCategoryProgress(String? userId,
+      String? category, int? unlockedCount, int? totalCount) {
+    return super.noSuchMethod(
+      Invocation.method(#logAchievementCategoryProgress,
+          [userId, category, unlockedCount, totalCount]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logAchievementCompletion(
+      String? userId, double? completionPercentage, int? totalUnlocked) {
+    return super.noSuchMethod(
+      Invocation.method(#logAchievementCompletion,
+          [userId, completionPercentage, totalUnlocked]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logAchievementRewardClaimed(
+      String? userId,
+      String? achievementId,
+      String? rewardTier,
+      int? currencyAmount,
+      int? badgeCount) {
+    return super.noSuchMethod(
+      Invocation.method(#logAchievementRewardClaimed,
+          [userId, achievementId, rewardTier, currencyAmount, badgeCount]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  void recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    String? reason,
+    Iterable<Object>? information,
+  }) {
+    super.noSuchMethod(
+      Invocation.method(#recordError, [exception, stackTrace],
+          {#reason: reason, #information: information}),
+      returnValueForMissingStub: null,
+    );
+  }
+}
 
 void main() {
   group('AchievementAnalyticsIntegration', () {
@@ -106,19 +208,19 @@ void main() {
 
         // Should NOT call logAchievementRewardClaimed for progress-based
         verifyNever(mockAnalyticsService.logAchievementRewardClaimed(
-          any as String,
-          any as String,
-          any as String,
-          any as int,
-          any as int,
+          any,
+          any,
+          any,
+          any,
+          any,
         ));
       });
 
       test('handles errors gracefully', () async {
         when(mockAnalyticsService.logAchievementUnlocked(
-          any as String,
-          any as String,
-          any as String,
+          any,
+          any,
+          any,
         )).thenThrow(Exception('Analytics error'));
 
         // Should not throw
@@ -133,7 +235,7 @@ void main() {
           any,
           any,
           reason: anyNamed('reason'),
-          information: anyNamed('information') as Iterable<Object>,
+          information: anyNamed('information'),
         )).called(1);
       });
 
@@ -204,10 +306,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementProgress(
-          any as String,
-          any as String,
-          any as int,
-          any as int,
+          any,
+          any,
+          any,
+          any,
         ));
       });
 
@@ -230,10 +332,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementProgress(
-          any as String,
-          any as String,
-          any as int,
-          any as int,
+          any,
+          any,
+          any,
+          any,
         ));
       });
     });
@@ -330,10 +432,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementCategoryProgress(
-          any as String,
-          any as String,
-          any as int,
-          any as int,
+          any,
+          any,
+          any,
+          any,
         ));
       });
 
@@ -379,7 +481,7 @@ void main() {
       test('tracks progress for all categories', () async {
         when(mockAchievementService.getAchievementsByCategory(
           userId,
-          any as AchievementCategory,
+          any,
         )).thenAnswer((_) async => []);
 
         await integration.trackAllCategoriesProgress(userId);
@@ -387,7 +489,7 @@ void main() {
         // Should be called for each category
         verify(mockAchievementService.getAchievementsByCategory(
           userId,
-          any as AchievementCategory,
+          any,
         )).called(greaterThanOrEqualTo(AchievementCategory.values.length));
       });
     });
@@ -419,11 +521,11 @@ void main() {
         }
 
         verify(mockAnalyticsService.logAchievementRewardClaimed(
-          any as String,
-          any as String,
-          any as String,
-          any as int,
-          any as int,
+          any,
+          any,
+          any,
+          any,
+          any,
         )).called(tiers.length);
       });
     });
