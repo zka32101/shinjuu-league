@@ -5,7 +5,27 @@ import 'package:shinjuu_league/data/models/progression_stats.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
-class MockFirestoreService extends Mock implements FirestoreService {}
+class MockFirestoreService extends Mock implements FirestoreService {
+  @override
+  Future<void> set(String? path, dynamic data) {
+    return super.noSuchMethod(
+      Invocation.method(#set, [path, data]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<List<Map<String, dynamic>>> getCollection(String? path) {
+    return super.noSuchMethod(
+      Invocation.method(#getCollection, [path]),
+      returnValue: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+      returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+    ) as Future<List<Map<String, dynamic>>>;
+  }
+}
 
 void main() {
   group('AchievementService', () {
@@ -47,7 +67,7 @@ void main() {
 
     group('unlockAchievement', () {
       test('unlocks achievement successfully', () async {
-        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
 
         await service.unlockAchievement('user_123', 'rising_star');
 
