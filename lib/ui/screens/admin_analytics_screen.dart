@@ -147,7 +147,6 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
             CustomButton(
               label: 'Change Range',
               onPressed: _onDateRangeChanged,
-              size: CustomButtonSize.small,
             ),
           ],
         ),
@@ -177,7 +176,6 @@ class _AdminAnalyticsScreenState extends ConsumerState<AdminAnalyticsScreen> {
             CustomButton(
               label: 'Retry',
               onPressed: _loadAnalytics,
-              size: CustomButtonSize.small,
             ),
           ],
         ),

@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/theme.dart';
+import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/viewmodels/skill_evolution_viewmodel.dart';
 
@@ -46,7 +47,7 @@ class _EvolutionSecondSelectionScreenState
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
 
     // タイムアウト判定（Lv3の選択をそのまま維持）
-    if (selectionState.isTimedOut() && !_userSelected) {
+    if (selectionState.isTimedOut && !_userSelected) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!_userSelected) {
           widget.onEvolutionConfirmed(widget.currentEvolution);

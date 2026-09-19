@@ -139,6 +139,9 @@ class SkillTreeBranch {
   /// このツリーに割り当てられた合計ポイント（＝解放済みティア数）
   int get totalPoints => allocatedTiers;
 
+  /// 指定ティア（0始まり）がすでに割り当て済みか
+  bool isAllocated(int tierIndex) => tierIndex < allocatedTiers;
+
   factory SkillTreeBranch.fromJson(Map<String, dynamic> json) {
     return SkillTreeBranch(allocatedTiers: json['allocatedTiers'] as int? ?? 0);
   }

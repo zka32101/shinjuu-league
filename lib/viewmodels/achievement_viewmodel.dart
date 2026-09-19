@@ -77,10 +77,24 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
     }
   }
 
+  /// Look up a player's progress record for a specific achievement ID.
+  /// `AchievementService.getProgress` returns an `AchievementProgress`
+  /// (current/target counters), not the `PlayerAchievement` record itself,
+  /// so this scans the player's achievement list instead.
+  Future<PlayerAchievement?> _getPlayerAchievementById(
+    String achievementId,
+  ) async {
+    final achievements = await _achievementService.getPlayerAchievements(_userId);
+    for (final achievement in achievements) {
+      if (achievement.achievementId == achievementId) return achievement;
+    }
+    return null;
+  }
+
   /// Get achievement by ID
   Future<PlayerAchievement?> getAchievementById(String achievementId) async {
     try {
-      return await _achievementService.getProgress(_userId, achievementId);
+      return await _getPlayerAchievementById(achievementId);
     } catch (e) {
       return null;
     }
@@ -146,7 +160,7 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
   /// Get progress for specific achievement
   Future<int> getProgressPercentage(String achievementId) async {
     try {
-      final achievement = await _achievementService.getProgress(_userId, achievementId);
+      final achievement = await _getPlayerAchievementById(achievementId);
       return achievement?.getProgressPercentage() ?? 0;
     } catch (e) {
       return 0;
@@ -156,7 +170,7 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
   /// Check if achievement is unlocked
   Future<bool> isAchievementUnlocked(String achievementId) async {
     try {
-      final achievement = await _achievementService.getProgress(_userId, achievementId);
+      final achievement = await _getPlayerAchievementById(achievementId);
       return achievement?.isUnlocked ?? false;
     } catch (e) {
       return false;
@@ -172,8 +186,7 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
       final result = <(Achievement, PlayerAchievement?)>[];
 
       for (final achievement in catalogAchievements) {
-        final playerAchievement = await _achievementService.getProgress(
-          _userId,
+        final playerAchievement = await _getPlayerAchievementById(
           achievement.achievementId,
         );
         result.add((achievement, playerAchievement));
@@ -241,11 +254,16 @@ final achievementsWithProgressProvider =
   final catalogAchievements = AchievementsCatalog.getByCategory(category);
   final result = <(Achievement, PlayerAchievement?)>[];
 
+  final playerAchievements = await achievementService.getPlayerAchievements(userId);
+
   for (final achievement in catalogAchievements) {
-    final playerAchievement = await achievementService.getProgress(
-      userId,
-      achievement.achievementId,
-    );
+    PlayerAchievement? playerAchievement;
+    for (final pa in playerAchievements) {
+      if (pa.achievementId == achievement.achievementId) {
+        playerAchievement = pa;
+        break;
+      }
+    }
     result.add((achievement, playerAchievement));
   }
 

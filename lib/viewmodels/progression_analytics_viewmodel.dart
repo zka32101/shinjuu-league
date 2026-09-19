@@ -118,7 +118,7 @@ class ProgressionAnalyticsViewModel extends StateNotifier<ProgressionAnalyticsSt
 
   /// Check if player has multiple seasons (for comparison features)
   bool canCompareSeason() {
-    return state.stats?.allSeasons.length ?? 0 >= 2;
+    return (state.stats?.allSeasons.length ?? 0) >= 2;
   }
 
   /// Get current season tier or placeholder

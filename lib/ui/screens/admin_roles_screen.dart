@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/admin_role.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/viewmodels/admin_access_viewmodel.dart';
 
 /// Admin Roles Management Screen (Phase 33 Part 2).
 ///
@@ -212,9 +213,9 @@ class _AdminRolesScreenState extends ConsumerState<AdminRolesScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
+        Text(
           'Admin Users (${state.adminUsersByRole.values.fold(0, (a, b) => a + b)})',
-          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
         ...state.allAdminUsers.map((user) => _buildAdminUserCard(user)),

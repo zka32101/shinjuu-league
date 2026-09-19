@@ -32,9 +32,8 @@ void main() async {
   // パフォーマンス計測を初期化（デバッグモード時のみ有効）
   await PerformanceService().init();
 
-  // プッシュ通知・実績システムを初期化
+  // プッシュ通知システムを初期化（AchievementServiceはステートレスなため初期化不要）
   await PushNotificationService().init();
-  await AchievementService().init();
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
   FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;

@@ -4,6 +4,7 @@ import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/viewmodels/skill_tree_viewmodel.dart';
 
 /// スキルツリー進行画面
 /// ユーザーがスキルポイントを割り当てて、ツリーを成長させる画面
@@ -380,7 +381,7 @@ class _ProgressBar extends StatelessWidget {
 
 /// ツリービュー
 class _TreeView extends StatelessWidget {
-  final SkillTreeData tree;
+  final SkillTreeBranch tree;
   final int treeIndex;
   final String treeName;
   final SkillTree skillTree;
@@ -420,7 +421,8 @@ class _TreeView extends StatelessWidget {
               (tierIndex) => _TierCard(
                 tierIndex: tierIndex,
                 isAllocated: tree.isAllocated(tierIndex),
-                modifier: SkillTreeService.tierModifiers[treeIndex][tierIndex],
+                modifier: SkillTreeService
+                    .tierModifiers[SkillTreeService.treeNames[treeIndex]]![tierIndex],
                 onAllocate: skillTree.availablePoints > 0 &&
                         !tree.isAllocated(tierIndex) &&
                         (tierIndex == 0 || tree.isAllocated(tierIndex - 1))
@@ -543,7 +545,6 @@ class _TierCard extends StatelessWidget {
             CustomButton(
               label: '割り当て',
               onPressed: onAllocate!,
-              small: true,
             )
           else if (isAllocated)
             Icon(
@@ -686,7 +687,7 @@ class _ControlButtons extends StatelessWidget {
             child: CustomButton(
               label: 'リセット',
               onPressed: onReset,
-              secondary: true,
+              isPrimary: false,
             ),
           ),
           const SizedBox(width: 12.0),

@@ -2,7 +2,8 @@ import 'dart:math';
 import 'dart:ui';
 
 import 'package:flame/components.dart';
-import 'package:flutter/material.dart' show Colors, Icons;
+import 'package:flutter/material.dart'
+    show Colors, Icons, TextDirection, TextPainter, TextSpan, TextStyle;
 
 /// レーン中央に鎮座する中立モンスターの描画。討伐すると討伐者へゴール+攻撃バフを与える
 /// （BattleEngine側の状態が唯一の正、このクラスは見た目のみ）。

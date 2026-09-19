@@ -344,7 +344,6 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       child: CustomButton(
         label: label,
         onPressed: () => _applyPreset(preset),
-        fontSize: 12,
       ),
     );
   }

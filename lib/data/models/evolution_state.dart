@@ -116,6 +116,9 @@ class EvolutionSelectionState with _$EvolutionSelectionState {
     selectedChoice: null,
   );
 
+  /// カウントダウンが終了したか
+  bool get isTimedOut => remainingSeconds <= 0;
+
   factory EvolutionSelectionState.fromJson(Map<String, dynamic> json) =>
       _$EvolutionSelectionStateFromJson(json);
 }
