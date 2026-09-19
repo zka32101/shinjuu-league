@@ -211,7 +211,13 @@ class AchievementsCatalog {
     name: 'Aha Moment',
     description: 'Get your first kill',
     iconUrl: 'assets/achievements/aha_moment.png',
-    rewardTier: AchievementRewardTier.common,
+    // Every other catalog achievement uses the bronze/silver/gold/platinum
+    // payout-tier scheme; this was the one accidental use of the
+    // cosmetic-rarity scheme's `common` value, which silently zeroed out
+    // this achievement's badge reward (see getRewardBadges()) even though
+    // it's the flagship Aha Moment KPI achievement. Aligned with its sibling
+    // `firstBlood`, which covers the same "first kill" moment.
+    rewardTier: AchievementRewardTier.bronze,
     maxProgress: 1,
     isProgressBased: false,
   );

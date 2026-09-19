@@ -57,6 +57,7 @@ class MockFirestoreService implements FirestoreService {
       winRate: 0.0,
       gems: 0,
       gold: (data['currency'] as int?) ?? 0,
+      achievementBadges: (data['badges'] as int?) ?? 0,
       ownedSkinIds: List<String>.from(data['cosmetics'] as List? ?? const []),
       createdAt: now,
       lastBattleAt: now,

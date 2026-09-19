@@ -124,9 +124,9 @@ class AchievementRewardService {
 
       return {
         'currency': userData.gold,
-        // No dedicated achievement-badge/cosmetic-inventory fields exist on
-        // User yet; ownedSkinIds is the closest analogue we have today.
-        'badges': 0,
+        'badges': userData.achievementBadges,
+        // No dedicated cosmetic-inventory field exists on User yet;
+        // ownedSkinIds is the closest analogue we have today.
         'cosmetics': userData.ownedSkinIds,
       };
     } catch (e) {
