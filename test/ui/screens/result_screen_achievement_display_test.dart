@@ -13,9 +13,45 @@ import 'package:shinjuu_league/ui/screens/result_screen.dart';
 
 class MockFirestoreService extends Mock implements FirestoreService {}
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logBattleEnd(String? userId, String? battleId, String? result,
+      int? kills, int? deaths) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logBattleEnd, [userId, battleId, result, kills, deaths]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
 
-class MockReplayService extends Mock implements ReplayService {}
+  @override
+  Future<void> logAchievementUnlocked(
+      String? userId, String? achievementId, String? rarity) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logAchievementUnlocked, [userId, achievementId, rarity]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
+
+class MockReplayService extends Mock implements ReplayService {
+  @override
+  Future<Replay> generateAndSave(Battle? battle) {
+    return super.noSuchMethod(
+      Invocation.method(#generateAndSave, [battle]),
+      returnValue: Future<Replay>.value(Replay(
+        replayId: 'stub',
+        battleId: 'stub',
+        shareUrl: '',
+        summary: ReplaySummary(mvpUserId: 'stub', topKills: 0, totalScore: 0),
+        createdAt: DateTime.now(),
+      )),
+    ) as Future<Replay>;
+  }
+}
 
 class MockSkillTreeService extends Mock implements SkillTreeService {}
 
@@ -36,18 +72,18 @@ void main() {
       mockSkillTree = MockSkillTreeService();
 
       when(mockAnalytics.logBattleEnd(
-        any as String,
-        any as String,
-        any as String,
-        any as int,
-        any as int,
+        any,
+        any,
+        any,
+        any,
+        any,
       )).thenAnswer((_) async {});
       when(mockAnalytics.logAchievementUnlocked(
-        any as String,
-        any as String,
-        any as String,
+        any,
+        any,
+        any,
       )).thenAnswer((_) async {});
-      when(mockReplay.generateAndSave(any as Battle)).thenAnswer(
+      when(mockReplay.generateAndSave(any)).thenAnswer(
         (_) async => Replay(
           replayId: 'replay_$battleId',
           battleId: battleId,
