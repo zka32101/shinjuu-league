@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/evolution_state.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/skill_progression_battle_service.dart';
+import 'package:shinjuu_league/services/skill_progression_service.dart';
 
 void main() {
   group('BattleSkillProgressionState', () {
@@ -97,8 +98,14 @@ void main() {
             mechaId: 'leon',
             currentLevel: 6,
             currentEvolution: EvolutionType.offensive,
+            evolutionHistory: [
+              EvolutionRecord(
+                level: 3,
+                choice: EvolutionType.offensive,
+                selectedAt: DateTime.now(),
+              ),
+            ],
             lastEvolutionLevel: 3,
-            evolutionCount: 1,
           ),
         ),
       )..isEvolutionLocked = true;

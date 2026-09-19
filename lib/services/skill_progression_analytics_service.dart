@@ -40,7 +40,7 @@ class SkillProgressionAnalyticsService {
       _currentDifficultyPreset = _progressionConfig.difficultyPreset;
       final modifiers = _progressionConfig.getDifficultyModifiers();
 
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_cohort_assigned',
         parameters: {
           'user_id': userId,
@@ -74,7 +74,7 @@ class SkillProgressionAnalyticsService {
       _currentDifficultyPreset = newPreset;
       final modifiers = _progressionConfig.getDifficultyModifiers();
 
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_config_changed',
         parameters: {
           'user_id': userId,
@@ -111,7 +111,7 @@ class SkillProgressionAnalyticsService {
     bool isEvolutionRequired,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_level_up',
         parameters: _addCohortParameters({
           'user_id': userId,
@@ -141,7 +141,7 @@ class SkillProgressionAnalyticsService {
     bool isAutoSelected,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_evolution_confirmed',
         parameters: _addCohortParameters({
           'user_id': userId,
@@ -172,7 +172,7 @@ class SkillProgressionAnalyticsService {
     int switchCount,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_evolution_switched',
         parameters: {
           'user_id': userId,
@@ -205,7 +205,7 @@ class SkillProgressionAnalyticsService {
     bool isCritical,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_skill_used',
         parameters: {
           'user_id': userId,
@@ -228,7 +228,7 @@ class SkillProgressionAnalyticsService {
   /// - userId: プレイヤーID
   Future<void> logUltUnlocked(String userId) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_ult_unlocked',
         parameters: {
           'user_id': userId,
@@ -253,7 +253,7 @@ class SkillProgressionAnalyticsService {
     int targetsHit,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_ult_activated',
         parameters: {
           'user_id': userId,
@@ -281,7 +281,7 @@ class SkillProgressionAnalyticsService {
     int totalKills,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_max_level_reached',
         parameters: {
           'user_id': userId,
@@ -316,7 +316,7 @@ class SkillProgressionAnalyticsService {
     required EvolutionType? finalEvolution,
   }) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_battle_summary',
         parameters: _addCohortParameters({
           'user_id': userId,
@@ -351,7 +351,7 @@ class SkillProgressionAnalyticsService {
     required double killParticipationRate,
   }) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_cohort_performance',
         parameters: {
           'user_id': userId,
@@ -383,7 +383,7 @@ class SkillProgressionAnalyticsService {
     required int finalDamageOutput,
   }) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_cohort_evolution_impact',
         parameters: {
           'user_id': userId,
@@ -413,7 +413,7 @@ class SkillProgressionAnalyticsService {
     double damageIncreasePercent,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_evolution_bonus_effectiveness',
         parameters: {
           'user_id': userId,
@@ -439,7 +439,7 @@ class SkillProgressionAnalyticsService {
     Map<SkillSlot, int> totalDamageBySlot,
   ) async {
     try {
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_usage_pattern',
         parameters: _addCohortParameters({
           'user_id': userId,
@@ -481,7 +481,7 @@ class SkillProgressionAnalyticsService {
       final total = offensiveCount + defensiveCount + supportCount + autoSelectCount;
       if (total == 0) return;
 
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'skill_progression_evolution_preference',
         parameters: {
           'user_id': userId,
@@ -560,7 +560,7 @@ class SkillProgressionAnalyticsService {
         'is_control': isControl,
       });
 
-      await _analyticsService.logEvent(
+      await _analyticsService.logCustomEvent(
         'ab_test_variant_assigned',
         parameters: params,
       );
@@ -586,7 +586,7 @@ class SkillProgressionAnalyticsService {
         ...parameters,
       });
 
-      await _analyticsService.logEvent(eventName, parameters: params);
+      await _analyticsService.logCustomEvent(eventName, parameters: params);
     } catch (e) {
       // エラーは無言で処理
     }

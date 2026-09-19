@@ -3,7 +3,6 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
@@ -123,7 +122,7 @@ void main() {
       expect(viewModel.state.pendingEvolutionSelectEvent, isNull);
 
       // Analytics should track the selection
-      verify(mockAnalytics.logEvent(
+      verify(mockAnalytics.logCustomEvent(
         'skill_progression_evolution_confirmed',
         parameters: argThat(
           isA<Map<String, Object>>()
@@ -158,7 +157,7 @@ void main() {
       expect(skillState?.currentEvolution, EvolutionType.offensive);
 
       // Analytics should track auto-selection
-      verify(mockAnalytics.logEvent(
+      verify(mockAnalytics.logCustomEvent(
         'skill_progression_evolution_confirmed',
         parameters: argThat(
           isA<Map<String, Object>>()
@@ -199,7 +198,7 @@ void main() {
       expect(skillState?.currentEvolution, EvolutionType.defensive);
 
       // Analytics should track the switch
-      verify(mockAnalytics.logEvent(
+      verify(mockAnalytics.logCustomEvent(
         'skill_progression_evolution_switched',
         parameters: argThat(
           isA<Map<String, Object>>()
@@ -247,7 +246,7 @@ void main() {
       expect(skillState?.currentEvolution, EvolutionType.offensive);
 
       // Verify analytics recorded all three switches with incrementing counts
-      final calls = verify(mockAnalytics.logEvent(
+      final calls = verify(mockAnalytics.logCustomEvent(
         'skill_progression_evolution_switched',
         parameters: argThat(
           isA<Map<String, Object>>(),
@@ -412,7 +411,7 @@ void main() {
       final afterLevelUp = DateTime.now();
 
       // Verify analytics was called with timestamp parameter
-      verify(mockAnalytics.logEvent(
+      verify(mockAnalytics.logCustomEvent(
         'skill_progression_level_up',
         parameters: argThat(
           isA<Map<String, Object>>()
@@ -440,7 +439,7 @@ void main() {
       viewModel.confirmEvolution('player1', EvolutionType.offensive);
 
       // Analytics should have captured the timing
-      verify(mockAnalytics.logEvent(
+      verify(mockAnalytics.logCustomEvent(
         'skill_progression_evolution_confirmed',
         parameters: argThat(
           isA<Map<String, Object>>()
@@ -474,7 +473,7 @@ void main() {
       viewModel.switchEvolution('player1', EvolutionType.defensive);
 
       // Verify both selections were tracked
-      final calls = verify(mockAnalytics.logEvent(any,
+      final calls = verify(mockAnalytics.logCustomEvent(any,
           parameters: argThat(
             isA<Map<String, Object>>(),
             named: 'parameters',

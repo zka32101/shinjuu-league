@@ -1,6 +1,5 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
@@ -28,7 +27,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_level_up',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -48,7 +47,7 @@ void main() {
           true,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_level_up',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -62,7 +61,7 @@ void main() {
       test('includes timestamp', () async {
         await analyticsService.logLevelUp('player1', 2, false);
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_level_up',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -73,7 +72,7 @@ void main() {
       });
 
       test('silently handles exceptions', () async {
-        when(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Test exception'));
 
         // Should not throw
@@ -91,7 +90,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -115,7 +114,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -135,7 +134,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -155,7 +154,7 @@ void main() {
           true,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -174,7 +173,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -195,7 +194,7 @@ void main() {
           2,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_switched',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -217,7 +216,7 @@ void main() {
           5,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_switched',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -239,7 +238,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_skill_used',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -265,7 +264,7 @@ void main() {
           true,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_skill_used',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -287,7 +286,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logEvent(any, parameters: anyNamed('parameters'))).callCount, 4);
+        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 4);
       });
 
       test('tracks evolution bonus presence', () async {
@@ -300,7 +299,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_skill_used',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -316,7 +315,7 @@ void main() {
       test('logs ULT unlocked event', () async {
         await analyticsService.logUltUnlocked('player1');
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_ult_unlocked',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -330,7 +329,7 @@ void main() {
       test('includes timestamp', () async {
         await analyticsService.logUltUnlocked('player1');
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_ult_unlocked',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -349,7 +348,7 @@ void main() {
           3,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_ult_activated',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -364,7 +363,7 @@ void main() {
       test('tracks multiple targets hit', () async {
         await analyticsService.logUltActivated('player1', 600, 5);
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_ult_activated',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -384,7 +383,7 @@ void main() {
           5,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_max_level_reached',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -406,7 +405,7 @@ void main() {
           3,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_max_level_reached',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -429,7 +428,7 @@ void main() {
           finalEvolution: EvolutionType.offensive,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -457,7 +456,7 @@ void main() {
           finalEvolution: EvolutionType.defensive,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -478,7 +477,7 @@ void main() {
           finalEvolution: null,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -499,7 +498,7 @@ void main() {
           finalEvolution: EvolutionType.support,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -519,7 +518,7 @@ void main() {
           65.5,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_bonus_effectiveness',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -541,7 +540,7 @@ void main() {
           44.0,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_bonus_effectiveness',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -561,7 +560,7 @@ void main() {
           );
         }
 
-        expect(verify(mockAnalytics.logEvent(any, parameters: anyNamed('parameters'))).callCount, 3);
+        expect(verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters'))).callCount, 3);
       });
     });
 
@@ -583,7 +582,7 @@ void main() {
           },
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_usage_pattern',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -604,7 +603,7 @@ void main() {
           {SkillSlot.q: 1000},
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_usage_pattern',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -628,7 +627,7 @@ void main() {
           {},
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_usage_pattern',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -649,7 +648,7 @@ void main() {
           autoSelectCount: 1,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_preference',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -672,7 +671,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_preference',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -695,7 +694,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_preference',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -715,7 +714,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verifyNever(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')));
+        verifyNever(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')));
       });
 
       test('handles tie between evolution types', () async {
@@ -727,7 +726,7 @@ void main() {
           autoSelectCount: 0,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_preference',
           parameters: argThat(
             isA<Map<String, Object>>()
@@ -752,9 +751,12 @@ void main() {
           any,
           reason: 'Skill progression error',
           information: argThat(
-            contains('player1') &
-            contains('invalid_evolution') &
-            contains('Player attempted evolution at level 5'),
+            allOf(
+              contains('player1'),
+              contains('invalid_evolution'),
+              contains('Player attempted evolution at level 5'),
+            ),
+            named: 'information',
           ),
         )).called(1);
       });
@@ -769,9 +771,10 @@ void main() {
         verify(mockAnalytics.recordError(
           any,
           any,
-          reason: argThat(contains('Skill progression error')),
+          reason: argThat(contains('Skill progression error'), named: 'reason'),
           information: argThat(
             contains('duplicate_level_up'),
+            named: 'information',
           ),
         )).called(1);
       });
@@ -800,7 +803,7 @@ void main() {
         await analyticsService.logLevelUp('player1', 4, false);
 
         expect(
-          verify(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
               .callCount,
           3,
         );
@@ -824,7 +827,7 @@ void main() {
         await Future.wait(futures);
 
         expect(
-          verify(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+          verify(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
               .callCount,
           10,
         );

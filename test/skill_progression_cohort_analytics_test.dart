@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
@@ -31,7 +30,7 @@ void main() {
         ),
       );
 
-      when(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+      when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
           .thenAnswer((_) async {});
 
       analyticsService = SkillProgressionAnalyticsService(
@@ -79,7 +78,7 @@ void main() {
 
         await analyticsService.logCohortAssignment('user123', 'session456');
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_assigned',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -108,7 +107,7 @@ void main() {
 
         await analyticsService.logCohortAssignment('player1', 'session1');
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_assigned',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -136,7 +135,7 @@ void main() {
 
         await analyticsService.logCohortAssignment('player2', 'session2');
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_assigned',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -161,7 +160,7 @@ void main() {
           'config_refresh',
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_config_changed',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -195,7 +194,7 @@ void main() {
 
         await analyticsService.logLevelUp('player1', 5, true);
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_level_up',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -219,7 +218,7 @@ void main() {
           false,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_confirmed',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -247,7 +246,7 @@ void main() {
           finalEvolution: EvolutionType.offensive,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -279,7 +278,7 @@ void main() {
           },
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_usage_pattern',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -303,7 +302,7 @@ void main() {
           killParticipationRate: 0.65,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_performance',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -340,7 +339,7 @@ void main() {
         );
 
         expect(
-          verify(mockAnalytics.logEvent(
+          verify(mockAnalytics.logCustomEvent(
             'skill_progression_cohort_performance',
             parameters: any,
           )).callCount,
@@ -359,7 +358,7 @@ void main() {
           finalDamageOutput: 1500,
         );
 
-        verify(mockAnalytics.logEvent(
+        verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_evolution_impact',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -395,7 +394,7 @@ void main() {
         );
 
         expect(
-          verify(mockAnalytics.logEvent(
+          verify(mockAnalytics.logCustomEvent(
             'skill_progression_cohort_evolution_impact',
             parameters: any,
           )).callCount,
@@ -406,7 +405,7 @@ void main() {
 
     group('Error Handling', () {
       test('logCohortAssignment handles errors gracefully', () async {
-        when(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -416,7 +415,7 @@ void main() {
       });
 
       test('logConfigurationChanged handles errors gracefully', () async {
-        when(mockAnalytics.logEvent(any, parameters: anyNamed('parameters')))
+        when(mockAnalytics.logCustomEvent(any, parameters: anyNamed('parameters')))
             .thenThrow(Exception('Analytics error'));
 
         expect(
@@ -462,7 +461,7 @@ void main() {
         );
 
         expect(
-          verify(mockAnalytics.logEvent(any, parameters: any))
+          verify(mockAnalytics.logCustomEvent(any, parameters: any))
               .callCount,
           greaterThanOrEqualTo(4),
         );
@@ -488,7 +487,7 @@ void main() {
         await hardService.logCohortAssignment('hard_player', 'session_hard');
 
         // Verify both cohorts were tracked
-        final easyCall = verify(mockAnalytics.logEvent(
+        final easyCall = verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_assigned',
           parameters: argThat(
             isA<Map<String, dynamic>>()
@@ -498,7 +497,7 @@ void main() {
           ),
         ));
 
-        final hardCall = verify(mockAnalytics.logEvent(
+        final hardCall = verify(mockAnalytics.logCustomEvent(
           'skill_progression_cohort_assigned',
           parameters: argThat(
             isA<Map<String, dynamic>>()
