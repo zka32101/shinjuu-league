@@ -244,9 +244,13 @@ void main() {
         final selfParticipant = engine!.participants
             .firstWhere((p) => p.userId == 'player1');
 
-        // Base ATK is 20 (from mecha catalog), with 1.05x multiplier should be 21
+        // _createTestMatch uses mechaId 'mecha_1', which doesn't exist in
+        // mecha_catalog.dart - mechaById() safely falls back to
+        // defaultMechaId ('mecha_east_flame', atk: 55), not an atk of 20
+        // (no catalog entry has that base ATK at all). With the 1.05x
+        // skill tree multiplier: 55 * 1.05 = 57.75.
         final modifiedAtk = selfParticipant.effectiveAtk;
-        expect(modifiedAtk, closeTo(21.0, 0.1));
+        expect(modifiedAtk, closeTo(57.75, 0.1));
       });
     });
 
