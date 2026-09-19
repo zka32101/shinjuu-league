@@ -1,32 +1,58 @@
 import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
+import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/services/achievement_detector_service.dart';
 import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
 import 'package:shinjuu_league/services/achievement_integration_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
-// Mock implementations for testing
-class MockBattleEngineService {
-  final _combatController = StreamController<dynamic>.broadcast();
-  final _damageController = StreamController<dynamic>.broadcast();
-  final _tickController = StreamController<int>.broadcast();
+// Mock BattleEngine for testing. BattleEngine's real constructor needs
+// per-match data (battleId/mode/mapId/participants) that this test doesn't
+// care about; the streams are overridden below and driven manually instead
+// of by BattleEngine's own tick loop. (Same pattern as
+// achievement_detector_service_test.dart.)
+class MockBattleEngineService extends BattleEngine {
+  MockBattleEngineService()
+      : super(
+          battleId: 'test_battle',
+          mode: BattleMode.quick,
+          mapId: 'test_map',
+          participants: const [],
+        );
 
-  Stream get combatEvents => _combatController.stream;
-  Stream get damageEvents => _damageController.stream;
-  Stream get onTick => _tickController.stream;
+  final _testCombatController = StreamController<CombatEvent>.broadcast();
+  final _testDamageController = StreamController<DamageEvent>.broadcast();
+  final _testTickController = StreamController<int>.broadcast();
 
+  @override
+  Stream<CombatEvent> get combatEvents => _testCombatController.stream;
+
+  @override
+  Stream<DamageEvent> get damageEvents => _testDamageController.stream;
+
+  @override
+  Stream<int> get onTick => _testTickController.stream;
+
+  @override
   void dispose() {
-    _combatController.close();
-    _damageController.close();
-    _tickController.close();
+    _testCombatController.close();
+    _testDamageController.close();
+    _testTickController.close();
   }
 }
 
-class MockFirestoreService extends FirestoreService {
+// FirestoreService is a singleton with only a private generative
+// constructor, so it cannot be `extends`-ed from another library; implement
+// the interface instead (same pattern used elsewhere in this suite).
+class MockFirestoreService implements FirestoreService {
   final Map<String, dynamic> _userData = {};
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<void> markAchievementUnlocked(String userId, String achievementId) async {
@@ -51,8 +77,13 @@ class MockFirestoreService extends FirestoreService {
   }
 }
 
-class MockAnalyticsService extends AnalyticsService {
+// AnalyticsService is likewise a singleton with only a private generative
+// constructor; implement instead of extend.
+class MockAnalyticsService implements AnalyticsService {
   final List<String> loggedEvents = [];
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
   Future<void> logAchievementUnlocked(
@@ -64,7 +95,12 @@ class MockAnalyticsService extends AnalyticsService {
   }
 
   @override
-  Future<void> recordError(dynamic exception, StackTrace? stackTrace, {String? reason, String? information}) async {
+  void recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    String? reason,
+    Iterable<Object> information = const [],
+  }) {
     // Mock implementation
   }
 }
@@ -169,7 +205,8 @@ void main() {
       await Future.delayed(const Duration(milliseconds: 100));
 
       final summary = await service.stopBattleAchievements();
-      expect(analyticsService.loggedEvents is List, isTrue);
+      expect(summary, isNotNull);
+      expect(analyticsService.loggedEvents, isA<List<String>>());
     });
 
     test('session rewards accumulate correctly', () async {
@@ -187,6 +224,7 @@ void main() {
       await service.startBattleAchievements(testUserId);
       var summary = await service.stopBattleAchievements();
       var firstCount = summary['unlockedCount'] as int;
+      expect(firstCount, equals(0));
 
       // Start new battle
       await service.startBattleAchievements(testUserId);
@@ -225,7 +263,7 @@ void main() {
       final unlocked2 = service.getUnlockedAchievements();
 
       expect(unlocked1, isA<List<Achievement>>());
-      expect(unlocked1 == unlocked2, isTrue);
+      expect(unlocked1, equals(unlocked2));
 
       await service.stopBattleAchievements();
     });
