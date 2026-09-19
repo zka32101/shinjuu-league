@@ -4,7 +4,28 @@ import 'package:shinjuu_league/services/admin_analytics_service.dart';
 import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
-class MockAuditLoggerService extends Mock implements AuditLoggerService {}
+class MockAuditLoggerService extends Mock implements AuditLoggerService {
+  @override
+  Future<List<Map<String, dynamic>>> getAuditLog({
+    int? limit,
+    String? startAfter,
+    DateTime? startTime,
+    DateTime? endTime,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getAuditLog, [], {
+        #limit: limit,
+        #startAfter: startAfter,
+        #startTime: startTime,
+        #endTime: endTime,
+      }),
+      returnValue: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+      returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
+          <Map<String, dynamic>>[]),
+    ) as Future<List<Map<String, dynamic>>>;
+  }
+}
 
 class MockFirestoreService extends Mock implements FirestoreService {}
 
