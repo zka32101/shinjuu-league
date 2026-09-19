@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
+import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/ui/screens/battle_screen.dart';
@@ -15,16 +15,17 @@ void main() {
     setUp(() {
       match = MatchResult(
         matchId: 'test-match-001',
-        mode: BattleMode.quickMatch,
+        mode: BattleMode.quick,
         mapId: 'map_01',
+        estimatedWaitSeconds: 5,
         teamA: [
           MatchParticipant(
             userId: 'player1',
             mechaId: 'leon',
             eloRating: 1500.0,
             isBot: false,
-            team: Team.a,
-            lane: Lane.top,
+            team: 0,
+            lane: 0,
           ),
         ],
         teamB: [
@@ -33,8 +34,8 @@ void main() {
             mechaId: 'frost',
             eloRating: 1500.0,
             isBot: true,
-            team: Team.b,
-            lane: Lane.top,
+            team: 1,
+            lane: 0,
           ),
         ],
       );

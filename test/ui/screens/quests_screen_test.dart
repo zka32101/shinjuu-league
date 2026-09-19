@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
 import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
@@ -8,23 +9,19 @@ import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 void main() {
   group('QuestsScreen', () {
     Widget createTestWidget() {
-      return ProviderContainer(
+      final container = ProviderContainer();
+      return UncontrolledProviderScope(
+        container: container,
         child: MaterialApp(
           home: const QuestsScreen(),
           theme: ThemeData(brightness: Brightness.light),
           darkTheme: ThemeData(brightness: Brightness.dark),
         ),
-      ).watch(ProviderContainer());
+      );
     }
 
     testWidgets('renders with AppBar', (WidgetTester tester) async {
-      await tester.pumpWidget(
-        ProviderContainer(
-          child: MaterialApp(
-            home: const QuestsScreen(),
-          ),
-        ).watch(ProviderContainer()),
-      );
+      await tester.pumpWidget(createTestWidget());
 
       expect(find.byType(AppBar), findsOneWidget);
       expect(find.text('クエスト'), findsOneWidget);
@@ -46,10 +43,10 @@ void main() {
       await tester.pumpAndSettle();
 
       // Either loading or quests displayed
-      expect(
-        find.byType(CircularProgressIndicator).or(find.byType(ListView)),
-        findsWidgets,
-      );
+      final hasLoadingIndicator =
+          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+      final hasListView = find.byType(ListView).evaluate().isNotEmpty;
+      expect(hasLoadingIndicator || hasListView, isTrue);
     });
 
     testWidgets('renders TabBar with 4 tabs', (WidgetTester tester) async {
@@ -456,8 +453,6 @@ class _MockQuestService extends Mock implements QuestService {
     };
   }
 }
-
-abstract class Mock {}
 
 PlayerQuest _createPlayerQuest(
   String questId,
