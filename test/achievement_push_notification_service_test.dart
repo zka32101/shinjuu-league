@@ -6,11 +6,68 @@ import 'package:shinjuu_league/services/achievement_push_notification_service.da
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
 
-class MockPushNotificationService extends Mock implements PushNotificationService {}
+class MockPushNotificationService extends Mock implements PushNotificationService {
+  @override
+  Future<void> showNotification({
+    String? title,
+    String? body,
+    Map<String, dynamic>? payload,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#showNotification, [],
+          {#title: title, #body: body, #payload: payload}),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logAchievementNotificationSent(
+      String? userId, String? achievementId, int? progressPercentage) {
+    return super.noSuchMethod(
+      Invocation.method(#logAchievementNotificationSent,
+          [userId, achievementId, progressPercentage]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
 
-class MockAchievementFeatureFlags extends Mock implements AchievementFeatureFlags {}
+  @override
+  void recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    String? reason,
+    Iterable<Object>? information,
+  }) {
+    super.noSuchMethod(
+      Invocation.method(#recordError, [exception, stackTrace],
+          {#reason: reason, #information: information}),
+      returnValueForMissingStub: null,
+    );
+  }
+}
+
+class MockAchievementFeatureFlags extends Mock implements AchievementFeatureFlags {
+  @override
+  bool isPushNotificationEnabled() {
+    return super.noSuchMethod(
+      Invocation.method(#isPushNotificationEnabled, []),
+      returnValue: true,
+      returnValueForMissingStub: true,
+    ) as bool;
+  }
+
+  @override
+  int getPushNotificationThresholdPercent() {
+    return super.noSuchMethod(
+      Invocation.method(#getPushNotificationThresholdPercent, []),
+      returnValue: 75,
+      returnValueForMissingStub: 75,
+    ) as int;
+  }
+}
 
 void main() {
   group('AchievementPushNotificationService', () {
@@ -65,9 +122,9 @@ void main() {
 
         expect(result, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         )).called(1);
       });
 
@@ -108,9 +165,9 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         ));
       });
 
@@ -134,9 +191,9 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         ));
       });
 
@@ -149,9 +206,9 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         ));
       });
 
@@ -171,9 +228,9 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         ));
       });
 
@@ -195,9 +252,9 @@ void main() {
 
         expect(result, isFalse);
         verifyNever(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         ));
       });
 
@@ -246,9 +303,9 @@ void main() {
         expect(result2, isFalse);
 
         verify(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         )).called(1); // Only called once
       });
 
@@ -284,17 +341,17 @@ void main() {
         expect(result1, isTrue);
         expect(result2, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         )).called(2); // Called twice
       });
 
       test('handles exceptions gracefully', () async {
         when(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         )).thenThrow(Exception('Push notification error'));
 
         final playerAchievement = PlayerAchievement(
@@ -316,7 +373,7 @@ void main() {
           any,
           any,
           reason: anyNamed('reason'),
-          information: anyNamed('information') as Iterable<Object>,
+          information: anyNamed('information'),
         )).called(1);
       });
 
@@ -394,9 +451,9 @@ void main() {
 
         expect(result, isTrue);
         verify(mockPushNotification.showNotification(
-          title: any as String,
-          body: any as String,
-          payload: any,
+          title: anyNamed('title'),
+          body: anyNamed('body'),
+          payload: anyNamed('payload'),
         )).called(2); // Called twice
       });
     });
