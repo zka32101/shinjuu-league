@@ -9,6 +9,7 @@ on:
 jobs:
   analyze-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     permissions:
       contents: write
     steps:
@@ -16,6 +17,13 @@ jobs:
 
       - uses: subosito/flutter-action@v2
         with:
+          # channel:stable（バージョン指定なし）だとGitHubランナー側のFlutterが
+          # 更新されるたびにDart SDKも自動的に前進し、pubspec.lockでロック済みの
+          # analyzer（riverpod_generator/build_runner等が使う推移的依存）が
+          # 内部でサポートする言語バージョンを超えてクラッシュ/ハングする問題が
+          # 発生した（詳細はgit log参照）。pubspec.yamlのsdk制約(^3.12.2)ちょうど
+          # に対応するFlutterバージョンへ固定し、ロック済み依存関係との整合性を保つ。
+          flutter-version: '3.44.9'
           channel: stable
           cache: true
 
@@ -23,7 +31,15 @@ jobs:
         run: flutter pub get
 
       - name: Generate code (json_serializable, etc.)
-        run: dart run build_runner build --delete-conflicting-outputs
+        timeout-minutes: 5
+        # stdinをリダイレクトしないと、CI(TTY無し)環境でbuild_runnerが
+        # 何らかのプロンプト待ちで無期限にハングすることがある
+        # （--delete-conflicting-outputsを付けてもなお発生しうる既知の問題）。
+        # 過去のCI実行がすべてこのステップで6時間のジョブタイムアウトまで
+        # ハングし続けていたため、明示的にEOFを渡して確実に非対話実行させ、
+        # 万一再発してもジョブ全体を長時間占有しないようステップ単位でも
+        # タイムアウトを設定する。
+        run: dart run build_runner build --delete-conflicting-outputs < /dev/null
 
       - name: Apply formatting
         run: dart format --output=none lib test

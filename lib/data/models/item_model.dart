@@ -147,7 +147,7 @@ class Item {
 
 /// アイテムカタログ（ゲーム内で購入可能なアイテム定義）
 class ItemCatalog {
-  static const List<Item> availableItems = [
+  static final List<Item> availableItems = [
     // === 武器 ===
     Item(
       itemId: 'weapon_iron_sword',

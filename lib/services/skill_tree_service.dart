@@ -53,7 +53,7 @@ class SkillTreeService {
   /// スキルツリーを初期化（新規ユーザー）
   Future<SkillTree> _initializeSkillTree(String userId) async {
     final skillTree = SkillTree.create();
-    await _firestoreService.updateUser(userId, {
+    await _firestoreService.update('users/$userId', {
       'skillTree': skillTree.toJson(),
     });
     return skillTree;
@@ -95,7 +95,7 @@ class SkillTreeService {
       skillTree.availablePoints -= 1;
 
       // Firestoreに保存
-      await _firestoreService.updateUser(userId, {
+      await _firestoreService.update('users/$userId', {
         'skillTree': skillTree.toJson(),
       });
 
@@ -151,7 +151,7 @@ class SkillTreeService {
       // 利用可能なポイントを1増加（最大値に達していない場合）
       if (skillTree.totalAllocatedPoints < totalSkillPoints) {
         skillTree.availablePoints += 1;
-        await _firestoreService.updateUser(userId, {
+        await _firestoreService.update('users/$userId', {
           'skillTree': skillTree.toJson(),
         });
       }
