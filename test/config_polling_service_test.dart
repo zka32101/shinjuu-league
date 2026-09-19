@@ -466,7 +466,7 @@ void main() {
       test('clears feature flags cache on relevant changes', () async {
         // This would require detecting changes to feature-related keys
         // and verifying clearCache was called
-        verify(mockFeatureFlags.clearCache()).called(0);
+        verifyNever(mockFeatureFlags.clearCache());
 
         // Would need proper mock setup to test actual change detection
       });

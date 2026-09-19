@@ -239,7 +239,15 @@ void main() {
 
     group('Cohort Parameters in Events', () {
       test('logLevelUp includes difficulty_preset parameter', () async {
+        // _currentDifficultyPreset is captured once at construction and
+        // only updated via logConfigurationChanged() (see currentCohort
+        // remains stable across events below) - re-stubbing
+        // mockConfig.difficultyPreset alone has no effect on already-
+        // constructed events, so drive the cohort transition through the
+        // real API instead.
         when(mockConfig.difficultyPreset).thenReturn('hard');
+        await analyticsService.logConfigurationChanged(
+            'player1', 'normal', 'hard', 'test_setup');
 
         await analyticsService.logLevelUp('player1', 5, true);
 
@@ -258,6 +266,8 @@ void main() {
       test('logEvolutionConfirmed includes difficulty_preset parameter',
           () async {
         when(mockConfig.difficultyPreset).thenReturn('easy');
+        await analyticsService.logConfigurationChanged(
+            'player1', 'normal', 'easy', 'test_setup');
 
         await analyticsService.logEvolutionConfirmed(
           'player1',
@@ -310,6 +320,8 @@ void main() {
 
       test('logSkillUsagePattern includes difficulty_preset', () async {
         when(mockConfig.difficultyPreset).thenReturn('hard');
+        await analyticsService.logConfigurationChanged(
+            'player1', 'normal', 'hard', 'test_setup');
 
         await analyticsService.logSkillUsagePattern(
           'player1',

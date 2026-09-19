@@ -81,11 +81,29 @@ void main() {
         final userId = 'user_cache_test';
         final result1 = featureFlags.isFeatureEnabled(userId, 'skill_cooldown_reduction');
 
-        // Disable and check if cache returns same result
+        // Repeating the call with no intervening state change should hit
+        // the cache and return the identical result. disableFeature() is
+        // deliberately NOT used here: it's an emergency kill switch and
+        // must invalidate the cache immediately (see its own
+        // `_gateCache.clear()`), so it isn't a case where caching should
+        // preserve the old result - that's covered separately below.
+        final result2 = featureFlags.isFeatureEnabled(userId, 'skill_cooldown_reduction');
+
+        expect(result1, result2);
+        expect(result1, isTrue);
+      });
+
+      test('kill switch invalidates cached results immediately', () {
+        final userId = 'user_cache_test';
+        final result1 = featureFlags.isFeatureEnabled(userId, 'skill_cooldown_reduction');
+        expect(result1, isTrue);
+
+        // An emergency kill switch must take effect right away for
+        // already-cached users too, not be masked by a stale cache entry.
         featureFlags.disableFeature('skill_cooldown_reduction');
         final result2 = featureFlags.isFeatureEnabled(userId, 'skill_cooldown_reduction');
 
-        expect(result1, result2); // should be consistent due to cache
+        expect(result2, isFalse);
       });
 
       test('clearCache invalidates all caches', () {
@@ -283,7 +301,7 @@ void main() {
         featureFlags.setRolloutPercentage(featureName, 0);
         final result2 = featureFlags.isFeatureEnabled(userId, featureName);
 
-        expect(result1, isNotEmpty); // may be true or false
+        expect(result1, isA<bool>()); // may be true or false
         expect(result2, isFalse); // 0% rollout = always false
       });
     });
