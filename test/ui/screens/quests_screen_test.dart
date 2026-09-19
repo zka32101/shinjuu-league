@@ -1,16 +1,31 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
 import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 
+/// QuestsScreen -> questViewModelProvider -> questServiceProvider, which
+/// defaults to the real (Firebase-touching) FirestoreService() singleton.
+/// Override it with a fake so widget tests never require
+/// Firebase.initializeApp().
+ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
+      overrides: [
+        firestoreServiceProvider.overrideWithValue(
+          FirestoreService.forFirestore(FakeFirebaseFirestore()),
+        ),
+      ],
+    );
+
 void main() {
   group('QuestsScreen', () {
     Widget createTestWidget() {
-      final container = ProviderContainer();
+      final container = _fakeFirestoreContainer();
       return UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
@@ -29,7 +44,7 @@ void main() {
     });
 
     testWidgets('renders loading state', (WidgetTester tester) async {
-      final container = ProviderContainer();
+      final container = _fakeFirestoreContainer();
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
