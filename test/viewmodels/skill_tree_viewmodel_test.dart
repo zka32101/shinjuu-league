@@ -7,7 +7,45 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/skill_tree_viewmodel.dart';
 
-class MockSkillTreeService extends Mock implements SkillTreeService {}
+class MockSkillTreeService extends Mock implements SkillTreeService {
+  @override
+  Future<SkillTree?> getSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTree, [userId]),
+      returnValue: Future<SkillTree?>.value(),
+      returnValueForMissingStub: Future<SkillTree?>.value(),
+    ) as Future<SkillTree?>;
+  }
+
+  @override
+  Future<bool> allocateSkillPoint(
+      String? userId, int? treeIndex, int? tierIndex) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #allocateSkillPoint, [userId, treeIndex, tierIndex]),
+      returnValue: Future<bool>.value(false),
+      returnValueForMissingStub: Future<bool>.value(false),
+    ) as Future<bool>;
+  }
+
+  @override
+  Map<String, double> calculateStatModifiers(SkillTree? skillTree) {
+    return super.noSuchMethod(
+      Invocation.method(#calculateStatModifiers, [skillTree]),
+      returnValue: <String, double>{},
+      returnValueForMissingStub: <String, double>{},
+    ) as Map<String, double>;
+  }
+
+  @override
+  Map<String, dynamic> getSkillTreeStats(SkillTree? skillTree) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTreeStats, [skillTree]),
+      returnValue: <String, dynamic>{},
+      returnValueForMissingStub: <String, dynamic>{},
+    ) as Map<String, dynamic>;
+  }
+}
 
 class MockAuthService extends Mock implements AuthService {}
 

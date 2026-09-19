@@ -3,7 +3,108 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/services/admin_api_service.dart';
 import 'package:shinjuu_league/services/web_admin_dashboard_service.dart';
 
-class MockAdminApiService extends Mock implements AdminApiService {}
+class MockAdminApiService extends Mock implements AdminApiService {
+  @override
+  Map<String, dynamic> getDashboardState() {
+    return super.noSuchMethod(
+      Invocation.method(#getDashboardState, []),
+      returnValue: <String, dynamic>{},
+      returnValueForMissingStub: <String, dynamic>{},
+    ) as Map<String, dynamic>;
+  }
+
+  @override
+  Map<String, dynamic> getDifficultySettings() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultySettings, []),
+      returnValue: <String, dynamic>{},
+      returnValueForMissingStub: <String, dynamic>{},
+    ) as Map<String, dynamic>;
+  }
+
+  @override
+  List<Map<String, dynamic>> getFeatures() {
+    return super.noSuchMethod(
+      Invocation.method(#getFeatures, []),
+      returnValue: <Map<String, dynamic>>[],
+      returnValueForMissingStub: <Map<String, dynamic>>[],
+    ) as List<Map<String, dynamic>>;
+  }
+
+  @override
+  Map<String, dynamic> getHealthCheck() {
+    return super.noSuchMethod(
+      Invocation.method(#getHealthCheck, []),
+      returnValue: <String, dynamic>{},
+      returnValueForMissingStub: <String, dynamic>{},
+    ) as Map<String, dynamic>;
+  }
+
+  @override
+  Future<bool> applyDifficultyPreset(String? preset) {
+    return super.noSuchMethod(
+      Invocation.method(#applyDifficultyPreset, [preset]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> setDifficultyMultiplier(String? type, double? value) {
+    return super.noSuchMethod(
+      Invocation.method(#setDifficultyMultiplier, [type, value]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> setFeatureEnabled(String? featureName, bool? enabled) {
+    return super.noSuchMethod(
+      Invocation.method(#setFeatureEnabled, [featureName, enabled]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> setFeatureRollout(String? featureName, int? percentage) {
+    return super.noSuchMethod(
+      Invocation.method(#setFeatureRollout, [featureName, percentage]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> createExperiment(Map<String, dynamic>? config) {
+    return super.noSuchMethod(
+      Invocation.method(#createExperiment, [config]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> updateExperimentRollout(
+      String? experimentId, int? percentage) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #updateExperimentRollout, [experimentId, percentage]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  Future<bool> rollbackToSnapshot(String? name) {
+    return super.noSuchMethod(
+      Invocation.method(#rollbackToSnapshot, [name]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+}
 
 void main() {
   group('WebAdminDashboardService', () {
