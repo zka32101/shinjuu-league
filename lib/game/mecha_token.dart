@@ -4,10 +4,13 @@ import 'dart:ui';
 import 'package:flame/components.dart';
 import 'package:flutter/material.dart'
     show Colors, IconData, TextPainter, TextSpan, TextStyle, TextDirection;
+import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/game/mecha_glyph.dart';
 
 /// バトルフィールド上の1参加者を表すトークン。実キャラクター素材が無いため、
-/// 球体シェーディング（放射状グラデ）+ 属性アイコン + 接地影 + 浮遊ボブで
-/// 「宙に浮いた立体的な駒」としての2.5D感を表現するプレースホルダー。
+/// 球体シェーディング（放射状グラデ）+ 属性アイコン + 接地影 + 浮遊ボブに加え、
+/// [MechaGlyph]（ステータスから自動生成される幾何学シルエット）で
+/// キャラごとの個性を出した「宙に浮いた立体的な駒」を表現するプレースホルダー。
 class MechaToken extends PositionComponent {
   MechaToken({
     required this.userId,
@@ -16,7 +19,11 @@ class MechaToken extends PositionComponent {
     required this.isSelf,
     required this.icon,
     required Vector2 basePosition,
-  }) : spawnPosition = basePosition.clone(),
+    String? mechaId,
+  }) : glyph = MechaGlyph.forMecha(
+         mechaById(mechaId ?? defaultMechaId),
+       ),
+       spawnPosition = basePosition.clone(),
        _bobPhase = (basePosition.x + basePosition.y) % (pi * 2),
        super(
          position: basePosition,
@@ -29,6 +36,10 @@ class MechaToken extends PositionComponent {
   final int lane;
   final bool isSelf;
   final IconData icon;
+
+  /// ステータス（HP/ATK/SPD）・属性・レアリティから決定的に生成される
+  /// このキャラ固有のシルエット（実アート素材の代替）。
+  final MechaGlyph glyph;
 
   /// 出撃時の位置。リスポーン時にここへ戻す（死亡地点にとどまらないようにする）。
   final Vector2 spawnPosition;
@@ -197,6 +208,9 @@ class MechaToken extends PositionComponent {
       ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
     canvas.drawCircle(center, radius, glowPaint);
 
+    // キャラ固有シルエット（プレート/フィン + エネルギースパイク）を本体周囲に描画
+    glyph.paint(canvas, center, radius, _opacity);
+
     if (isSelf) {
       final ringPaint = Paint()
         ..color = Colors.amber.withValues(alpha: _opacity)
@@ -205,8 +219,14 @@ class MechaToken extends PositionComponent {
       canvas.drawCircle(center, radius + 3, ringPaint);
     }
 
-    // キルフラッシュ：金色の衝撃波を二重リングで拡散
+    // キルフラッシュ：金色の衝撃波を三重リングで拡散（外側ほど大きく速く広がる）
     if (_killFlash > 0) {
+      final farPaint = Paint()
+        ..color = Colors.orangeAccent.withValues(alpha: _killFlash * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+      canvas.drawCircle(center, radius + (1 - _killFlash) * 48, farPaint);
+
       final outerPaint = Paint()
         ..color = Colors.amberAccent.withValues(alpha: _killFlash)
         ..style = PaintingStyle.stroke

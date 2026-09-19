@@ -16,45 +16,91 @@ class SkillVisualEffect extends PositionComponent {
     position: position,
     size: Vector2.all(90 * 2.5),
     anchor: Anchor.center,
-  );
+  ) {
+    final random = math.Random();
+    _shards = List.generate(14, (i) {
+      final angle = (i / 14) * 2 * math.pi + random.nextDouble() * 0.3;
+      return angle;
+    });
+  }
 
+  static const _duration = 0.5;
   double _elapsed = 0;
+  late final List<double> _shards;
 
   @override
   void update(double dt) {
     super.update(dt);
     _elapsed += dt;
-    if (_elapsed > 0.4) {
+    if (_elapsed > _duration) {
       removeFromParent();
     }
   }
 
   @override
   void render(Canvas canvas) {
-    final progress = (_elapsed / 0.4).clamp(0, 1);
+    final progress = (_elapsed / _duration).clamp(0, 1);
 
     // スキルタイプ別カラー
     final color = _getColorForSkillType();
 
-    // 外側リング（拡大 + フェードアウト）
+    // 発動直後の中心フラッシュ（強めに一瞬光らせて「発動した」実感を出す）
+    if (progress < 0.25) {
+      canvas.drawCircle(
+        Offset.zero,
+        24,
+        Paint()
+          ..color = Colors.white.withValues(alpha: (1 - progress / 0.25) * 0.85)
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 12),
+      );
+    }
+
+    // 外側リング（拡大 + フェードアウト、太めのストロークで迫力を出す）
     canvas.drawCircle(
       Offset.zero,
       maxRadius * progress,
       Paint()
-        ..color = color.withValues(alpha: 0.7 * (1 - progress))
+        ..color = color.withValues(alpha: 0.75 * (1 - progress))
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 3,
+        ..strokeWidth = 5,
     );
 
-    // 内側リング（遅延して拡大）
-    if (progress > 0.2) {
+    // 中間リング（遅延して拡大）
+    if (progress > 0.15) {
       canvas.drawCircle(
         Offset.zero,
-        maxRadius * (progress - 0.2) * 1.25,
+        maxRadius * (progress - 0.15) * 1.3,
         Paint()
-          ..color = color.withValues(alpha: 0.5 * (1 - progress))
+          ..color = color.withValues(alpha: 0.55 * (1 - progress))
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 3,
+      );
+    }
+
+    // 内側リング（さらに遅延）
+    if (progress > 0.3) {
+      canvas.drawCircle(
+        Offset.zero,
+        maxRadius * (progress - 0.3) * 1.5,
+        Paint()
+          ..color = color.withValues(alpha: 0.4 * (1 - progress))
           ..style = PaintingStyle.stroke
           ..strokeWidth = 2,
+      );
+    }
+
+    // 放射状の破片ライン（爆発の勢いを表現）
+    final shardLength = maxRadius * progress;
+    for (final angle in _shards) {
+      final dx = math.cos(angle) * shardLength;
+      final dy = math.sin(angle) * shardLength;
+      canvas.drawLine(
+        Offset(dx * 0.6, dy * 0.6),
+        Offset(dx, dy),
+        Paint()
+          ..color = color.withValues(alpha: (1 - progress) * 0.6)
+          ..strokeWidth = 2
+          ..strokeCap = StrokeCap.round,
       );
     }
   }

@@ -1,121 +1,135 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
+import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 
+/// Onboarding -> Aha Moment full funnel.
+///
+/// Exercises the real unlock pipeline (AchievementTriggerDetector ->
+/// AchievementService -> Firestore) backed by a fake Firestore, alongside
+/// the real AnalyticsService singleton (all calls are fire-and-forget and
+/// safe without Firebase initialization).
 void main() {
   group('Onboarding → Aha Moment Full Funnel', () {
+    late FakeFirebaseFirestore fakeDb;
+    late FirestoreService firestoreService;
     late AnalyticsService analyticsService;
     late AchievementService achievementService;
+    late AchievementTriggerDetector triggerDetector;
 
     setUp(() {
+      fakeDb = FakeFirebaseFirestore();
+      firestoreService = FirestoreService.forFirestore(fakeDb);
       analyticsService = AnalyticsService();
-      achievementService = AchievementService();
+      achievementService = AchievementService(firestoreService);
+      triggerDetector = AchievementTriggerDetector(
+        achievementService: achievementService,
+      );
     });
 
     group('Complete User Journey', () {
       test('onboarding start logged', () async {
-        expect(
-          () async => await analyticsService.logOnboardingStart('user123'),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logOnboardingStart('user123'),
+          completes,
         );
       });
 
-      test('tutorial completion triggers achievement and analytics', () async {
+      test('tutorial completion logged', () async {
         // Log tutorial start
         await analyticsService.logOnboardingStart('user123');
 
-        // Complete tutorial
-        final event = AchievementProgressEvent(
-          type: AchievementEventType.tutorialComplete,
-        );
-        final unlocked = achievementService.updateProgress(event);
-
-        expect(unlocked, contains('tutorial_complete'));
-
         // Log tutorial completion
-        expect(
-          () async => await analyticsService.logTutorialComplete('user123'),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logTutorialComplete('user123'),
+          completes,
         );
       });
 
       test('first battle entry after tutorial', () async {
         // Setup: tutorial complete
-        achievementService.updateProgress(
-          AchievementProgressEvent(
-            type: AchievementEventType.tutorialComplete,
-          ),
-        );
+        await analyticsService.logTutorialComplete('user123');
 
         // Log entry to battle
-        expect(
-          () async => await analyticsService.logFirstBattleEnter('user123'),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logFirstBattleEnter('user123'),
+          completes,
         );
       });
 
       test('first kill = Aha Moment achievement + analytics', () async {
+        const userId = 'user123';
+
         // Setup: in-battle
-        await analyticsService.logFirstBattleEnter('user123');
+        await analyticsService.logFirstBattleEnter(userId);
 
-        // Achievement: first kill
-        final event = AchievementProgressEvent(
-          type: AchievementEventType.firstKill,
-        );
-        final unlocked = achievementService.updateProgress(event);
+        // Achievement: first kill unlocks the real Aha Moment achievement
+        final unlocked = await triggerDetector.checkKillTriggers(userId, 1, 1);
 
-        expect(unlocked, contains('first_kill'));
+        expect(unlocked.map((a) => a.achievementId), contains('aha_moment'));
 
         // Log Aha Moment (time to first kill in seconds)
-        expect(
-          () async => await analyticsService.logTimeToAhaMoment('user123', 45),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logTimeToAhaMoment(userId, 45),
+          completes,
         );
 
         // Log battle win
-        expect(
-          () async => await analyticsService.logFirstBattleWin('user123'),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logFirstBattleWin(userId),
+          completes,
         );
       });
 
-      test('full funnel: onboarding start → aha moment → analytics logging', () async {
+      test('full funnel: onboarding start → aha moment → analytics logging',
+          () async {
         const userId = 'user123';
 
         // 1. Onboarding
         await analyticsService.logOnboardingStart(userId);
 
         // 2. Tutorial
-        achievementService.updateProgress(
-          AchievementProgressEvent(
-            type: AchievementEventType.tutorialComplete,
-          ),
-        );
         await analyticsService.logTutorialComplete(userId);
 
         // 3. First Battle
         await analyticsService.logFirstBattleEnter(userId);
 
         // 4. Aha Moment (First Kill)
-        achievementService.updateProgress(
-          AchievementProgressEvent(type: AchievementEventType.firstKill),
-        );
-
-        expect(
-          achievementService.unlockedAchievements,
-          contains('first_kill'),
-        );
+        final unlocked = await triggerDetector.checkKillTriggers(userId, 1, 1);
+        expect(unlocked.map((a) => a.achievementId), contains('aha_moment'));
 
         // Log time to Aha Moment
         await analyticsService.logTimeToAhaMoment(userId, 30);
 
-        // 5. Battle Win
+        // 5. Battle Win unlocks Rising Star
+        final battleWinUnlocked = await triggerDetector
+            .checkBattleCompletionTriggers(
+          userId,
+          won: true,
+          kills: 1,
+          deaths: 0,
+          assists: 0,
+          damageDealt: 100,
+          totalBattles: 1,
+          winCount: 1,
+        );
         await analyticsService.logFirstBattleWin(userId);
 
         // Verify achievements accumulated
+        final allUnlockedIds = <String>{
+          ...unlocked.map((a) => a.achievementId),
+          ...battleWinUnlocked.map((a) => a.achievementId),
+        };
+        expect(allUnlockedIds, containsAll(['aha_moment', 'rising_star']));
+
+        final persisted = await achievementService.getUnlockedAchievements(
+          userId,
+        );
         expect(
-          achievementService.unlockedAchievements,
-          containsAll(['tutorial_complete', 'first_kill']),
+          persisted.map((a) => a.achievementId),
+          containsAll(['aha_moment', 'rising_star']),
         );
       });
     });
@@ -124,28 +138,26 @@ void main() {
       test('onboarding events can be logged in order', () async {
         const userId = 'user_sequence';
 
-        expect(
-          () async => await analyticsService.logOnboardingStart(userId),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logOnboardingStart(userId),
+          completes,
         );
-
-        expect(
-          () async => await analyticsService.logTutorialComplete(userId),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logTutorialComplete(userId),
+          completes,
         );
-
-        expect(
-          () async => await analyticsService.logFirstBattleEnter(userId),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logFirstBattleEnter(userId),
+          completes,
         );
-
-        expect(
-          () async => await analyticsService.logFirstBattleWin(userId),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logFirstBattleWin(userId),
+          completes,
         );
       });
 
-      test('multiple users can proceed through funnel independently', () async {
+      test('multiple users can proceed through funnel independently',
+          () async {
         final userIds = ['user_a', 'user_b', 'user_c'];
 
         for (final userId in userIds) {
@@ -164,9 +176,9 @@ void main() {
         final times = [0, 5, 15, 30, 60, 120, 300];
 
         for (final time in times) {
-          expect(
-            () async => await analyticsService.logTimeToAhaMoment('user123', time),
-            returnsNormally,
+          await expectLater(
+            analyticsService.logTimeToAhaMoment('user123', time),
+            completes,
           );
         }
       });
@@ -181,28 +193,23 @@ void main() {
         await analyticsService.logOnboardingStart(userId);
         await analyticsService.logTutorialComplete(userId);
 
-        final tutorialEvent = AchievementProgressEvent(
-          type: AchievementEventType.tutorialComplete,
-        );
-        unlockedAchievements.addAll(achievementService.updateProgress(tutorialEvent));
-
         // Progression 2: First Battle
         await analyticsService.logFirstBattleEnter(userId);
 
         // Progression 3: Aha Moment
-        final killEvent = AchievementProgressEvent(
-          type: AchievementEventType.firstKill,
-        );
-        unlockedAchievements.addAll(achievementService.updateProgress(killEvent));
+        final killUnlocks =
+            await triggerDetector.checkKillTriggers(userId, 1, 1);
+        unlockedAchievements.addAll(killUnlocks.map((a) => a.achievementId));
 
         await analyticsService.logTimeToAhaMoment(userId, 45);
         await analyticsService.logFirstBattleWin(userId);
 
         // Verify consistency
-        expect(unlockedAchievements, contains('tutorial_complete'));
-        expect(unlockedAchievements, contains('first_kill'));
+        expect(unlockedAchievements, contains('aha_moment'));
+        final persisted =
+            await achievementService.getUnlockedAchievements(userId);
         expect(
-          achievementService.unlockedAchievements,
+          persisted.map((a) => a.achievementId),
           containsAll(unlockedAchievements),
         );
       });
@@ -211,10 +218,7 @@ void main() {
         const userId = 'persist_user';
 
         // Unlock achievement
-        final event = AchievementProgressEvent(
-          type: AchievementEventType.tutorialComplete,
-        );
-        achievementService.updateProgress(event);
+        await triggerDetector.checkKillTriggers(userId, 1, 1);
 
         // Make multiple analytics calls
         await analyticsService.logOnboardingStart(userId);
@@ -222,10 +226,9 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
 
         // Achievement should still be present
-        expect(
-          achievementService.unlockedAchievements,
-          contains('tutorial_complete'),
-        );
+        final persisted =
+            await achievementService.getUnlockedAchievements(userId);
+        expect(persisted.map((a) => a.achievementId), contains('aha_moment'));
       });
     });
 
@@ -239,19 +242,18 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
 
         // Trigger Aha Moment
-        achievementService.updateProgress(
-          AchievementProgressEvent(type: AchievementEventType.firstKill),
-        );
+        await triggerDetector.checkKillTriggers(userId, 1, 1);
         await analyticsService.logTimeToAhaMoment(userId, 30);
 
         // Log Day 1 active
-        expect(
-          () async => await analyticsService.logDay1Active(userId),
-          returnsNormally,
+        await expectLater(
+          analyticsService.logDay1Active(userId),
+          completes,
         );
       });
 
-      test('Day 7 and Day 30 retention events can follow onboarding', () async {
+      test('Day 7 and Day 30 retention events can follow onboarding',
+          () async {
         const userId = 'retention_user';
 
         await analyticsService.logOnboardingStart(userId);
@@ -271,14 +273,14 @@ void main() {
         await analyticsService.logOnboardingStart(userId);
 
         // Set cohort properties (simulating assignment)
-        expect(
-          () async => await analyticsService.setCohortProperties(
+        await expectLater(
+          analyticsService.setCohortProperties(
             userId,
             installCohort: '2026-09-02',
             platformCohort: 'android',
             purchaseCohort: 'F2P',
           ),
-          returnsNormally,
+          completes,
         );
 
         // Continue funnel
@@ -286,7 +288,8 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
       });
 
-      test('different users assigned to different purchase cohorts', () async {
+      test('different users assigned to different purchase cohorts',
+          () async {
         await analyticsService.setCohortProperties(
           'user_d1payer',
           installCohort: '2026-09-01',

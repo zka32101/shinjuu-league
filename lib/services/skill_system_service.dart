@@ -1,5 +1,9 @@
 import 'package:shinjuu_league/data/models/skill_model.dart';
-import 'package:shinjuu_league/data/models/item_model.dart';
+// This file's own ItemDefinition/ItemRarity (percentage-based item catalog,
+// used directly by name below) come from resource_model.dart; item_model.dart
+// is only needed for its unrelated Item/ItemCatalog/.bonus lookup, so its own
+// (differently-shaped) ItemRarity is hidden to avoid an ambiguous import.
+import 'package:shinjuu_league/data/models/item_model.dart' hide ItemRarity;
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 
@@ -142,7 +146,12 @@ class SkillSystemService {
 
   /// アイテムIDからアイテム定義を取得
   static ItemDefinition? getItemDefinition(String itemId) {
-    return ItemCatalog.getItemDefinition(itemId);
+    for (final item in _items) {
+      if (item.itemId == itemId) {
+        return item;
+      }
+    }
+    return null;
   }
 
   /// ビルドの有効性を検証

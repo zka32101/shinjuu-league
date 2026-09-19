@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' show User;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -5,7 +7,45 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/skill_tree_viewmodel.dart';
 
-class MockSkillTreeService extends Mock implements SkillTreeService {}
+class MockSkillTreeService extends Mock implements SkillTreeService {
+  @override
+  Future<SkillTree?> getSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTree, [userId]),
+      returnValue: Future<SkillTree?>.value(),
+      returnValueForMissingStub: Future<SkillTree?>.value(),
+    ) as Future<SkillTree?>;
+  }
+
+  @override
+  Future<bool> allocateSkillPoint(
+      String? userId, int? treeIndex, int? tierIndex) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #allocateSkillPoint, [userId, treeIndex, tierIndex]),
+      returnValue: Future<bool>.value(false),
+      returnValueForMissingStub: Future<bool>.value(false),
+    ) as Future<bool>;
+  }
+
+  @override
+  Map<String, double> calculateStatModifiers(SkillTree? skillTree) {
+    return super.noSuchMethod(
+      Invocation.method(#calculateStatModifiers, [skillTree]),
+      returnValue: <String, double>{},
+      returnValueForMissingStub: <String, double>{},
+    ) as Map<String, double>;
+  }
+
+  @override
+  Map<String, dynamic> getSkillTreeStats(SkillTree? skillTree) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTreeStats, [skillTree]),
+      returnValue: <String, dynamic>{},
+      returnValueForMissingStub: <String, dynamic>{},
+    ) as Map<String, dynamic>;
+  }
+}
 
 class MockAuthService extends Mock implements AuthService {}
 
@@ -277,7 +317,7 @@ void main() {
           authService: mockAuthService,
         );
 
-        viewModel.state = const AsyncValue.data(null);
+        viewModel.state = const AsyncValue.loading();
         final modifiers = viewModel.getStatModifiers();
 
         expect(modifiers['atk'], equals(1.0));
@@ -331,7 +371,7 @@ void main() {
           authService: mockAuthService,
         );
 
-        viewModel.state = const AsyncValue.data(null);
+        viewModel.state = const AsyncValue.loading();
         final stats = viewModel.getSkillTreeStats();
 
         expect(stats['total_points'], equals(0));
@@ -342,10 +382,17 @@ void main() {
   });
 }
 
-// Mock user creation helper
-class MockUser {
-  final String uid;
+// Mock user creation helper. firebase_auth's User is abstract with many
+// members we don't need for these tests, so we implement it with a
+// noSuchMethod fallback and only override the getter actually read (uid).
+class MockUser implements User {
   MockUser(this.uid);
+
+  @override
+  final String uid;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 MockUser _createMockUser(String uid) => MockUser(uid);

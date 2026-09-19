@@ -13,7 +13,23 @@ class AchievementPersistenceService {
   factory AchievementPersistenceService() => _instance;
   AchievementPersistenceService._internal();
 
-  final FirestoreService _firestoreService = FirestoreService();
+  /// Test-only seam: builds a standalone (non-singleton) service backed by
+  /// a caller-provided FirestoreService (e.g. wrapping FakeFirebaseFirestore),
+  /// so tests can exercise real Firestore-touching logic without the
+  /// production Firebase singleton.
+  AchievementPersistenceService.forFirestore(FirestoreService firestoreService)
+      : _firestoreServiceOverride = firestoreService;
+
+  FirestoreService? _firestoreServiceOverride;
+
+  /// Resolves the real Firebase-backed singleton lazily, on first actual
+  /// use, rather than eagerly in the constructor. This means simply
+  /// constructing this service (including via the singleton factory) never
+  /// requires Firebase to already be initialized unless a Firestore-backed
+  /// method is actually called.
+  FirestoreService get _firestoreService =>
+      _firestoreServiceOverride ??= FirestoreService();
+
   late SharedPreferences _prefs;
   bool _initialized = false;
 
