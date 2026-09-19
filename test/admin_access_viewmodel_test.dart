@@ -1,10 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart' show User;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/viewmodels/admin_access_viewmodel.dart';
 import 'package:shinjuu_league/services/admin_role_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/data/models/admin_role.dart';
-import 'package:shinjuu_league/data/models/user_model.dart';
 
 void main() {
   group('AdminAccessViewModel', () {
@@ -28,7 +28,7 @@ void main() {
 
     test('should load admin roles and current user on initialization', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin User',
@@ -76,7 +76,7 @@ void main() {
 
     test('should return true for hasPermission when user has permission', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin User',
@@ -103,7 +103,7 @@ void main() {
 
     test('should return false for hasPermission when user lacks permission', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'viewer1',
         email: 'viewer@test.com',
         displayName: 'Viewer User',
@@ -138,7 +138,7 @@ void main() {
 
     test('should check hasAnyPermission correctly', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'operator1',
         email: 'operator@test.com',
         displayName: 'Operator',
@@ -168,7 +168,7 @@ void main() {
 
     test('should check hasAllPermissions correctly', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -198,7 +198,7 @@ void main() {
 
     test('should return isAdmin getter correctly', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -225,7 +225,7 @@ void main() {
 
     test('should return currentUserRole getter correctly', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'operator1',
         email: 'operator@test.com',
         displayName: 'Operator',
@@ -252,7 +252,7 @@ void main() {
 
     test('should return allAdminUsers getter correctly', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -290,7 +290,7 @@ void main() {
 
     test('should assign role to new user', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -322,7 +322,7 @@ void main() {
 
     test('should not assign role if not admin', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'operator1',
         email: 'operator@test.com',
         displayName: 'Operator',
@@ -354,7 +354,7 @@ void main() {
 
     test('should update user role', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -392,7 +392,7 @@ void main() {
 
     test('should revoke admin role', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -427,7 +427,7 @@ void main() {
 
     test('should refresh state', () async {
       // Arrange
-      mockAuthService.currentUser = User(
+      mockAuthService.currentUser = MockUser(
         uid: 'admin1',
         email: 'admin@test.com',
         displayName: 'Admin',
@@ -459,6 +459,31 @@ void main() {
 // Mock implementations
 class MockAuthService implements AuthService {
   User? currentUser;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+// firebase_auth's User is abstract with many members these tests don't need;
+// implement it with a noSuchMethod fallback and only the getters actually
+// read by AdminAccessViewModel (uid) or set up for test data (email/
+// displayName/photoURL).
+class MockUser implements User {
+  MockUser({
+    required this.uid,
+    this.email,
+    this.displayName,
+    this.photoURL,
+  });
+
+  @override
+  final String uid;
+  @override
+  final String? email;
+  @override
+  final String? displayName;
+  @override
+  final String? photoURL;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

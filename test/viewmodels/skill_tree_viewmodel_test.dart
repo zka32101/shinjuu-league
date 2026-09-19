@@ -1,3 +1,5 @@
+import 'package:firebase_auth/firebase_auth.dart' show User;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -342,10 +344,17 @@ void main() {
   });
 }
 
-// Mock user creation helper
-class MockUser {
-  final String uid;
+// Mock user creation helper. firebase_auth's User is abstract with many
+// members we don't need for these tests, so we implement it with a
+// noSuchMethod fallback and only override the getter actually read (uid).
+class MockUser implements User {
   MockUser(this.uid);
+
+  @override
+  final String uid;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 MockUser _createMockUser(String uid) => MockUser(uid);
