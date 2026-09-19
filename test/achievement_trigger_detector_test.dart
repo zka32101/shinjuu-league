@@ -22,11 +22,8 @@ void main() {
 
     group('checkKillTriggers', () {
       test('triggers Aha Moment on first kill', () async {
-        when(mockAchievementService.getProgress(userId, 'aha_moment'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'aha_moment',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(userId, 'aha_moment'))
             .thenAnswer((_) async {});
@@ -46,7 +43,7 @@ void main() {
       });
 
       test('returns empty list on error', () async {
-        when(mockAchievementService.getProgress(userId, 'aha_moment'))
+        when(mockAchievementService.getUnlockedAchievements(userId))
             .thenThrow(Exception('Service error'));
 
         final result = await detector.checkKillTriggers(userId, 1, 1);
@@ -56,11 +53,8 @@ void main() {
 
     group('checkBattleCompletionTriggers', () {
       test('triggers Rising Star on battle win', () async {
-        when(mockAchievementService.getProgress(userId, 'rising_star'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'rising_star',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(userId, 'rising_star'))
             .thenAnswer((_) async {});
@@ -103,12 +97,14 @@ void main() {
       });
 
       test('does not trigger if already unlocked', () async {
-        when(mockAchievementService.getProgress(userId, 'rising_star'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'rising_star',
-                  unlockedAt: DateTime.now(),
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => [
+                  PlayerAchievement(
+                    userId: userId,
+                    achievementId: 'rising_star',
+                    unlockedAt: DateTime.now(),
+                  ),
+                ]);
 
         final result = await detector.checkBattleCompletionTriggers(
           userId,
@@ -127,11 +123,8 @@ void main() {
 
     group('checkProgressTriggers', () {
       test('triggers Stat Master at 50+ stat points', () async {
-        when(mockAchievementService.getProgress(userId, 'stat_master'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'stat_master',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(userId, 'stat_master'))
             .thenAnswer((_) async {});
@@ -153,11 +146,8 @@ void main() {
       });
 
       test('triggers Balanced Fighter with 3-path diversity', () async {
-        when(mockAchievementService.getProgress(userId, 'balanced_fighter'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'balanced_fighter',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(
             userId, 'balanced_fighter'))
@@ -180,12 +170,6 @@ void main() {
       });
 
       test('does not trigger Stat Master below 50 points', () async {
-        when(mockAchievementService.getProgress(userId, 'stat_master'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'stat_master',
-                ));
-
         final result = await detector.checkProgressTriggers(
           userId,
           statPoints: 49,
@@ -203,12 +187,6 @@ void main() {
 
       test('does not trigger Balanced Fighter with insufficient diversity',
           () async {
-        when(mockAchievementService.getProgress(userId, 'balanced_fighter'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'balanced_fighter',
-                ));
-
         final result = await detector.checkProgressTriggers(
           userId,
           statPoints: 50,
@@ -227,11 +205,8 @@ void main() {
 
     group('checkSeasonalTriggers', () {
       test('triggers Season Warrior at 10 seasons', () async {
-        when(mockAchievementService.getProgress(userId, 'season_warrior'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'season_warrior',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(userId, 'season_warrior'))
             .thenAnswer((_) async {});
@@ -252,11 +227,8 @@ void main() {
       });
 
       test('triggers Consistency at 3+ seasons in Gold tier', () async {
-        when(mockAchievementService.getProgress(userId, 'consistency'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'consistency',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(userId, 'consistency'))
             .thenAnswer((_) async {});
@@ -277,12 +249,6 @@ void main() {
       });
 
       test('does not trigger Consistency below 3 seasons', () async {
-        when(mockAchievementService.getProgress(userId, 'consistency'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'consistency',
-                ));
-
         final result = await detector.checkSeasonalTriggers(
           userId,
           seasonsParticipated: 5,
@@ -298,12 +264,6 @@ void main() {
       });
 
       test('does not trigger Consistency in non-Gold tiers', () async {
-        when(mockAchievementService.getProgress(userId, 'consistency'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'consistency',
-                ));
-
         final result = await detector.checkSeasonalTriggers(
           userId,
           seasonsParticipated: 5,
@@ -346,17 +306,8 @@ void main() {
 
     group('checkAllTriggersForBattle', () {
       test('checks all trigger types in single call', () async {
-        when(mockAchievementService.getProgress(userId, 'aha_moment'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'aha_moment',
-                ));
-
-        when(mockAchievementService.getProgress(userId, 'rising_star'))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'rising_star',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(userId))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(any, any))
             .thenAnswer((_) async {});
@@ -383,11 +334,8 @@ void main() {
       });
 
       test('handles multiple achievement unlocks', () async {
-        when(mockAchievementService.getProgress(any, any))
-            .thenAnswer((_) async => PlayerAchievement(
-                  userId: userId,
-                  achievementId: 'test_achievement',
-                ));
+        when(mockAchievementService.getUnlockedAchievements(any))
+            .thenAnswer((_) async => []);
 
         when(mockAchievementService.unlockAchievement(any, any))
             .thenAnswer((_) async {});
@@ -413,7 +361,7 @@ void main() {
       });
 
       test('returns empty list on error', () async {
-        when(mockAchievementService.getProgress(any, any))
+        when(mockAchievementService.getUnlockedAchievements(any))
             .thenThrow(Exception('Service error'));
 
         final result = await detector.checkAllTriggersForBattle(
