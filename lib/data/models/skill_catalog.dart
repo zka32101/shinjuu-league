@@ -37,7 +37,27 @@ class SkillDefinition with _$SkillDefinition {
   }) = _SkillDefinition;
 
   /// 指定レベルでのスキル数値を取得
-  SkillLevelData? getAtLevel(int level) => levelData[level];
+  ///
+  /// levelData は疎なテーブル（そのスキルが強化される特定レベルのみ数値を持つ。
+  /// 例: Q は Lv1/3/4/5/6/7/8 のみ、Lv2 のデータは無い）。以前はここで
+  /// 完全一致のみを見ていたため、強化レベルの間（例: Lv2 の Q）では
+  /// null になり、呼び出し側の `?? 0` フォールバックでダメージ・クールタイムが
+  /// 実質 0 になってしまっていた（そのスキルが使用可能なはずのレベルで
+  /// 実際には何もできなくなる実害バグ）。スキルは直近に強化された時点の数値を
+  /// 次の強化まで維持する設計のため、対象レベル以下で最も近いエントリーを返す。
+  SkillLevelData? getAtLevel(int level) {
+    final exact = levelData[level];
+    if (exact != null) return exact;
+
+    int? bestLevel;
+    for (final definedLevel in levelData.keys) {
+      if (definedLevel <= level &&
+          (bestLevel == null || definedLevel > bestLevel)) {
+        bestLevel = definedLevel;
+      }
+    }
+    return bestLevel == null ? null : levelData[bestLevel];
+  }
 
   factory SkillDefinition.fromJson(Map<String, dynamic> json) =>
       _$SkillDefinitionFromJson(json);

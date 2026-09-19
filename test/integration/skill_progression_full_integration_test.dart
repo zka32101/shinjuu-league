@@ -213,6 +213,15 @@ void main() {
 
     test('Skill cooldown management over time', () {
       coordinator.initializePlayer(playerId: 'player1', mechaId: 'leon');
+      // SkillCatalog's per-level data is sparse: each level upgrades one
+      // skill at a time (e.g. Q has no Lv2 entry, R has no Lv1 entry), so
+      // getSkillCooldownAtLevel() falls back to 0.0 whenever the current
+      // level has no entry for that slot. Lv3 (reached here, with the
+      // mandatory evolution confirmed) is the first level where both Q and
+      // R have real cooldown data (4.0 and 8.0 respectively).
+      coordinator.levelUpPlayer('player1');
+      coordinator.levelUpPlayer('player1');
+      coordinator.confirmEvolution('player1', EvolutionType.offensive);
 
       // Use all four skills
       coordinator.tryUseSkill('player1', SkillSlot.q, baseSkillDamage: 200);

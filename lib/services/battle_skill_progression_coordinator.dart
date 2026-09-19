@@ -73,7 +73,13 @@ class BattleSkillProgressionCoordinator {
   final SkillProgressionBattleService _skillService;
   final SkillProgressionConfig _progressionConfig;
 
-  final _skillEventController = StreamController<BattleSkillEvent>.broadcast();
+  // BattleEngine's combat/hit/damage/monster streams are all `sync: true`
+  // so that time-critical listeners (e.g. Aha Moment detection) see events
+  // immediately instead of waiting for a microtask flush. Level-up and
+  // evolution-selection events are just as time-critical for the UI
+  // (pendingEvolutionSelectEvent must be visible right away), so this
+  // stream follows the same pattern.
+  final _skillEventController = StreamController<BattleSkillEvent>.broadcast(sync: true);
   final Map<String, DateTime> _lastEvolutionSelectionTime = {};
 
   Stream<BattleSkillEvent> get skillEvents => _skillEventController.stream;

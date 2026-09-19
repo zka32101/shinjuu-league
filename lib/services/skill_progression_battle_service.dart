@@ -24,14 +24,26 @@ class BattleSkillProgressionState {
   /// レベルアップ（バトル内での経験値→レベル上昇）
   /// 進化選択が必要な場合は isEvolutionLocked をセットして呼び出し側に通知
   BattleSkillProgressionState levelUp() {
+    // getNextEvolutionLevel() returns the threshold STRICTLY ABOVE the given
+    // level (e.g. getNextEvolutionLevel(3) == 6, not 3), so it must be read
+    // from the level *before* leveling up to detect "we just reached an
+    // evolution level". Reading it from newState (post-increment) always
+    // looks one evolution level too far ahead, so isEvolutionPointReached
+    // could never become true and evolution selection never triggered.
+    final nextEvoLevel = state.getNextEvolutionLevel();
     final newState = state.levelUp();
-    final nextEvoLevel = newState.getNextEvolutionLevel();
 
     // Lv3またはLv6での進化選択が必要か判定
     final isEvolutionPointReached = nextEvoLevel == newState.currentLevel;
 
     return BattleSkillProgressionState(userId: userId, state: newState)
-      ..isEvolutionLocked = isEvolutionPointReached
+      // 既にロック中（前回の進化選択がまだ confirmEvolution/switchEvolution
+      // で解決されていない）場合はロックを維持する。これがないと、選択画面が
+      // 出ている間にもう1レベル分の経験値が入ってしまっただけで
+      // isEvolutionLocked が黙って false に戻り、以後 confirmEvolution() が
+      // 常に無視されて進化を一切選べなくなる（Lv3到達直後に連続キルするなど
+      // 現実にありうるタイミングで発生しうる実害バグだった）。
+      ..isEvolutionLocked = isEvolutionPointReached || isEvolutionLocked
       ..hasPendingLevelUp = true;
   }
 
@@ -178,10 +190,19 @@ class SkillProgressionBattleService {
     _battleProgression[playerId] = updated;
   }
 
-  /// 進化を切り替え（Lv6）
+  /// 進化を切り替え（Lv6以降、複数回の切り替えが可能）
+  ///
+  /// `isEvolutionLocked` は「Lv3/Lv6到達直後の選択待ち」を表す一時的なフラグで、
+  /// switchEvolution() 自身の呼び出しでも false にリセットされる
+  /// （BattleSkillProgressionState.switchEvolution 参照）。そのため以前は
+  /// これをゲートに使っており、Lv6到達直後の1回目しか切り替えを受け付けず、
+  /// 2回目以降の switchEvolution 呼び出しが無言で無視されていた
+  /// （switch_count を追跡している設計と矛盾する挙動だった）。
+  /// 正しいゲートは「既に最初の進化選択（Lv3）を済ませているか」であるべき。
   void switchEvolution(String playerId, EvolutionType newChoice) {
     final current = _battleProgression[playerId];
-    if (current == null || !current.isEvolutionLocked) return;
+    if (current == null) return;
+    if (current.state.evolutionState.currentEvolution == null) return;
 
     final updated = current.switchEvolution(newChoice);
     _battleProgression[playerId] = updated;

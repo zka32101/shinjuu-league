@@ -46,6 +46,15 @@ class MockAnalyticsService extends Mock implements AnalyticsService {
       returnValueForMissingStub: Future<void>.value(),
     ) as Future<void>;
   }
+
+  @override
+  Future<void> logBattleStart(String? userId, String? battleMode) {
+    return super.noSuchMethod(
+      Invocation.method(#logBattleStart, [userId, battleMode]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
 }
 
 class MockSkillTreeService extends Mock implements SkillTreeService {
@@ -393,7 +402,19 @@ void main() {
 
     test('All 6 characters support complete skill progression flow',
         () async {
-      final characterIds = ['leon', 'wolf', 'dragoon', 'frost', 'phoenix', 'crystal'];
+      // These must be real mecha_catalog.dart IDs: mechaById() falls back to
+      // a default mecha for unknown IDs (by design, so an unrecognized ID
+      // never crashes battle setup), which silently masked this list using
+      // placeholder names instead of the actual catalog IDs -- every
+      // iteration was really exercising the same fallback mecha.
+      final characterIds = [
+        'mecha_east_flame',
+        'mecha_east_thunder',
+        'mecha_east_stone',
+        'mecha_west_frost',
+        'mecha_west_storm',
+        'mecha_west_gold',
+      ];
 
       for (final charId in characterIds) {
         final match = MatchResult(

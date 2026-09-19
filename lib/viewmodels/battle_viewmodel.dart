@@ -25,6 +25,18 @@ import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 
+/// Sentinel used by [BattleState.copyWith] to tell "argument not passed
+/// (keep existing value)" apart from "explicitly passed null (clear it)"
+/// for nullable fields such as [BattleState.pendingEvolutionSelectEvent].
+/// A plain `field ?? this.field` fallback can never actually clear such a
+/// field back to null, since passing null just falls through to the old
+/// value.
+class _Unset {
+  const _Unset();
+}
+
+const _unset = _Unset();
+
 class BattleState {
   const BattleState({
     required this.battle,
@@ -113,7 +125,7 @@ class BattleState {
     String? error,
     List<Achievement>? newlyUnlockedAchievements,
     Map<String, PlayerSkillStateSnapshot>? skillProgressionStates,
-    EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent,
+    Object? pendingEvolutionSelectEvent = _unset,
     bool? showLevelUpAnimation,
     double? skillCooldownRemaining,
   }) {
@@ -135,7 +147,14 @@ class BattleState {
       error: error,
       newlyUnlockedAchievements: newlyUnlockedAchievements ?? this.newlyUnlockedAchievements,
       skillProgressionStates: skillProgressionStates ?? this.skillProgressionStates,
-      pendingEvolutionSelectEvent: pendingEvolutionSelectEvent ?? this.pendingEvolutionSelectEvent,
+      // `pendingEvolutionSelectEvent: null` must actually clear the field
+      // (confirmEvolution()/autoConfirmEvolution() rely on this), so a
+      // sentinel default distinguishes "not passed" from "explicitly
+      // cleared" instead of the usual `?? this.field` fallback, which can
+      // never produce null once a value has been set.
+      pendingEvolutionSelectEvent: identical(pendingEvolutionSelectEvent, _unset)
+          ? this.pendingEvolutionSelectEvent
+          : pendingEvolutionSelectEvent as EvolutionSelectionRequiredEvent?,
       showLevelUpAnimation: showLevelUpAnimation ?? this.showLevelUpAnimation,
       skillCooldownRemaining: skillCooldownRemaining ?? this.skillCooldownRemaining,
     );
@@ -296,6 +315,11 @@ class BattleViewModel extends StateNotifier<BattleState> {
       playerResources: initialResources,
       isLoading: false,
     );
+
+    // 各プレイヤーの初期スキル進行状態（Lv1）をすぐに UI へ反映する
+    // （これを呼ばないと、最初のスキルイベントが発生するまで
+    // skillProgressionStates が空のままになってしまう）
+    _updateSkillProgressionUI();
 
     await _firestoreService.createBattle(battle);
     await _analyticsService.logBattleStart(selfUserId, match.mode.name);
@@ -476,6 +500,10 @@ class BattleViewModel extends StateNotifier<BattleState> {
       state = state.copyWith(showLevelUpAnimation: true);
       // アニメーション表示後、自動的にリセット
       Future.delayed(const Duration(milliseconds: 2000), () {
+        // ViewModel が既に dispose 済みの場合は state への書き込みで
+        // StateNotifier が例外を投げるため、必ずガードする
+        // （バトル終了直後にこのタイマーが発火するケースがある）
+        if (!mounted) return;
         state = state.copyWith(showLevelUpAnimation: false);
       });
 
