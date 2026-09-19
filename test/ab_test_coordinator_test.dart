@@ -149,10 +149,10 @@ void main() {
         coordinator.getExperimentVariant(userId, experimentId);
 
         verify(mockAnalytics.logABTestVariantAssignment(
-          userId: userId,
-          experimentId: experimentId,
-          variantName: any,
-          isControl: any,
+          userId,
+          experimentId,
+          any as String,
+          any as bool,
         )).called(1);
       });
 
@@ -165,10 +165,10 @@ void main() {
 
         // Should only log once due to caching
         verify(mockAnalytics.logABTestVariantAssignment(
-          userId: userId,
-          experimentId: experimentId,
-          variantName: any,
-          isControl: any,
+          userId,
+          experimentId,
+          any as String,
+          any as bool,
         )).called(1);
       });
 
