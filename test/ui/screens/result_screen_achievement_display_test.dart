@@ -1,3 +1,5 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -5,11 +7,38 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/replay_model.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
+import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/ui/screens/result_screen.dart';
+
+class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
+
+/// ResultScreen reads `battleViewModelProvider` and, via `userViewModelProvider`,
+/// several other Firebase-backed singletons (FirestoreService, AuthService,
+/// RankingService, SeasonService). Override all of them with fakes so widget
+/// tests never require Firebase.initializeApp().
+ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
+      overrides: [
+        firestoreServiceProvider.overrideWithValue(
+          FirestoreService.forFirestore(FakeFirebaseFirestore()),
+        ),
+        authServiceProvider.overrideWithValue(
+          AuthService.forFirebaseAuth(_MockFirebaseAuth()),
+        ),
+        rankingServiceProvider.overrideWithValue(
+          RankingService(firestore: FakeFirebaseFirestore()),
+        ),
+        seasonServiceProvider.overrideWithValue(
+          SeasonService(firestore: FakeFirebaseFirestore()),
+        ),
+      ],
+    );
 
 class MockFirestoreService extends Mock implements FirestoreService {}
 
@@ -147,7 +176,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -186,7 +215,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -226,7 +255,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -265,7 +294,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -305,7 +334,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -355,7 +384,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -395,7 +424,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -435,7 +464,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -475,7 +504,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),
@@ -515,7 +544,7 @@ void main() {
 
       await tester.pumpWidget(
         UncontrolledProviderScope(
-          container: ProviderContainer(),
+          container: _fakeFirestoreContainer(),
           child: MaterialApp(
             home: ResultScreen(battle: battle),
         ),

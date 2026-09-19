@@ -61,6 +61,8 @@ final userViewModelProvider =
       return UserViewModel(
         firestoreService: ref.watch(firestoreServiceProvider),
         authService: ref.watch(authServiceProvider),
+        rankingService: ref.watch(rankingServiceProvider),
+        seasonService: ref.watch(seasonServiceProvider),
       );
     });
 
