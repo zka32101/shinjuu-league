@@ -1,5 +1,7 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
+import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 
@@ -260,10 +262,14 @@ void main() {
   });
 }
 
-// Mock implementation
+// Mock implementation. QuestService's constructor requires a real
+// FirestoreService (not an interface), so it's backed by a fake Firestore
+// instance via the FirestoreService.forFirestore test seam; every public
+// QuestService method is overridden below, so the fake Firestore is never
+// actually touched.
 class MockQuestService extends QuestService {
   MockQuestService()
-      : super(firestoreService: _MockFirestoreService());
+      : super(firestoreService: FirestoreService.forFirestore(FakeFirebaseFirestore()));
 
   List<PlayerQuest> _allQuests = [];
   List<PlayerQuest> _activeQuestsByFrequency = [];
@@ -343,12 +349,6 @@ class MockQuestService extends QuestService {
       'pending_rewards': _allQuests.where((q) => q.canClaimReward).length,
     };
   }
-}
-
-class _MockFirestoreService {
-  Future<void> savePlayerQuest(String userId, dynamic playerQuest) async {}
-  Future<dynamic> getPlayerQuest(String userId, String questId) async => null;
-  Future<List<Map<String, dynamic>>> getAllPlayerQuests(String userId) async => [];
 }
 
 PlayerQuest _createPlayerQuest(
