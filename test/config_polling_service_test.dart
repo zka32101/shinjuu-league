@@ -99,9 +99,6 @@ void main() {
         pollingService.startPolling();
         await Future.delayed(Duration(milliseconds: 100));
 
-        final callsBeforeStop = mockRemoteConfig.fetch
-            .called(); // Can't directly count, but verify is called
-
         pollingService.stopPolling();
         await Future.delayed(Duration(milliseconds: 100));
 
@@ -427,7 +424,7 @@ void main() {
       test('clears feature flags cache on relevant changes', () async {
         // This would require detecting changes to feature-related keys
         // and verifying clearCache was called
-        verify(mockFeatureFlags.clearCache).called(0);
+        verify(mockFeatureFlags.clearCache()).called(0);
 
         // Would need proper mock setup to test actual change detection
       });

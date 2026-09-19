@@ -51,7 +51,7 @@ void main() {
       // Assert
       final state = viewModel.state;
       expect(state, isA<AsyncData>());
-      if (state is AsyncData) {
+      if (state is AsyncData<AdminAccessState>) {
         expect(state.value.currentUserId, 'admin1');
         expect(state.value.isAdmin, true);
         expect(state.value.currentUserRole?.role, AdminRole.admin);
@@ -68,7 +68,7 @@ void main() {
       // Assert
       final state = viewModel.state;
       expect(state, isA<AsyncData>());
-      if (state is AsyncData) {
+      if (state is AsyncData<AdminAccessState>) {
         expect(state.value.currentUserId, null);
         expect(state.value.isAdmin, false);
       }

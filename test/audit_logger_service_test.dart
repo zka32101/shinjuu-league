@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
@@ -155,7 +157,7 @@ void main() {
 
     test('getUserAuditLog should retrieve logs for specific user', () async {
       // Arrange
-      mockFirestore.setMockUserAuditLog('admin1', [
+      await mockFirestore.setMockUserAuditLog('admin1', [
         {
           'timestamp': '2026-09-01T10:00:00.000Z',
           'userId': 'admin1',
@@ -183,7 +185,7 @@ void main() {
 
     test('getResourceAuditLog should retrieve logs for specific resource', () async {
       // Arrange
-      mockFirestore.setMockResourceAuditLog('FEATURE_FLAG', 'new_feature', [
+      await mockFirestore.setMockResourceAuditLog('FEATURE_FLAG', 'new_feature', [
         {
           'timestamp': '2026-09-01T10:00:00.000Z',
           'userId': 'admin1',
@@ -215,7 +217,7 @@ void main() {
 
     test('getAuditLog should retrieve all logs', () async {
       // Arrange
-      mockFirestore.setMockAuditLog([
+      await mockFirestore.setMockAuditLog([
         {
           'timestamp': '2026-09-01T10:00:00.000Z',
           'userId': 'admin1',
@@ -273,7 +275,7 @@ void main() {
 
     test('getActivityStats should return statistics about admin activities', () async {
       // Arrange
-      mockFirestore.setMockActivityStats(
+      await mockFirestore.setMockActivityStats(
         totalChanges: 5,
         actionCounts: {
           'FEATURE_ENABLED': 2,
@@ -298,7 +300,7 @@ void main() {
 
     test('getActivityStats should filter by period', () async {
       // Arrange
-      mockFirestore.setMockActivityStats(
+      await mockFirestore.setMockActivityStats(
         totalChanges: 2,
         actionCounts: {'FEATURE_ENABLED': 2},
         userCounts: {'admin1': 2},
@@ -334,44 +336,61 @@ void main() {
 }
 
 // Mock implementations for testing
+// Backed by a real (fake) Firestore so the .where()/.orderBy()/.limit()
+// query chain used throughout AuditLoggerService behaves like the genuine
+// SDK instead of a hand-rolled stub that ignored filters entirely.
 class MockFirestoreService implements FirestoreService {
+  final FakeFirebaseFirestore _fake = FakeFirebaseFirestore();
   List<Map<String, dynamic>> auditLogs = [];
-  Map<String, List<Map<String, dynamic>>> userAuditLogs = {};
-  Map<String, List<Map<String, dynamic>>> resourceAuditLogs = {};
-  List<Map<String, dynamic>> allAuditLogs = [];
-  Map<String, dynamic> activityStats = {};
   bool failNextAddData = false;
 
-  void setMockUserAuditLog(String userId, List<Map<String, dynamic>> logs) {
-    userAuditLogs[userId] = logs;
+  Future<void> setMockUserAuditLog(
+    String userId,
+    List<Map<String, dynamic>> logs,
+  ) async {
+    for (final log in logs) {
+      await _fake.collection('audit_log').add(log);
+    }
   }
 
-  void setMockResourceAuditLog(
+  Future<void> setMockResourceAuditLog(
     String resourceType,
     String resourceId,
     List<Map<String, dynamic>> logs,
-  ) {
-    resourceAuditLogs['$resourceType:$resourceId'] = logs;
+  ) async {
+    for (final log in logs) {
+      await _fake.collection('audit_log').add(log);
+    }
   }
 
-  void setMockAuditLog(List<Map<String, dynamic>> logs) {
-    allAuditLogs = logs;
+  Future<void> setMockAuditLog(List<Map<String, dynamic>> logs) async {
+    for (final log in logs) {
+      await _fake.collection('audit_log').add(log);
+    }
   }
 
-  void setMockActivityStats({
+  Future<void> setMockActivityStats({
     required int totalChanges,
     required Map<String, int> actionCounts,
     required Map<String, int> userCounts,
-  }) {
-    activityStats = {
-      'totalChanges': totalChanges,
-      'actionCounts': actionCounts,
-      'userCounts': userCounts,
-      'topUser': userCounts.entries.isNotEmpty
-          ? userCounts.entries.reduce((a, b) => a.value > b.value ? a : b).key
-          : null,
-      'period': '30 days',
-    };
+  }) async {
+    final actionQueue = <String>[
+      for (final entry in actionCounts.entries)
+        for (var i = 0; i < entry.value; i++) entry.key,
+    ];
+    final userQueue = <String>[
+      for (final entry in userCounts.entries)
+        for (var i = 0; i < entry.value; i++) entry.key,
+    ];
+    final count =
+        totalChanges > actionQueue.length ? totalChanges : actionQueue.length;
+    for (var i = 0; i < count; i++) {
+      await _fake.collection('audit_log').add({
+        'timestamp': DateTime.now().toIso8601String(),
+        'userId': i < userQueue.length ? userQueue[i] : 'unknown',
+        'action': i < actionQueue.length ? actionQueue[i] : 'UNKNOWN',
+      });
+    }
   }
 
   @override
@@ -383,15 +402,12 @@ class MockFirestoreService implements FirestoreService {
     if (path == 'audit_log') {
       auditLogs.add(data);
     }
+    await _fake.collection(path).add(data);
   }
 
   @override
-  dynamic collection(String path) {
-    if (path == 'audit_log') {
-      return _MockAuditLogQuery(this);
-    }
-    throw UnimplementedError();
-  }
+  CollectionReference<Map<String, dynamic>> collection(String path) =>
+      _fake.collection(path);
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -421,45 +437,3 @@ class MockAdminRoleService implements AdminRoleService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _MockAuditLogQuery {
-  final MockFirestoreService _service;
-
-  _MockAuditLogQuery(this._service);
-
-  _MockAuditLogQuery where(String field, {dynamic isEqualTo}) {
-    // Mock where clause - return self for chaining
-    return this;
-  }
-
-  _MockAuditLogQuery orderBy(String field, {bool descending = false}) {
-    return this;
-  }
-
-  _MockAuditLogQuery limit(int limit) {
-    return this;
-  }
-
-  Future<dynamic> get() async {
-    return _MockAuditLogSnapshot(_service);
-  }
-}
-
-class _MockAuditLogSnapshot {
-  final MockFirestoreService _service;
-
-  _MockAuditLogSnapshot(this._service);
-
-  List<dynamic> get docs {
-    return _service.allAuditLogs
-        .map((log) => _MockAuditLogDoc(log))
-        .toList();
-  }
-}
-
-class _MockAuditLogDoc {
-  final Map<String, dynamic> _data;
-
-  _MockAuditLogDoc(this._data);
-
-  Map<String, dynamic> data() => _data;
-}

@@ -490,7 +490,7 @@ void main() {
       });
 
       test('returns false for empty log objects', () {
-        final emptyLogs = [{}];
+        final emptyLogs = [<String, dynamic>{}];
 
         final isValid = AnalyticsExportService.validateExportData(emptyLogs);
 

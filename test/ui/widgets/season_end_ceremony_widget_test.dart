@@ -199,7 +199,7 @@ void main() {
       );
 
       // At start, opacity should be low
-      final initialOpacity = tester.getOpacity(find.text('Gold'));
+      final initialOpacity = _fadeOpacityOf(tester, find.text('Gold'));
       expect(initialOpacity, lessThan(0.5));
     });
 
@@ -454,4 +454,15 @@ void main() {
       expect(callbackCalled, isTrue);
     });
   });
+}
+
+/// Reads the current opacity of the nearest [FadeTransition] ancestor of
+/// [finder]. `WidgetTester` has no built-in `getOpacity`, so this walks the
+/// tree the same way SeasonEndCeremonyWidget actually animates (a
+/// FadeTransition around its content), rather than a nonexistent API.
+double _fadeOpacityOf(WidgetTester tester, Finder finder) {
+  final fadeTransition = tester.widget<FadeTransition>(
+    find.ancestor(of: finder, matching: find.byType(FadeTransition)).first,
+  );
+  return fadeTransition.opacity.value;
 }

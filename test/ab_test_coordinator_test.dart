@@ -3,6 +3,7 @@ import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/services/ab_test_coordinator.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
+import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 
 class MockFeatureFlagsService extends Mock implements FeatureFlagsService {}
@@ -404,7 +405,8 @@ void main() {
                   equals('exp_logging_test'))
               .having(
                   (p) => p.containsKey('variant'), 'has variant', isTrue)
-              .having((p) => p.containsKey('cohort'), 'has cohort', isTrue)),
+              .having((p) => p.containsKey('cohort'), 'has cohort', isTrue))
+              as Map<String, dynamic>,
         )).called(1);
       });
 
@@ -427,7 +429,8 @@ void main() {
                   'has feature_enabled',
                   isTrue)
               .having((p) => p.containsKey('feature_variant'),
-                  'has feature_variant', isTrue)),
+                  'has feature_variant', isTrue))
+              as Map<String, dynamic>,
         )).called(1);
       });
 
@@ -443,7 +446,8 @@ void main() {
           'user_123',
           'event_with_cohort',
           argThat(isA<Map<String, dynamic>>()
-              .having((p) => p['cohort'], 'cohort', equals('normal'))),
+              .having((p) => p['cohort'], 'cohort', equals('normal')))
+              as Map<String, dynamic>,
         )).called(1);
       });
     });

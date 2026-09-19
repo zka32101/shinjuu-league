@@ -1,3 +1,5 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/admin_role.dart';
 import 'package:shinjuu_league/services/admin_role_service.dart';
@@ -34,7 +36,7 @@ void main() {
         },
       ];
 
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
 
       // Act
       await roleService.loadAdminRoles();
@@ -69,7 +71,7 @@ void main() {
           'assignedBy': null,
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act & Assert
@@ -90,7 +92,7 @@ void main() {
           'assignedBy': 'admin1',
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act & Assert
@@ -111,7 +113,7 @@ void main() {
           'assignedBy': 'admin1',
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act & Assert
@@ -132,7 +134,7 @@ void main() {
           'assignedBy': 'admin1',
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act & Assert
@@ -164,7 +166,7 @@ void main() {
           'assignedBy': null,
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act & Assert
@@ -204,7 +206,7 @@ void main() {
           'assignedBy': 'user1',
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act
@@ -247,7 +249,7 @@ void main() {
           'assignedBy': 'admin1',
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act
@@ -289,7 +291,7 @@ void main() {
           'assignedBy': null,
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
 
       // Act
@@ -316,7 +318,7 @@ void main() {
           'assignedBy': null,
         },
       ];
-      mockFirestoreService.setMockRoles(testRoles);
+      await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
       expect(roleService.isCacheLoaded, true);
 
@@ -330,7 +332,7 @@ void main() {
 
     test('getRoleHistory should return historical role changes', () async {
       // Arrange
-      mockFirestoreService.setMockRoleHistory('user1', [
+      await mockFirestoreService.setMockRoleHistory('user1', [
         {
           'userId': 'user1',
           'action': 'ROLE_ASSIGNED',
@@ -352,90 +354,66 @@ void main() {
       final history = await roleService.getRoleHistory('user1');
 
       // Assert
+      // getRoleHistory orders by timestamp descending, so the most recent
+      // change (ROLE_UPDATED) comes first.
       expect(history.length, 2);
-      expect(history[0]['action'], 'ROLE_ASSIGNED');
-      expect(history[1]['action'], 'ROLE_UPDATED');
+      expect(history[0]['action'], 'ROLE_UPDATED');
+      expect(history[1]['action'], 'ROLE_ASSIGNED');
     });
   });
 }
 
-// Mock FirestoreService for testing
+// Mock FirestoreService for testing, backed by a real (fake) Firestore so
+// that the .where()/.orderBy()/.limit() query chain used by
+// AdminRoleService.getRoleHistory() behaves like the genuine SDK instead of
+// a hand-rolled stub that doesn't support chaining.
 class MockFirestoreService implements FirestoreService {
-  Map<String, dynamic> _mockRoles = {};
-  Map<String, List<Map<String, dynamic>>> _roleHistory = {};
+  final FakeFirebaseFirestore _fake = FakeFirebaseFirestore();
 
-  void setMockRoles(List<Map<String, dynamic>> roles) {
-    _mockRoles.clear();
-    for (var role in roles) {
-      _mockRoles[role['userId']] = role;
+  Future<void> setMockRoles(List<Map<String, dynamic>> roles) async {
+    final existing = await _fake.collection('admin_users').get();
+    for (final doc in existing.docs) {
+      await doc.reference.delete();
+    }
+    for (final role in roles) {
+      await _fake.collection('admin_users').doc(role['userId'] as String).set(role);
     }
   }
 
-  void setMockRoleHistory(String userId, List<Map<String, dynamic>> history) {
-    _roleHistory[userId] = history;
+  Future<void> setMockRoleHistory(
+    String userId,
+    List<Map<String, dynamic>> history,
+  ) async {
+    for (final entry in history) {
+      await _fake.collection('admin_role_audit_log').add(entry);
+    }
   }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<void> setData({required String path, required Map<String, dynamic> data}) async {
-    if (path.startsWith('admin_users/')) {
-      final userId = path.split('/')[1];
-      _mockRoles[userId] = data;
+  Future<void> setData({required String path, required dynamic data}) async {
+    final parts = path.split('/');
+    if (parts.length == 2) {
+      await _fake.collection(parts[0]).doc(parts[1]).set(data as Map<String, dynamic>);
     }
   }
 
   @override
   Future<void> deleteData({required String path}) async {
-    if (path.startsWith('admin_users/')) {
-      final userId = path.split('/')[1];
-      _mockRoles.remove(userId);
+    final parts = path.split('/');
+    if (parts.length == 2) {
+      await _fake.collection(parts[0]).doc(parts[1]).delete();
     }
   }
 
   @override
   Future<void> addData({required String path, required Map<String, dynamic> data}) async {
-    if (path == 'admin_role_audit_log') {
-      // Mock implementation
-    }
+    await _fake.collection(path).add(data);
   }
 
   @override
-  dynamic collection(String path) {
-    if (path == 'admin_users') {
-      return _MockQuery(_mockRoles);
-    } else if (path == 'admin_role_audit_log') {
-      return _MockQuery({});
-    }
-    throw UnimplementedError();
-  }
-}
-
-class _MockQuery {
-  final Map<String, dynamic> _data;
-
-  _MockQuery(this._data);
-
-  Future<dynamic> get() async {
-    return _MockSnapshot(_data);
-  }
-}
-
-class _MockSnapshot {
-  final Map<String, dynamic> _data;
-
-  _MockSnapshot(this._data);
-
-  List<dynamic> get docs {
-    return _data.entries.map((e) => _MockDoc(e.value as Map<String, dynamic>)).toList();
-  }
-}
-
-class _MockDoc {
-  final Map<String, dynamic> _data;
-
-  _MockDoc(this._data);
-
-  Map<String, dynamic> data() => _data;
+  CollectionReference<Map<String, dynamic>> collection(String path) =>
+      _fake.collection(path);
 }
