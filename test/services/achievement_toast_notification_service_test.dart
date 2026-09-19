@@ -1,10 +1,48 @@
 import 'dart:async';
 
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/services/achievement_toast_notification_service.dart';
 
 void main() {
+  // showAchievementToast() calls HapticFeedback (a platform channel) via
+  // HapticService.onAchievementUnlock(). Without an initialized binding,
+  // that call throws synchronously ("Binding has not yet been
+  // initialized"), which showAchievementToast()'s try/catch turns into a
+  // rethrow, failing every single test in this file.
+  TestWidgetsFlutterBinding.ensureInitialized();
+
+  // showAchievementToast() also plays a sound via the (singleton)
+  // AudioService, which lazily constructs a real `package:audioplayers`
+  // AudioPlayer. That plugin has no test-mock handler registered by
+  // default, so its internal, fire-and-forget initialization
+  // (`AudioPlayer._create()`) fails with a MissingPluginException that
+  // surfaces asynchronously *after* the test that triggered it has already
+  // finished, failing an unrelated later test ("This test failed after it
+  // had already completed."). Mock the audioplayers channels so playback
+  // is a silent no-op here, matching how it behaves on a real device
+  // before real SE/BGM assets are added.
+  const globalChannel = MethodChannel('xyz.luan/audioplayers.global');
+  const playerChannel = MethodChannel('xyz.luan/audioplayers');
+  const globalEventChannel = EventChannel('xyz.luan/audioplayers.global/events');
+  final messenger = TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger;
+
+  setUpAll(() {
+    messenger.setMockMethodCallHandler(globalChannel, (call) async => null);
+    messenger.setMockMethodCallHandler(playerChannel, (call) async => null);
+    messenger.setMockStreamHandler(
+      globalEventChannel,
+      MockStreamHandler.inline(onListen: (arguments, events) {}),
+    );
+  });
+
+  tearDownAll(() {
+    messenger.setMockMethodCallHandler(globalChannel, null);
+    messenger.setMockMethodCallHandler(playerChannel, null);
+    messenger.setMockStreamHandler(globalEventChannel, null);
+  });
+
   group('AchievementToastNotificationService', () {
     late AchievementToastNotificationService service;
 
@@ -198,10 +236,12 @@ void main() {
     });
 
     test('notification stream emits correct data', () async {
-      final notification = await service.notifications.first;
-      await service.showAchievementToast(testAchievement);
-
-      await expectLater(
+      // Subscribe (and start the expectation) before triggering the event:
+      // notifications is a broadcast stream, so a listener attached after
+      // the event fires will never see it and the awaited future/matcher
+      // would hang forever (this previously deadlocked until the 30s test
+      // timeout).
+      final expectation = expectLater(
         service.notifications,
         emits(
           isA<AchievementToastNotification>()
@@ -213,26 +253,42 @@ void main() {
               .having((n) => n.id, 'id', isNotEmpty),
         ),
       );
+
+      await service.showAchievementToast(testAchievement);
+
+      await expectation;
     });
 
     test('dismissal stream emits notification IDs', () async {
+      // Subscribe before calling dismiss(): dismissals is a broadcast
+      // stream and dismiss() emits synchronously, so subscribing afterward
+      // would miss the event and hang forever waiting for one that never
+      // comes.
       final id = await service.showAchievementToast(testAchievement);
       await Future.delayed(const Duration(milliseconds: 50));
 
-      service.dismiss(id);
-
-      await expectLater(
+      final expectation = expectLater(
         service.dismissals,
         emits(id),
       );
+
+      service.dismiss(id);
+
+      await expectation;
     });
 
     test('notification has correct creation timestamp', () async {
+      // Subscribe before calling showAchievementToast(): notifications is a
+      // broadcast stream and the notification is emitted synchronously
+      // inside showAchievementToast(), so subscribing afterward would miss
+      // it and `.first` would hang forever.
       final before = DateTime.now();
+      final notificationFuture = service.notifications.first;
       final id = await service.showAchievementToast(testAchievement);
       final after = DateTime.now();
 
-      final notification = await service.notifications.first;
+      final notification = await notificationFuture;
+      expect(notification.id, equals(id));
 
       expect(
         notification.createdAt.isAfter(before.subtract(const Duration(milliseconds: 100))),

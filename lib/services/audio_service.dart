@@ -171,7 +171,15 @@ class AudioService {
   }
 
   void dispose() {
-    _sePlayer.dispose();
-    _bgmPlayer.dispose();
+    // AudioService is a singleton, so dispose() can end up called more than
+    // once against the same underlying AudioPlayer instances (e.g. once per
+    // test's tearDown). audioplayers' AudioPlayer.dispose() is not
+    // idempotent -- disposing an already-disposed player throws
+    // asynchronously ("AudioPlayer has been disposed"), which previously
+    // surfaced as an unhandled error failing an unrelated, later test.
+    // Swallow that the same way playback failures are already swallowed
+    // elsewhere in this class.
+    _sePlayer.dispose().catchError((_) {});
+    _bgmPlayer.dispose().catchError((_) {});
   }
 }
