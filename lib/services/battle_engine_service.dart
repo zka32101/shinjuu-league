@@ -114,13 +114,13 @@ class BattleParticipantState {
     this.skillBuild,
     PlayerResources? initialResources,
   }) {
-    currentHp = effectiveHp;
     resources = initialResources ??
         PlayerResources(
           currentMana: 100,
           maxMana: 100,
           gold: 0,
         );
+    currentHp = effectiveHp;
     _initializeSkillCooldowns();
   }
 

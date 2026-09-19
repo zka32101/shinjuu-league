@@ -185,6 +185,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   late DateTime _battleStartTime;
 
   late BattleSkillProgressionCoordinator _skillCoordinator;
+  bool _skillCoordinatorInitialized = false;
 
   // Track skill progression statistics for battle summary
   int _totalSkillsUsed = 0;
@@ -256,6 +257,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     // スキル進行システムを初期化
     _skillCoordinator = BattleSkillProgressionCoordinator();
+    _skillCoordinatorInitialized = true;
     for (final mp in match.allParticipants) {
       _skillCoordinator.initializePlayer(playerId: mp.userId, mechaId: mp.mechaId);
     }
@@ -801,7 +803,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _monsterSub?.cancel();
     _skillEventSub?.cancel();
     state.engine?.dispose();
-    _skillCoordinator.dispose();
+    if (_skillCoordinatorInitialized) {
+      _skillCoordinator.dispose();
+    }
     super.dispose();
   }
 }
