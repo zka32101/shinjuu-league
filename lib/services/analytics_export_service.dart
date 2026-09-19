@@ -181,7 +181,12 @@ class AnalyticsExportService {
     DateTime? timestamp,
   }) {
     timestamp ??= DateTime.now();
-    final dateStr = timestamp.toString().replaceAll(':', '-').split('.')[0];
+    // toIso8601String() (not toString()): DateTime.toString() separates the
+    // date and time with a space ("2026-09-01 10:30:45.000"), which is an
+    // awkward/unsafe character to have in a downloadable file name; the ISO
+    // 'T' separator avoids it.
+    final dateStr =
+        timestamp.toIso8601String().replaceAll(':', '-').split('.')[0];
     final customName = options.customFileName ?? 'analytics-export';
     final extension = _getExtension(options.format);
 
@@ -222,7 +227,10 @@ class AnalyticsExportService {
     if (logs.isEmpty) {
       return {
         'totalRecords': 0,
-        'dateRange': 'No data',
+        // Matches the non-empty-but-no-timestamps 'N/A' sentinel below
+        // (`timestamps.isEmpty ? 'N/A' : ...`) - both represent the same
+        // "no date range available" case and should read the same.
+        'dateRange': 'N/A',
         'uniqueUsers': 0,
         'operationTypes': 0,
       };
