@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
@@ -10,13 +11,104 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 
-class MockFirestoreService extends Mock implements FirestoreService {}
+class MockFirestoreService extends Mock implements FirestoreService {
+  @override
+  Future<User?> getUserById(String? uid) {
+    return super.noSuchMethod(
+      Invocation.method(#getUserById, [uid]),
+      returnValue: Future<User?>.value(),
+      returnValueForMissingStub: Future<User?>.value(),
+    ) as Future<User?>;
+  }
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+  @override
+  Future<void> updateBattle(Battle? battle) {
+    return super.noSuchMethod(
+      Invocation.method(#updateBattle, [battle]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
-class MockSkillTreeService extends Mock implements SkillTreeService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logBattleEnd(String? userId, String? battleId, String? result,
+      int? kills, int? deaths) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logBattleEnd, [userId, battleId, result, kills, deaths]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
 
-class MockAchievementService extends Mock implements AchievementService {}
+  @override
+  Future<void> logFirstRankedEntry(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#logFirstRankedEntry, [userId]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logAchievementUnlocked(
+      String? userId, String? achievementId, String? rarity) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #logAchievementUnlocked, [userId, achievementId, rarity]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  void recordError(
+    dynamic exception,
+    StackTrace? stackTrace, {
+    String? reason,
+    Iterable<Object>? information,
+  }) {
+    super.noSuchMethod(
+      Invocation.method(#recordError, [exception, stackTrace],
+          {#reason: reason, #information: information}),
+      returnValueForMissingStub: null,
+    );
+  }
+}
+
+class MockSkillTreeService extends Mock implements SkillTreeService {
+  @override
+  Future<SkillTree?> getSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTree, [userId]),
+      returnValue: Future<SkillTree?>.value(),
+      returnValueForMissingStub: Future<SkillTree?>.value(),
+    ) as Future<SkillTree?>;
+  }
+}
+
+class MockAchievementService extends Mock implements AchievementService {
+  @override
+  Future<void> unlockAchievement(String? userId, String? achievementId) {
+    return super.noSuchMethod(
+      Invocation.method(#unlockAchievement, [userId, achievementId]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<List<PlayerAchievement>> getUnlockedAchievements(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getUnlockedAchievements, [userId]),
+      returnValue: Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+      returnValueForMissingStub:
+          Future<List<PlayerAchievement>>.value(<PlayerAchievement>[]),
+    ) as Future<List<PlayerAchievement>>;
+  }
+}
 
 void main() {
   group('BattleViewModel with Achievement Integration', () {
@@ -37,27 +129,27 @@ void main() {
 
       // Setup default mocks
       when(mockSkillTree.getSkillTree(userId)).thenAnswer((_) async => null);
-      when(mockFirestore.updateBattle(any as Battle)).thenAnswer((_) async {});
+      when(mockFirestore.updateBattle(any)).thenAnswer((_) async {});
       when(mockAnalytics.logBattleEnd(
-        any as String,
-        any as String,
-        any as String,
-        any as int,
-        any as int,
+        any,
+        any,
+        any,
+        any,
+        any,
       )).thenAnswer((_) async {});
-      when(mockAnalytics.logFirstRankedEntry(any as String))
+      when(mockAnalytics.logFirstRankedEntry(any))
           .thenAnswer((_) async {});
       when(mockAnalytics.logAchievementUnlocked(
-        any as String,
-        any as String,
-        any as String,
+        any,
+        any,
+        any,
       )).thenAnswer((_) async {});
       when(mockAnalytics.recordError(any, any,
           reason: anyNamed('reason'),
-          information: anyNamed('information') as Iterable<Object>)).thenAnswer((_) async {});
-      when(mockAchievement.getUnlockedAchievements(any as String))
+          information: anyNamed('information'))).thenAnswer((_) async {});
+      when(mockAchievement.getUnlockedAchievements(any))
           .thenAnswer((_) async => []);
-      when(mockAchievement.unlockAchievement(any as String, any as String))
+      when(mockAchievement.unlockAchievement(any, any))
           .thenAnswer((_) async {});
 
       viewModel = BattleViewModel(
