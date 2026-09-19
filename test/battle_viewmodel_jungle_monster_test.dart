@@ -2,16 +2,44 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
+import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 
-class MockFirestoreService extends Mock implements FirestoreService {}
+class MockFirestoreService extends Mock implements FirestoreService {
+  @override
+  Future<void> createBattle(Battle? battle) {
+    return super.noSuchMethod(
+      Invocation.method(#createBattle, [battle]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
-class MockAnalyticsService extends Mock implements AnalyticsService {}
+class MockAnalyticsService extends Mock implements AnalyticsService {
+  @override
+  Future<void> logBattleStart(String? userId, String? battleMode) {
+    return super.noSuchMethod(
+      Invocation.method(#logBattleStart, [userId, battleMode]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
-class MockSkillTreeService extends Mock implements SkillTreeService {}
+class MockSkillTreeService extends Mock implements SkillTreeService {
+  @override
+  Future<SkillTree?> getSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getSkillTree, [userId]),
+      returnValue: Future<SkillTree?>.value(),
+      returnValueForMissingStub: Future<SkillTree?>.value(),
+    ) as Future<SkillTree?>;
+  }
+}
 
 void main() {
   group('BattleViewModel - ジャングルモンスター', () {
@@ -25,10 +53,10 @@ void main() {
       mockAnalyticsService = MockAnalyticsService();
       mockSkillTreeService = MockSkillTreeService();
 
-      when(mockSkillTreeService.getSkillTree(any as String)).thenAnswer((_) async => null);
-      when(mockFirestoreService.createBattle(any as Battle))
+      when(mockSkillTreeService.getSkillTree(any)).thenAnswer((_) async => null);
+      when(mockFirestoreService.createBattle(any))
           .thenAnswer((_) async => {});
-      when(mockAnalyticsService.logBattleStart(any as String, any as String))
+      when(mockAnalyticsService.logBattleStart(any, any))
           .thenAnswer((_) async => {});
 
       battleViewModel = BattleViewModel(
