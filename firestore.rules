@@ -23,6 +23,25 @@ service cloud.firestore {
       return request.auth == null;
     }
 
+    function getUserAdminRole() {
+      // Check if current user has an admin role document in admin_users collection
+      // Returns role string ('admin', 'operator', 'viewer') or null if not an admin
+      let adminDoc = get(/databases/$(database)/documents/admin_users/$(request.auth.uid));
+      return adminDoc.data.get('role', null);
+    }
+
+    function isAdmin() {
+      return isAuthenticated() && getUserAdminRole() == 'admin';
+    }
+
+    function isOperator() {
+      return isAuthenticated() && getUserAdminRole() == 'operator';
+    }
+
+    function isViewer() {
+      return isAuthenticated() && getUserAdminRole() == 'viewer';
+    }
+
     // ============================================================================
     // USERS COLLECTION
     // ============================================================================
@@ -212,6 +231,69 @@ service cloud.firestore {
 
       // Only server can update
       allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // ADMIN USERS COLLECTION (Phase 33: RBAC)
+    // ============================================================================
+    // Rules: Only admins can manage admin roles
+    // Operators can view admin users
+    // Regular users have no access
+    // ============================================================================
+    match /admin_users/{userId} {
+      // Admin can read and write
+      allow read, write: if isAdmin();
+
+      // Operator can read (view admin assignments)
+      allow read: if isOperator();
+
+      // No deletes (archival via Cloud Functions only)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // ADMIN ROLE AUDIT LOG COLLECTION (Phase 33: RBAC)
+    // ============================================================================
+    // Rules: Only admins can view role change history
+    // Operators can view but not modify
+    // Server can write (Cloud Functions)
+    // ============================================================================
+    match /admin_role_audit_log/{logId} {
+      // Admin can read and write
+      allow read, write: if isAdmin();
+
+      // Operator can read (view audit trail)
+      allow read: if isOperator();
+
+      // Server can write (Cloud Functions)
+      allow write: if isServerUpdate();
+
+      // No deletes (audit trail immutability)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // AUDIT LOG COLLECTION (Phase 33: RBAC)
+    // ============================================================================
+    // Rules: Admins can read all audit logs
+    // Operators and Viewers can read audit logs
+    // Server writes audit events (non-blocking from services)
+    // ============================================================================
+    match /audit_log/{logId} {
+      // Admin can read all audit logs
+      allow read: if isAdmin();
+
+      // Operator can read all audit logs
+      allow read: if isOperator();
+
+      // Viewer can read all audit logs
+      allow read: if isViewer();
+
+      // Server can write (Cloud Functions + non-blocking service calls)
+      allow write: if isServerUpdate();
+
+      // No deletes (audit trail immutability)
       allow delete: if false;
     }
 

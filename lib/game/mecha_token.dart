@@ -205,8 +205,14 @@ class MechaToken extends PositionComponent {
       canvas.drawCircle(center, radius + 3, ringPaint);
     }
 
-    // キルフラッシュ：金色の衝撃波を二重リングで拡散
+    // キルフラッシュ：金色の衝撃波を三重リングで拡散（外側ほど大きく速く広がる）
     if (_killFlash > 0) {
+      final farPaint = Paint()
+        ..color = Colors.orangeAccent.withValues(alpha: _killFlash * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 3;
+      canvas.drawCircle(center, radius + (1 - _killFlash) * 48, farPaint);
+
       final outerPaint = Paint()
         ..color = Colors.amberAccent.withValues(alpha: _killFlash)
         ..style = PaintingStyle.stroke

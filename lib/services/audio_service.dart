@@ -41,8 +41,10 @@ class AudioService {
   // === バトルイベント音声 ===
   Future<void> playKillSe() => _playSafe(_sePlayer, 'kill.mp3');
   Future<void> playAhaMomentSe() => _playSafe(_sePlayer, 'aha_moment.mp3');
+  Future<void> playAchievementUnlockedSe() => _playSafe(_sePlayer, 'achievement_unlocked.mp3');
   Future<void> playWinSe() => _playSafe(_sePlayer, 'win.mp3');
   Future<void> playLossSe() => _playSafe(_sePlayer, 'loss.mp3');
+  Future<void> playLevelUpSe() => _playSafe(_sePlayer, 'level_up.mp3');
 
   // === ダメージ音声 ===
   Future<void> playHitSe() => _playSafe(_sePlayer, 'hit.mp3');

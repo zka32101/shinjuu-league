@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
+import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
@@ -20,17 +21,56 @@ class ResultScreen extends ConsumerStatefulWidget {
   ConsumerState<ResultScreen> createState() => _ResultScreenState();
 }
 
-class _ResultScreenState extends ConsumerState<ResultScreen> {
+class _ResultScreenState extends ConsumerState<ResultScreen>
+    with SingleTickerProviderStateMixin {
   bool _applied = false;
   int _burstTrigger = 0;
   Replay? _replay;
   bool _isGeneratingReplay = true;
+
+  late final AnimationController _entranceController;
+  late final Animation<double> _bannerScale;
+  late final Animation<double> _bannerOpacity;
+  late final Animation<Offset> _statSlide;
+  late final Animation<double> _statOpacity;
 
   bool get _isWin => widget.battle.result == BattleResult.win;
 
   @override
   void initState() {
     super.initState();
+    _entranceController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 900),
+    );
+    // 勝敗バナーはUNITE風に少しオーバーシュートしてから収まる「叩きつけ」演出
+    _bannerScale = Tween<double>(begin: 0.4, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.6, curve: Curves.elasticOut),
+      ),
+    );
+    _bannerOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.0, 0.3, curve: Curves.easeIn),
+      ),
+    );
+    // スタッツカードはバナーに少し遅れてスライドインさせ、視線誘導の順番を作る
+    _statSlide = Tween<Offset>(begin: const Offset(0, 0.3), end: Offset.zero).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.4, 1.0, curve: Curves.easeOutCubic),
+      ),
+    );
+    _statOpacity = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(
+        parent: _entranceController,
+        curve: const Interval(0.4, 0.8, curve: Curves.easeIn),
+      ),
+    );
+    _entranceController.forward();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       if (_applied) return;
       _applied = true;
@@ -55,6 +95,23 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
         _isGeneratingReplay = false;
       });
     });
+  }
+
+  @override
+  void dispose() {
+    _entranceController.dispose();
+    super.dispose();
+  }
+
+  void _showAchievementUnlock(Achievement achievement) {
+    showDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierColor: Colors.black.withOpacity(0.3),
+      builder: (context) => _AchievementUnlockCard(
+        achievement: achievement,
+      ),
+    );
   }
 
   void _shareReplay() {
@@ -98,65 +155,145 @@ class _ResultScreenState extends ConsumerState<ResultScreen> {
                       color: AppColors.gold,
                       size: 200,
                     ),
-                  Column(
-                    children: [
-                      Text(
-                        battle.result.displayName,
-                        style: TextStyle(
-                          fontSize: 40,
-                          fontWeight: FontWeight.bold,
-                          color: resultColor,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        battle.eloChange >= 0
-                            ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
-                            : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
-                        style: TextStyle(
-                          fontSize: 18,
-                          color: battle.eloChange >= 0
-                              ? AppColors.win
-                              : AppColors.loss,
-                        ),
-                      ),
-                      if (isSelfMvp) ...[
-                        const SizedBox(height: 8),
-                        Chip(
-                          avatar: const Icon(
-                            Icons.star,
-                            color: Colors.white,
-                            size: 18,
-                          ),
-                          label: const Text(
-                            'MVP',
+                  ScaleTransition(
+                    scale: _bannerScale,
+                    child: FadeTransition(
+                      opacity: _bannerOpacity,
+                      child: Column(
+                        children: [
+                          Text(
+                            battle.result.displayName,
                             style: TextStyle(
-                              color: Colors.white,
+                              fontSize: 40,
                               fontWeight: FontWeight.bold,
+                              color: resultColor,
+                              shadows: [
+                                Shadow(
+                                  blurRadius: 16,
+                                  color: resultColor.withValues(alpha: 0.6),
+                                ),
+                              ],
                             ),
                           ),
-                          backgroundColor: AppColors.gold,
-                        ),
-                      ],
-                    ],
+                          const SizedBox(height: 8),
+                          Text(
+                            battle.eloChange >= 0
+                                ? 'Elo +${battle.eloChange.toStringAsFixed(1)}'
+                                : 'Elo ${battle.eloChange.toStringAsFixed(1)}',
+                            style: TextStyle(
+                              fontSize: 18,
+                              color: battle.eloChange >= 0
+                                  ? AppColors.win
+                                  : AppColors.loss,
+                            ),
+                          ),
+                          if (isSelfMvp) ...[
+                            const SizedBox(height: 8),
+                            Container(
+                              decoration: BoxDecoration(
+                                borderRadius: BorderRadius.circular(20),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: AppColors.gold.withValues(alpha: 0.7),
+                                    blurRadius: 14,
+                                    spreadRadius: 1,
+                                  ),
+                                ],
+                              ),
+                              child: Chip(
+                                avatar: const Icon(
+                                  Icons.star,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                label: const Text(
+                                  'MVP',
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                                backgroundColor: AppColors.gold,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
                   ),
                 ],
               ),
               const SizedBox(height: 24),
-              Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                    children: [
-                      _StatColumn(label: 'キル', value: '${battle.kills}'),
-                      _StatColumn(label: 'デス', value: '${battle.deaths}'),
-                      _StatColumn(label: 'スコア', value: '${selfStats.score}'),
-                    ],
+              SlideTransition(
+                position: _statSlide,
+                child: FadeTransition(
+                  opacity: _statOpacity,
+                  child: Card(
+                    child: Padding(
+                      padding: const EdgeInsets.all(16),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                        children: [
+                          _StatColumn(label: 'キル', value: '${battle.kills}'),
+                          _StatColumn(label: 'デス', value: '${battle.deaths}'),
+                          _StatColumn(
+                            label: 'スコア',
+                            value: '${selfStats.score}',
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                 ),
               ),
               const SizedBox(height: 16),
+              // Newly unlocked achievements
+              Consumer(
+                builder: (context, ref, child) {
+                  final battleState =
+                      ref.watch(battleViewModelProvider);
+                  final unlockedAchievements =
+                      battleState.newlyUnlockedAchievements;
+
+                  if (unlockedAchievements.isEmpty) {
+                    return const SizedBox.shrink();
+                  }
+
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        '🏆 新しい成果を解除した！',
+                        style:
+                            Theme.of(context).textTheme.titleSmall?.copyWith(
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                      ),
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        height: 140,
+                        child: ListView.separated(
+                          scrollDirection: Axis.horizontal,
+                          itemCount: unlockedAchievements.length,
+                          separatorBuilder: (_, __) =>
+                              const SizedBox(width: 8),
+                          itemBuilder: (context, index) {
+                            final achievement =
+                                unlockedAchievements[index];
+                            return _AchievementCard(
+                              achievement: achievement,
+                              onTap: () =>
+                                  _showAchievementUnlock(achievement),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+                  );
+                },
+              ),
               Card(
                 child: ListTile(
                   leading: _isGeneratingReplay
@@ -202,6 +339,212 @@ class _StatColumn extends StatelessWidget {
         ),
         Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
       ],
+    );
+  }
+}
+
+class _AchievementCard extends StatelessWidget {
+  final Achievement achievement;
+  final VoidCallback? onTap;
+
+  const _AchievementCard({
+    required this.achievement,
+    this.onTap,
+  });
+
+  Color _getRewardTierColor(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return const Color(0xFF808080);
+      case AchievementRewardTier.uncommon:
+        return const Color(0xFF00AA00);
+      case AchievementRewardTier.rare:
+        return const Color(0xFF0099FF);
+      case AchievementRewardTier.epic:
+        return const Color(0xFF9933FF);
+      case AchievementRewardTier.legendary:
+        return const Color(0xFFFFAA00);
+      case AchievementRewardTier.mythic:
+        return const Color(0xFFFF0000);
+      case AchievementRewardTier.silver:
+        return const Color(0xFFC0C0C0);
+      case AchievementRewardTier.gold:
+        return const Color(0xFFFFD700);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: onTap,
+      child: Card(
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(
+            color: _getRewardTierColor(achievement.rewardTier).withOpacity(0.5),
+            width: 2,
+          ),
+        ),
+        child: Container(
+          width: 120,
+          padding: const EdgeInsets.all(12),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [
+                _getRewardTierColor(achievement.rewardTier).withOpacity(0.1),
+                _getRewardTierColor(achievement.rewardTier).withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Text(
+                '🏆',
+                style: TextStyle(fontSize: 32),
+              ),
+              const SizedBox(height: 8),
+              Expanded(
+                child: Text(
+                  achievement.name,
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontWeight: FontWeight.bold,
+                      ),
+                  textAlign: TextAlign.center,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: _getRewardTierColor(achievement.rewardTier)
+                      .withOpacity(0.3),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+                child: Text(
+                  'タップで詳細',
+                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                        fontSize: 10,
+                        color: _getRewardTierColor(achievement.rewardTier),
+                      ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _AchievementUnlockCard extends StatefulWidget {
+  final Achievement achievement;
+
+  const _AchievementUnlockCard({required this.achievement});
+
+  @override
+  State<_AchievementUnlockCard> createState() =>
+      _AchievementUnlockCardState();
+}
+
+class _AchievementUnlockCardState extends State<_AchievementUnlockCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+
+    _scaleAnimation = Tween<double>(begin: 0.8, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.elasticOut),
+    );
+
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  Color _getRewardTierColor(AchievementRewardTier tier) {
+    switch (tier) {
+      case AchievementRewardTier.common:
+        return const Color(0xFF808080);
+      case AchievementRewardTier.uncommon:
+        return const Color(0xFF00AA00);
+      case AchievementRewardTier.rare:
+        return const Color(0xFF0099FF);
+      case AchievementRewardTier.epic:
+        return const Color(0xFF9933FF);
+      case AchievementRewardTier.legendary:
+        return const Color(0xFFFFAA00);
+      case AchievementRewardTier.mythic:
+        return const Color(0xFFFF0000);
+      case AchievementRewardTier.silver:
+        return const Color(0xFFC0C0C0);
+      case AchievementRewardTier.gold:
+        return const Color(0xFFFFD700);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ScaleTransition(
+      scale: _scaleAnimation,
+      child: Dialog(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text(
+                '🏆',
+                style: TextStyle(fontSize: 48),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                '成果を解除した！',
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color:
+                          _getRewardTierColor(widget.achievement.rewardTier),
+                      fontWeight: FontWeight.bold,
+                    ),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.achievement.name,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 12),
+              Text(
+                widget.achievement.description,
+                style: Theme.of(context).textTheme.bodySmall,
+                textAlign: TextAlign.center,
+              ),
+              const SizedBox(height: 24),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('確認'),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
