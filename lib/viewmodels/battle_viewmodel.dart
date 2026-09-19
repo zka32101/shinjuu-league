@@ -205,6 +205,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
   late BattleSkillProgressionCoordinator _skillCoordinator;
   bool _skillCoordinatorInitialized = false;
+  bool _disposed = false;
 
   // Track skill progression statistics for battle summary
   int _totalSkillsUsed = 0;
@@ -824,6 +825,12 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
   @override
   void dispose() {
+    // Guard against a double dispose() call: StateNotifier.state throws
+    // once the notifier is disposed (by design, to catch use-after-dispose
+    // bugs), so a second dispose() call would crash on `state.engine`
+    // below instead of being a harmless no-op.
+    if (_disposed) return;
+    _disposed = true;
     _combatSub?.cancel();
     _hitSub?.cancel();
     _tickSub?.cancel();

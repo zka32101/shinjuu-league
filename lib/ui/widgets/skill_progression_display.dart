@@ -75,8 +75,30 @@ class SkillSlotDisplay extends StatelessWidget {
         child: Stack(
           alignment: Alignment.center,
           children: [
-            // クールダウンオーバーレイ
-            if (!isAvailable)
+            // ULTチャージ中は isAvailable も false になる（アンロック前は
+            // まだ使用不可のため）ので、`!isAvailable` の分岐を先に評価すると
+            // チャージ中インジケータに絶対到達できなかった（実際のゲーム内
+            // 使用パターン=SkillProgressionPanelでは isUltCharging:true の
+            // ときisAvailable:falseで渡される）。isUltCharging を先にチェック
+            // することで、通常のクールダウン表示より優先させる。
+            if (isUltCharging)
+              // ULTチャージ中のインジケータ
+              Positioned.fill(
+                child: Container(
+                  decoration: BoxDecoration(
+                    borderRadius: BorderRadius.circular(6),
+                    color: Colors.amber.withOpacity(0.3),
+                  ),
+                  child: const Center(
+                    child: Text(
+                      '⚡',
+                      style: TextStyle(fontSize: 20),
+                    ),
+                  ),
+                ),
+              )
+            else if (!isAvailable)
+              // クールダウンオーバーレイ
               Positioned.fill(
                 child: Container(
                   decoration: BoxDecoration(
@@ -91,22 +113,6 @@ class SkillSlotDisplay extends StatelessWidget {
                         fontWeight: FontWeight.bold,
                         fontSize: 12,
                       ),
-                    ),
-                  ),
-                ),
-              )
-            else if (isUltCharging)
-              // ULTチャージ中のインジケータ
-              Positioned.fill(
-                child: Container(
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(6),
-                    color: Colors.amber.withOpacity(0.3),
-                  ),
-                  child: const Center(
-                    child: Text(
-                      '⚡',
-                      style: TextStyle(fontSize: 20),
                     ),
                   ),
                 ),
