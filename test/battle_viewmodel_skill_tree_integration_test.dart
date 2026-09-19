@@ -1,7 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
-import 'package:shinjuu_league/data/models/evolution_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -15,8 +14,6 @@ class MockFirestoreService extends Mock implements FirestoreService {}
 class MockAnalyticsService extends Mock implements AnalyticsService {}
 
 class MockSkillTreeService extends Mock implements SkillTreeService {}
-
-class MockAuthService extends Mock implements AuthService {}
 
 void main() {
   group('BattleViewModel - Skill Tree Integration', () {
@@ -49,9 +46,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.10, 'def': 1.08, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -79,9 +76,9 @@ void main() {
       test('prepareBattle handles skill tree load failure gracefully', () async {
         when(mockSkillTreeService.getSkillTree('player1'))
             .thenThrow(Exception('Firebase not initialized'));
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -103,9 +100,9 @@ void main() {
       test('prepareBattle handles null skill tree gracefully', () async {
         when(mockSkillTreeService.getSkillTree('player1'))
             .thenAnswer((_) async => null);
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -132,9 +129,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.15, 'def': 1.0, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -169,9 +166,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.20, 'def': 1.24, 'spd': 1.06});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -196,9 +193,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.05, 'def': 1.0, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -226,9 +223,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.25, 'def': 1.0, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -249,9 +246,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.40, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -272,9 +269,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.0, 'spd': 1.15});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -297,9 +294,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.0, 'def': 1.0, 'spd': 1.0});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -324,9 +321,9 @@ void main() {
             .thenAnswer((_) async => skillTree);
         when(mockSkillTreeService.calculateStatModifiers(skillTree))
             .thenReturn({'atk': 1.25, 'def': 1.40, 'spd': 1.15});
-        when(mockFirestoreService.createBattle(any))
+        when(mockFirestoreService.createBattle(any as Battle))
             .thenAnswer((_) async => {});
-        when(mockAnalyticsService.logBattleStart(any, any))
+        when(mockAnalyticsService.logBattleStart(any as String, any as String))
             .thenAnswer((_) async => {});
 
         final match = _createTestMatch('player1');
@@ -354,6 +351,7 @@ MatchResult _createTestMatch(String selfUserId) {
     matchId: 'test_match',
     mode: BattleMode.quick,
     mapId: 'map_1',
+    estimatedWaitSeconds: 5,
     teamA: [
       _createMatchParticipant(selfUserId, 'mecha_1', 0, 0, 1200.0, false),
     ],

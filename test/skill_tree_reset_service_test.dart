@@ -23,8 +23,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
@@ -43,8 +43,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         await service.resetForNewSeason(
           'user_123',
@@ -67,8 +67,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
@@ -87,8 +87,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
@@ -106,8 +106,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
@@ -128,8 +128,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
@@ -151,8 +151,8 @@ void main() {
         when(mockFirestore.get('users/user_123'))
             .thenAnswer((_) async => {'skillTree': previousTree.toJson()});
 
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-        when(mockFirestore.update(any, any)).thenAnswer((_) async {});
+        when(mockFirestore.set(any as String, any)).thenAnswer((_) async {});
+        when(mockFirestore.update(any as String, any)).thenAnswer((_) async {});
 
         final newTree = await service.resetForNewSeason(
           'user_123',
