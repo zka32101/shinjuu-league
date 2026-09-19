@@ -68,7 +68,10 @@ void main() {
 
       final debug = pool.debug();
       expect(debug['in_use'], equals(0));
-      expect(debug['available'], equals(8)); // 5 + 3
+      // Only 3 of the initial 5 pooled items were ever acquired, so
+      // releaseAll() just returns those 3 back to the same pool of 5 -
+      // it doesn't grow the pool.
+      expect(debug['available'], equals(5));
     });
   });
 

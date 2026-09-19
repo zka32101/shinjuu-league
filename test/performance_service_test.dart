@@ -7,6 +7,10 @@ void main() {
 
     setUp(() {
       perfService = PerformanceService();
+      // PerformanceService is a singleton; without this, slowFrames entries
+      // recorded by one test (e.g. the max-size-100 or timestamp tests)
+      // leak into whichever test runs next in this same file/isolate.
+      perfService.slowFrames.clear();
     });
 
     group('Initialization', () {

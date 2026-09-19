@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:device_info_plus/device_info_plus.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -24,13 +25,14 @@ class PushNotificationService {
   Future<void> init() async {
     try {
       // Firebase Messagingを初期化
-      _messaging = FirebaseMessaging.instance;
+      final messaging = FirebaseMessaging.instance;
+      _messaging = messaging;
 
       // Android 13+ の POST_NOTIFICATIONS 許可をリクエスト
       await _requestAndroid13NotificationPermission();
 
       // iOS の APN 許可をリクエスト
-      final settings = await _messaging.requestPermission(
+      final settings = await messaging.requestPermission(
         alert: true,
         announcement: false,
         badge: true,
@@ -48,7 +50,7 @@ class PushNotificationService {
       }
 
       // FCM トークンを取得・保存
-      final token = await _messaging.getToken();
+      final token = await messaging.getToken();
       if (token != null) {
         await _saveFCMToken(token);
         if (kDebugMode) {
@@ -57,7 +59,7 @@ class PushNotificationService {
       }
 
       // トークンリフレッシュ時にキャッシュを更新
-      _messaging.onTokenRefresh.listen((token) => _onTokenRefresh(token));
+      messaging.onTokenRefresh.listen((token) => _onTokenRefresh(token));
 
       // ローカル通知の初期化
       await _initializeLocalNotifications();
@@ -69,7 +71,7 @@ class PushNotificationService {
       FirebaseMessaging.onMessageOpenedApp.listen(_handleMessageOpenedApp);
 
       // 終了状態からのアプリ起動時の初期メッセージ確認
-      final initialMessage = await _messaging.getInitialMessage();
+      final initialMessage = await messaging.getInitialMessage();
       if (initialMessage != null) {
         _handleMessageOpenedApp(initialMessage);
       }
@@ -179,6 +181,19 @@ class PushNotificationService {
 
     final payload = message.data;
     _handleNotificationPayload(payload.toString());
+  }
+
+  /// ローカル通知を表示（アプリ内の他Serviceから呼び出す公開エントリポイント）
+  Future<void> showNotification({
+    required String title,
+    required String body,
+    Map<String, dynamic>? payload,
+  }) {
+    return _showLocalNotification(
+      title: title,
+      body: body,
+      payload: payload != null ? jsonEncode(payload) : null,
+    );
   }
 
   /// ローカル通知を表示

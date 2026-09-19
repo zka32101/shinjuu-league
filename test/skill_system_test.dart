@@ -30,8 +30,10 @@ void main() {
     test('レベルに応じたダメージ倍率', () {
       final skill = SkillSystemService.getSkillDefinition('skill_east_01_q')!;
       expect(skill.getDamageMultiplierAtLevel(1), 1.5);
-      expect(skill.getDamageMultiplierAtLevel(2), 1.95);
-      expect(skill.getDamageMultiplierAtLevel(3), 2.4);
+      // 1.5 * (1.0 + 1 * 0.3) isn't exactly 1.95 in floating point
+      // (1.9500000000000002) - use closeTo for the multiplication result.
+      expect(skill.getDamageMultiplierAtLevel(2), closeTo(1.95, 0.0001));
+      expect(skill.getDamageMultiplierAtLevel(3), closeTo(2.4, 0.0001));
     });
 
     test('レベルに応じたクールダウン短縮', () {

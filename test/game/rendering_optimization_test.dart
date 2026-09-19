@@ -54,7 +54,11 @@ void main() {
       // Next acquire should create a new one
       final newItem = pool.acquire();
       expect(factoryCalls, 1);
-      expect(newItem.id, 6); // ID from factory call counter
+      // factoryCalls was reset to 0 right above (to isolate "did acquiring
+      // the 5 pooled items trigger the factory" from this assertion), so
+      // the id assigned to this newly-created item reflects that reset
+      // counter, not the constructor's original 5 calls.
+      expect(newItem.id, 1); // ID from factory call counter
     });
 
     test('release returns item to pool and calls reset', () {

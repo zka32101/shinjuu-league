@@ -18,6 +18,13 @@ class PromotionDetectorService {
     final previousThreshold = thresholds[previousTier] ?? 400;
     final currentThreshold = thresholds[currentTier] ?? 400;
 
+    // Tier names differ, but if they both resolve to the same threshold
+    // (e.g. two unrecognized tier names both falling back to the 400
+    // default) there's no real promotion or demotion to report.
+    if (previousThreshold == currentThreshold) {
+      return null;
+    }
+
     final isPromotion = currentThreshold > previousThreshold;
 
     return PromotionEvent(

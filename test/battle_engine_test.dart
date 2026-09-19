@@ -13,15 +13,26 @@ BattleParticipantState _participant({
   bool isSelf = false,
   BaseStats? stats,
   int lane = 0,
+  SkillBuild? skillBuild,
+  String mechaId = 'mecha_default_01',
 }) {
+  // skillCooldowns is only populated from skills registered for this
+  // participant's mechaId (SkillSystemService.getSkillsForMecha), so
+  // skillBuild's skill ids must actually belong to that mecha's catalog -
+  // also, skillCooldowns is only populated from skillBuild inside the
+  // constructor itself - assigning `.skillBuild = ...` to an
+  // already-constructed BattleParticipantState (as production code never
+  // does) leaves skillCooldowns empty for those skill ids, so skillBuild
+  // must be passed here rather than set afterward.
   return BattleParticipantState(
     userId: userId,
-    mechaId: 'mecha_default_01',
+    mechaId: mechaId,
     isBot: !isSelf,
     isSelf: isSelf,
     team: team,
     lane: lane,
     baseStats: stats ?? BaseStats(hp: 100, atk: 50, spd: 40),
+    skillBuild: skillBuild,
   );
 }
 
@@ -435,20 +446,20 @@ void main() {
     });
 
     test('マナ不足ではスキルが使用できない', () {
+      final skill = SkillBuild(
+        skillId1: 'skill_east_01_q',
+        skillId2: 'skill_east_01_w',
+        skillId3: 'skill_east_01_e',
+        level1: 3, // レベル3 = コスト60
+      );
       final self = _participant(
         userId: 'self',
         team: 0,
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        skillBuild: skill,
+        mechaId: 'mecha_east_01',
       );
-      final skill =
-          SkillBuild(
-            skillId1: 'skill_east_01_q',
-            skillId2: 'skill_east_01_w',
-            skillId3: 'skill_east_01_e',
-            level1: 3, // レベル3 = コスト60
-          );
-      self.skillBuild = skill;
       self.resources = self.resources.spendMana(45); // マナ55に
 
       final enemy = _participant(userId: 'enemy', team: 1);
@@ -467,19 +478,19 @@ void main() {
     });
 
     test('スキル使用後はクールダウンが発生', () {
+      final skill = SkillBuild(
+        skillId1: 'skill_east_01_q',
+        skillId2: 'skill_east_01_w',
+        skillId3: 'skill_east_01_e',
+      );
       final self = _participant(
         userId: 'self',
         team: 0,
         isSelf: true,
         stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        skillBuild: skill,
+        mechaId: 'mecha_east_01',
       );
-      final skill =
-          SkillBuild(
-            skillId1: 'skill_east_01_q',
-            skillId2: 'skill_east_01_w',
-            skillId3: 'skill_east_01_e',
-          );
-      self.skillBuild = skill;
 
       final enemy = _participant(userId: 'enemy', team: 1);
 
@@ -530,6 +541,145 @@ void main() {
       expect(result, isTrue);
       expect(self.resources.gold, initialGold - 300);
       expect(self.resources.ownedItemIds.contains('item_sword_01'), true);
+      engine.dispose();
+    });
+  });
+
+  group('JungleMonster (中立モンスター)', () {
+    test('モンスターを撃破するとゴール報酬と一定時間の攻撃バフを得る', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(engine.jungleMonsters.length, 2);
+      final monster = engine.jungleMonsters.first;
+      expect(monster.isAlive, isTrue);
+
+      final baseAtk = self.effectiveAtk;
+      final result = engine.attackJungleMonster('self', monster.id);
+
+      expect(result, isTrue);
+      expect(monster.isAlive, isFalse);
+      expect(monster.currentHp, 0);
+      expect(self.resources.gold, 50);
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+      expect(self.effectiveAtk, greaterThan(baseAtk));
+
+      engine.dispose();
+    });
+
+    test('異なるレーンのモンスターは攻撃できない', () {
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final otherLaneMonster = engine.jungleMonsters.firstWhere((m) => m.lane == 1);
+      final result = engine.attackJungleMonster('self', otherLaneMonster.id);
+
+      expect(result, isFalse);
+      expect(otherLaneMonster.currentHp, otherLaneMonster.maxHp);
+
+      engine.dispose();
+    });
+
+    test('存在しないモンスターIDを渡すと失敗する', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(engine.attackJungleMonster('self', 'nonexistent'), isFalse);
+      engine.dispose();
+    });
+
+    test('討伐後、respawnDelay 経過で満タンHPで復活する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final monster = engine.jungleMonsters.first;
+      engine.attackJungleMonster('self', monster.id);
+      expect(monster.isAlive, isFalse);
+
+      for (var i = 0; i < 29; i++) {
+        engine.tick();
+      }
+      expect(monster.isAlive, isFalse);
+
+      engine.tick(); // 30 tick目で復活
+      expect(monster.isAlive, isTrue);
+      expect(monster.currentHp, monster.maxHp);
+
+      engine.dispose();
+    });
+
+    test('討伐バフは一定時間後に失効する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      engine.attackJungleMonster('self', engine.jungleMonsters.first.id);
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+
+      for (var i = 0; i < 19; i++) {
+        engine.tick();
+      }
+      expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
+
+      engine.tick(); // 20 tick目で失効
+      expect(self.jungleBuffMultiplier, 1.0);
+
+      engine.dispose();
+    });
+
+    test('死亡中のプレイヤーはモンスターを攻撃できない', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true)
+        ..isAlive = false;
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(
+        engine.attackJungleMonster('self', engine.jungleMonsters.first.id),
+        isFalse,
+      );
       engine.dispose();
     });
   });

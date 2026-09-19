@@ -12,6 +12,7 @@ class User {
   final int totalBattles;
   final int gems;
   final int gold;
+  final int achievementBadges;
   final List<String> ownedSkinIds;
   final bool hasBattlePassPremium;
   final String? guildId;
@@ -32,6 +33,7 @@ class User {
     this.totalBattles = 0,
     required this.gems,
     required this.gold,
+    this.achievementBadges = 0,
     this.ownedSkinIds = const [],
     this.hasBattlePassPremium = false,
     this.guildId,
@@ -53,6 +55,7 @@ class User {
     int? totalBattles,
     int? gems,
     int? gold,
+    int? achievementBadges,
     List<String>? ownedSkinIds,
     bool? hasBattlePassPremium,
     String? guildId,
@@ -73,6 +76,7 @@ class User {
       totalBattles: totalBattles ?? this.totalBattles,
       gems: gems ?? this.gems,
       gold: gold ?? this.gold,
+      achievementBadges: achievementBadges ?? this.achievementBadges,
       ownedSkinIds: ownedSkinIds ?? this.ownedSkinIds,
       hasBattlePassPremium: hasBattlePassPremium ?? this.hasBattlePassPremium,
       guildId: guildId ?? this.guildId,
@@ -96,6 +100,7 @@ class User {
       totalBattles: json['totalBattles'] as int? ?? 0,
       gems: json['gems'] as int? ?? 0,
       gold: json['gold'] as int? ?? 0,
+      achievementBadges: json['achievementBadges'] as int? ?? 0,
       ownedSkinIds: List<String>.from(
         json['ownedSkinIds'] as List<dynamic>? ?? [],
       ),
@@ -131,6 +136,7 @@ class User {
       'totalBattles': totalBattles,
       'gems': gems,
       'gold': gold,
+      'achievementBadges': achievementBadges,
       'ownedSkinIds': ownedSkinIds,
       'hasBattlePassPremium': hasBattlePassPremium,
       'guildId': guildId,
