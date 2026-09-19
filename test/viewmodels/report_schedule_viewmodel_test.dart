@@ -5,7 +5,103 @@ import 'package:shinjuu_league/services/scheduled_report_service.dart';
 import 'package:shinjuu_league/viewmodels/report_schedule_viewmodel.dart';
 
 class MockScheduledReportService extends Mock
-    implements ScheduledReportService {}
+    implements ScheduledReportService {
+  @override
+  Future<List<ScheduledReport>> getScheduledReports(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#getScheduledReports, [userId]),
+      returnValue: Future<List<ScheduledReport>>.value(<ScheduledReport>[]),
+      returnValueForMissingStub:
+          Future<List<ScheduledReport>>.value(<ScheduledReport>[]),
+    ) as Future<List<ScheduledReport>>;
+  }
+
+  @override
+  Future<void> updateScheduleFrequency(
+      String? reportId, ReportFrequency? newFrequency) {
+    return super.noSuchMethod(
+      Invocation.method(
+          #updateScheduleFrequency, [reportId, newFrequency]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> deleteScheduledReport(String? reportId) {
+    return super.noSuchMethod(
+      Invocation.method(#deleteScheduledReport, [reportId]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<ReportExecutionRecord> executeReport(
+    String? reportId, {
+    List<Map<String, dynamic>>? data,
+    int? fileSizeBytes,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#executeReport, [reportId],
+          {#data: data, #fileSizeBytes: fileSizeBytes}),
+      returnValue: Future<ReportExecutionRecord>.value(ReportExecutionRecord(
+        id: 'stub',
+        reportId: 'stub',
+        executedAt: DateTime.now(),
+        success: true,
+        recordCount: 0,
+        fileSizeBytes: 0,
+        sentToEmails: const [],
+      )),
+    ) as Future<ReportExecutionRecord>;
+  }
+
+  @override
+  Future<List<ReportExecutionRecord>> getReportHistory(String? reportId,
+      {int? limit}) {
+    return super.noSuchMethod(
+      Invocation.method(#getReportHistory, [reportId], {#limit: limit}),
+      returnValue:
+          Future<List<ReportExecutionRecord>>.value(<ReportExecutionRecord>[]),
+      returnValueForMissingStub: Future<List<ReportExecutionRecord>>.value(
+          <ReportExecutionRecord>[]),
+    ) as Future<List<ReportExecutionRecord>>;
+  }
+
+  @override
+  Future<ScheduledReport> createScheduledReport({
+    String? userId,
+    String? name,
+    ReportExportFormat? format,
+    List<String>? selectedFields,
+    ReportFrequency? frequency,
+    List<String>? recipientEmails,
+    bool? includeMetadata,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#createScheduledReport, [], {
+        #userId: userId,
+        #name: name,
+        #format: format,
+        #selectedFields: selectedFields,
+        #frequency: frequency,
+        #recipientEmails: recipientEmails,
+        #includeMetadata: includeMetadata,
+      }),
+      returnValue: Future<ScheduledReport>.value(ScheduledReport(
+        id: 'stub',
+        name: 'stub',
+        userId: 'stub',
+        format: ReportExportFormat.csv,
+        selectedFields: const [],
+        frequency: ReportFrequency.daily,
+        recipientEmails: const [],
+        createdAt: DateTime.now(),
+      )),
+    ) as Future<ScheduledReport>;
+  }
+}
 
 void main() {
   group('ReportScheduleState', () {
@@ -185,13 +281,13 @@ void main() {
 
       test('handles creation errors', () async {
         when(mockService.createScheduledReport(
-          userId: anyNamed('userId') as String,
-          name: anyNamed('name') as String,
-          format: anyNamed('format') as ReportExportFormat,
-          selectedFields: anyNamed('selectedFields') as List<String>,
-          frequency: anyNamed('frequency') as ReportFrequency,
-          recipientEmails: anyNamed('recipientEmails') as List<String>,
-          includeMetadata: anyNamed('includeMetadata') as bool,
+          userId: anyNamed('userId'),
+          name: anyNamed('name'),
+          format: anyNamed('format'),
+          selectedFields: anyNamed('selectedFields'),
+          frequency: anyNamed('frequency'),
+          recipientEmails: anyNamed('recipientEmails'),
+          includeMetadata: anyNamed('includeMetadata'),
         )).thenThrow(Exception('Creation failed'));
 
         final result = await viewModel.createScheduledReport(
