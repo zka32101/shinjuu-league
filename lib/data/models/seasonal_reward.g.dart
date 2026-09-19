@@ -6,34 +6,6 @@ part of 'seasonal_reward.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-SeasonRewardDistribution _$SeasonRewardDistributionFromJson(
-  Map<String, dynamic> json,
-) => SeasonRewardDistribution(
-  seasonId: json['seasonId'] as String,
-  userId: json['userId'] as String,
-  finalTier: json['finalTier'] as String,
-  rewards: (json['rewards'] as List<dynamic>)
-      .map((e) => SeasonalReward.fromJson(e as Map<String, dynamic>))
-      .toList(),
-  distributedAt: DateTime.parse(json['distributedAt'] as String),
-  claimedAt: json['claimedAt'] == null
-      ? null
-      : DateTime.parse(json['claimedAt'] as String),
-  expiresAt: DateTime.parse(json['expiresAt'] as String),
-);
-
-Map<String, dynamic> _$SeasonRewardDistributionToJson(
-  SeasonRewardDistribution instance,
-) => <String, dynamic>{
-  'seasonId': instance.seasonId,
-  'userId': instance.userId,
-  'finalTier': instance.finalTier,
-  'rewards': instance.rewards.map((e) => e.toJson()).toList(),
-  'distributedAt': instance.distributedAt.toIso8601String(),
-  'claimedAt': instance.claimedAt?.toIso8601String(),
-  'expiresAt': instance.expiresAt.toIso8601String(),
-};
-
 _$SeasonalRewardImpl _$$SeasonalRewardImplFromJson(Map<String, dynamic> json) =>
     _$SeasonalRewardImpl(
       rewardId: json['rewardId'] as String,
@@ -83,7 +55,7 @@ Map<String, dynamic> _$$SeasonRewardDistributionImplToJson(
   'seasonId': instance.seasonId,
   'userId': instance.userId,
   'finalTier': instance.finalTier,
-  'rewards': instance.rewards,
+  'rewards': instance.rewards.map((e) => e.toJson()).toList(),
   'distributedAt': instance.distributedAt.toIso8601String(),
   'claimedAt': instance.claimedAt?.toIso8601String(),
   'expiresAt': instance.expiresAt.toIso8601String(),
