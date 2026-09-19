@@ -198,8 +198,15 @@ class ProgressionStats with _$ProgressionStats {
   int estimateTierProgress() {
     if (currentSeason == null) return 0;
 
-    final avgWinRate = currentSeason!.winRate;
-    if (avgWinRate == 0) return 999; // Unbeatable if no wins
+    final season = currentSeason!;
+    // winRate defaults to 0.0 until real battle-record data is wired in
+    // (see the TODO in ProgressionAnalyticsService.getProgressionStats), so
+    // a season with zero games played yet reads identically to "loses
+    // every game" - treat "no games recorded" as a neutral average
+    // performance instead, and reserve the "unbeatable" 999 sentinel for a
+    // real, observed 0% win rate.
+    final avgWinRate = season.totalGamesPlayed > 0 ? season.winRate : 0.5;
+    if (avgWinRate <= 0) return 999; // Unbeatable if no wins
 
     final pointsNeeded = 10; // Arbitrary threshold per tier
     final pointsPerGame = avgWinRate * 1.5; // Expected gain per game

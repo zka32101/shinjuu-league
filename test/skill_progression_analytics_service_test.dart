@@ -505,8 +505,13 @@ void main() {
         verify(mockAnalytics.logCustomEvent(
           'skill_progression_battle_summary',
           parameters: argThat(
+            // Analytics event parameters can't carry a real null (most
+            // platforms, e.g. Firebase Analytics, require string/number
+            // values), so a null finalEvolution is deliberately encoded as
+            // the string 'none' (see
+            // `finalEvolution?.toString().split('.').last ?? 'none'`).
             isA<Map<String, Object>>()
-                .having((m) => m['final_evolution'], 'final_evolution', null),
+                .having((m) => m['final_evolution'], 'final_evolution', 'none'),
             named: 'parameters',
           ),
         )).called(1);
@@ -565,11 +570,13 @@ void main() {
           44.0,
         );
 
+        // bonus_efficiency = damageIncreasePercent / (bonusPercentage * 100)
+        //                  = 44.0 / (0.40 * 100) = 44.0 / 40.0 = 1.10
         verify(mockAnalytics.logCustomEvent(
           'skill_progression_evolution_bonus_effectiveness',
           parameters: argThat(
             isA<Map<String, Object>>()
-                .having((m) => m['bonus_efficiency'], 'bonus_efficiency', '2.75'),
+                .having((m) => m['bonus_efficiency'], 'bonus_efficiency', '1.10'),
             named: 'parameters',
           ),
         )).called(1);

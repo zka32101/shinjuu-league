@@ -320,10 +320,17 @@ class ProgressionAnalyticsService {
     final currentIdx = tierProgression.indexOf(current.finalTier);
     int predictedIdx = currentIdx;
 
-    if (winRate > 0.6 && currentIdx < tierProgression.length - 1) {
-      predictedIdx = currentIdx + 1;
-    } else if (winRate < 0.4 && currentIdx > 0) {
-      predictedIdx = currentIdx - 1;
+    // winRate defaults to 0.0 when no games have been recorded this season
+    // yet (see the `totalGamesPlayed: 0, winRate: 0.0` TODO above, pending
+    // real battle-record integration) - without this guard, a brand new
+    // season with zero games played would always read as "low win rate"
+    // and predict a demotion out of thin air.
+    if (current.totalGamesPlayed > 0) {
+      if (winRate > 0.6 && currentIdx < tierProgression.length - 1) {
+        predictedIdx = currentIdx + 1;
+      } else if (winRate < 0.4 && currentIdx > 0) {
+        predictedIdx = currentIdx - 1;
+      }
     }
 
     final confidence = (winRate * 0.5 + 0.5).clamp(0.0, 1.0);
