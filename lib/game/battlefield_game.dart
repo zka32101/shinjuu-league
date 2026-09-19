@@ -64,6 +64,11 @@ class BattlefieldGame extends FlameGame {
   final _random = Random();
   double _shakeMagnitude = 0.0;
   double _flashAlpha = 0.0;
+  // キル演出の「重み」を出すためのヒットストップ（一瞬だけ動きをほぼ静止させる）
+  double _hitStopRemaining = 0.0;
+  // カメラのズームパンチ（キル時に一瞬寄ってから戻る）。onGameResizeで決まる基準ズームに乗算する。
+  double _baseZoom = 1.0;
+  double _zoomPunch = 0.0;
   final Vector2 _cameraFollowPos = Vector2.zero();
   late final PerformanceService _performanceService = PerformanceService();
   late final FrustumCuller _frustumCuller = FrustumCuller();
@@ -138,6 +143,7 @@ class BattlefieldGame extends FlameGame {
       size.x / viewWindowWidth,
       size.y / viewWindowHeight,
     ).clamp(0.6, 2.5);
+    _baseZoom = zoom;
     camera.viewfinder.zoom = zoom;
 
     // ビューポート（カメラ表示範囲）をフラスタムカラーに設定
@@ -152,36 +158,51 @@ class BattlefieldGame extends FlameGame {
 
   @override
   void update(double dt) {
-    super.update(dt);
+    // ヒットストップ中は実時間でカウントダウンしつつ、演出以外のシミュレーション速度を
+    // 大きく落として「一瞬止まった」ような重みを出す（完全停止はFlame内部処理に
+    // 影響しうるため避け、極端なスローモーションに留める）
+    var effectiveDt = dt;
+    if (_hitStopRemaining > 0) {
+      _hitStopRemaining = (_hitStopRemaining - dt).clamp(0.0, double.infinity);
+      effectiveDt = dt * 0.04;
+    }
+
+    super.update(effectiveDt);
 
     // フレームレート計測
     _performanceService.recordFrame();
 
     // カメラは自キャラの位置へ滑らかに追従する
     final followTarget = _selfToken?.position ?? Vector2.zero();
-    final followLerp = (dt * 4).clamp(0.0, 1.0);
+    final followLerp = (effectiveDt * 4).clamp(0.0, 1.0);
     _cameraFollowPos.setFrom(
       _cameraFollowPos + (followTarget - _cameraFollowPos) * followLerp,
     );
 
     Vector2 shakeOffset = Vector2.zero();
     if (_shakeMagnitude > 0) {
-      _shakeMagnitude = (_shakeMagnitude - dt * 4.5).clamp(0.0, 1.0);
+      _shakeMagnitude = (_shakeMagnitude - effectiveDt * 4.5).clamp(0.0, 1.0);
       shakeOffset = Vector2(
-        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 20,
-        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 20,
+        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 26,
+        (_random.nextDouble() * 2 - 1) * _shakeMagnitude * 26,
       );
     }
     camera.viewfinder.position = _cameraFollowPos + shakeOffset;
 
+    // カメラのズームパンチ（キル瞬間に一瞬寄って、すぐ戻る）
+    if (_zoomPunch > 0) {
+      _zoomPunch = (_zoomPunch - effectiveDt * 5.5).clamp(0.0, 1.0);
+    }
+    camera.viewfinder.zoom = _baseZoom * (1.0 + _zoomPunch * 0.15);
+
     if (_flashAlpha > 0) {
-      _flashAlpha = (_flashAlpha - dt * 3.2).clamp(0.0, 1.0);
+      _flashAlpha = (_flashAlpha - effectiveDt * 3.2).clamp(0.0, 1.0);
     }
 
-    _updateSelfMovement(dt);
-    _updateBotWander(dt);
+    _updateSelfMovement(effectiveDt);
+    _updateBotWander(effectiveDt);
 
-    _targetScanTimer += dt;
+    _targetScanTimer += effectiveDt;
     if (_targetScanTimer >= 0.15) {
       _targetScanTimer = 0.0;
       _updateAttackTarget();
@@ -468,6 +489,8 @@ class BattlefieldGame extends FlameGame {
       );
     }
     _shakeMagnitude = 0.6;
+    _zoomPunch = 0.6;
+    _hitStopRemaining = 0.05;
   }
 
   /// 自キャラ周囲のスキル範囲内にいる敵のuserIdを列挙する（発動時に1回だけ呼ばれる想定）。
@@ -533,6 +556,8 @@ class BattlefieldGame extends FlameGame {
 
     _shakeMagnitude = 1.0;
     _flashAlpha = 1.0;
+    _zoomPunch = 1.0;
+    _hitStopRemaining = 0.08;
   }
 
   /// ダメージ数値表示を画面上に追加。クリティカル時は拡張バースト演出も同時実行。
