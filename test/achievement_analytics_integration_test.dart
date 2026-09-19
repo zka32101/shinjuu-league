@@ -106,19 +106,19 @@ void main() {
 
         // Should NOT call logAchievementRewardClaimed for progress-based
         verifyNever(mockAnalyticsService.logAchievementRewardClaimed(
-          any,
-          any,
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as String,
+          any as int,
+          any as int,
         ));
       });
 
       test('handles errors gracefully', () async {
         when(mockAnalyticsService.logAchievementUnlocked(
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as String,
         )).thenThrow(Exception('Analytics error'));
 
         // Should not throw
@@ -204,10 +204,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementProgress(
-          any,
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as int,
+          any as int,
         ));
       });
 
@@ -230,10 +230,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementProgress(
-          any,
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as int,
+          any as int,
         ));
       });
     });
@@ -330,10 +330,10 @@ void main() {
         );
 
         verifyNever(mockAnalyticsService.logAchievementCategoryProgress(
-          any,
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as int,
+          any as int,
         ));
       });
 
@@ -379,7 +379,7 @@ void main() {
       test('tracks progress for all categories', () async {
         when(mockAchievementService.getAchievementsByCategory(
           userId,
-          any,
+          any as AchievementCategory,
         )).thenAnswer((_) async => []);
 
         await integration.trackAllCategoriesProgress(userId);
@@ -387,7 +387,7 @@ void main() {
         // Should be called for each category
         verify(mockAchievementService.getAchievementsByCategory(
           userId,
-          any,
+          any as AchievementCategory,
         )).called(greaterThanOrEqualTo(AchievementCategory.values.length));
       });
     });
@@ -419,11 +419,11 @@ void main() {
         }
 
         verify(mockAnalyticsService.logAchievementRewardClaimed(
-          any,
-          any,
-          any,
-          any,
-          any,
+          any as String,
+          any as String,
+          any as String,
+          any as int,
+          any as int,
         )).called(tiers.length);
       });
     });
