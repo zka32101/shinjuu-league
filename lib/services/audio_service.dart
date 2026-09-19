@@ -41,8 +41,10 @@ class AudioService {
   // === バトルイベント音声 ===
   Future<void> playKillSe() => _playSafe(_sePlayer, 'kill.mp3');
   Future<void> playAhaMomentSe() => _playSafe(_sePlayer, 'aha_moment.mp3');
+  Future<void> playAchievementUnlockedSe() => _playSafe(_sePlayer, 'achievement_unlocked.mp3');
   Future<void> playWinSe() => _playSafe(_sePlayer, 'win.mp3');
   Future<void> playLossSe() => _playSafe(_sePlayer, 'loss.mp3');
+  Future<void> playLevelUpSe() => _playSafe(_sePlayer, 'level_up.mp3');
 
   // === ダメージ音声 ===
   Future<void> playHitSe() => _playSafe(_sePlayer, 'hit.mp3');
@@ -169,7 +171,15 @@ class AudioService {
   }
 
   void dispose() {
-    _sePlayer.dispose();
-    _bgmPlayer.dispose();
+    // AudioService is a singleton, so dispose() can end up called more than
+    // once against the same underlying AudioPlayer instances (e.g. once per
+    // test's tearDown). audioplayers' AudioPlayer.dispose() is not
+    // idempotent -- disposing an already-disposed player throws
+    // asynchronously ("AudioPlayer has been disposed"), which previously
+    // surfaced as an unhandled error failing an unrelated, later test.
+    // Swallow that the same way playback failures are already swallowed
+    // elsewhere in this class.
+    _sePlayer.dispose().catchError((_) {});
+    _bgmPlayer.dispose().catchError((_) {});
   }
 }

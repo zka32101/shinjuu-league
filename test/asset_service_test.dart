@@ -7,6 +7,11 @@ void main() {
 
     setUp(() {
       assetService = AssetService();
+      // AssetService is a singleton; reset its state between tests so one
+      // test's init() doesn't leak into the next (loadState/counters would
+      // otherwise persist across the whole file, since setUp() only ever
+      // gets the same shared instance).
+      assetService.resetForTesting();
     });
 
     group('Initialization', () {
@@ -21,8 +26,9 @@ void main() {
         expect(assetService.loadState.value, AssetLoadState.idle);
 
         final future = assetService.init();
-        // 初期化中は loading 状態
-        expect(assetService.loadState.value, AssetLoadState.idle); // init 前
+        // init() は最初の await 前に同期的に loading をセットするため、
+        // 呼び出し直後（awaitする前）の時点で既に loading になっている。
+        expect(assetService.loadState.value, AssetLoadState.loading);
 
         await future;
         expect(assetService.loadState.value, AssetLoadState.complete);

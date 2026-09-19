@@ -12,7 +12,22 @@ class SkillTreeService {
 
   SkillTreeService._internal();
 
-  final FirestoreService _firestoreService = FirestoreService();
+  /// Test-only seam: builds a standalone (non-singleton) SkillTreeService
+  /// backed by a caller-provided FirestoreService (e.g. one wrapping
+  /// FakeFirebaseFirestore), so tests can exercise real Firestore-touching
+  /// logic without the production Firebase singleton.
+  SkillTreeService.forFirestore(FirestoreService firestoreService)
+      : _firestoreServiceOverride = firestoreService;
+
+  FirestoreService? _firestoreServiceOverride;
+
+  /// Resolves the real Firebase-backed singleton lazily, on first actual
+  /// use, rather than eagerly in the constructor. This means simply
+  /// constructing a `SkillTreeService()` (e.g. in tests that only exercise
+  /// pure helpers like [calculateStatModifiers]) never requires Firebase to
+  /// already be initialized.
+  FirestoreService get _firestoreService =>
+      _firestoreServiceOverride ??= FirestoreService();
 
   // スキルツリーの定義
   static const List<String> treeNames = ['攻撃', '防御', '速度'];
@@ -53,7 +68,7 @@ class SkillTreeService {
   /// スキルツリーを初期化（新規ユーザー）
   Future<SkillTree> _initializeSkillTree(String userId) async {
     final skillTree = SkillTree.create();
-    await _firestoreService.updateUser(userId, {
+    await _firestoreService.update('users/$userId', {
       'skillTree': skillTree.toJson(),
     });
     return skillTree;
@@ -95,7 +110,7 @@ class SkillTreeService {
       skillTree.availablePoints -= 1;
 
       // Firestoreに保存
-      await _firestoreService.updateUser(userId, {
+      await _firestoreService.update('users/$userId', {
         'skillTree': skillTree.toJson(),
       });
 
@@ -151,7 +166,7 @@ class SkillTreeService {
       // 利用可能なポイントを1増加（最大値に達していない場合）
       if (skillTree.totalAllocatedPoints < totalSkillPoints) {
         skillTree.availablePoints += 1;
-        await _firestoreService.updateUser(userId, {
+        await _firestoreService.update('users/$userId', {
           'skillTree': skillTree.toJson(),
         });
       }

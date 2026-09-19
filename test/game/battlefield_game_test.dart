@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/stage_catalog.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 
@@ -67,6 +68,108 @@ void main() {
       expect(() {
         for (var i = 0; i < 5; i++) {
           game.sync([self, enemy]);
+          game.update(0.2);
+        }
+      }, returnsNormally);
+    });
+  });
+
+  group('BattlefieldGame ステージテーマ', () {
+    test('mapId未指定時はデフォルトステージの配色になる', () {
+      final game = BattlefieldGame();
+      expect(game.stage.stageId, defaultStageId);
+      expect(game.backgroundColor(), stageById(defaultStageId).backgroundColor);
+    });
+
+    test('mapIdを指定すると対応するステージの配色になる', () {
+      final targetStage = stageCatalog.last;
+      final game = BattlefieldGame(mapId: targetStage.stageId);
+
+      expect(game.stage.stageId, targetStage.stageId);
+      expect(game.backgroundColor(), targetStage.backgroundColor);
+    });
+
+    test('存在しないmapIdでも例外を投げずフォールバックする', () {
+      expect(() => BattlefieldGame(mapId: '存在しないID'), returnsNormally);
+    });
+  });
+
+  group('BattlefieldGame ジャングルモンスター攻撃対象検出', () {
+    // モンスターはレーン中央(gridX=0, gridY=laneCenterY)に配置される。
+    // 自キャラの出撃地点(gridX=-1.8)からは自然状態で射程外のため、ジョイスティック入力を
+    // 再現できないユニットテストでは debugSetSelfGridPosition で直接寄せて検証する。
+    const laneCenterYForLane0 = -1.8;
+
+    test('射程内のモンスターを攻撃対象として検出する', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final monster = JungleMonster(id: 'jungle_0', lane: 0, maxHp: 400);
+
+      game.sync([self]);
+      game.syncMonsters([monster]);
+      game.update(0.2);
+
+      // 初期配置では射程外のはず
+      expect(game.attackTargetId.value, isNull);
+
+      game.debugSetSelfGridPosition(0, laneCenterYForLane0);
+      game.update(0.2);
+
+      expect(game.attackTargetId.value?.id, monster.id);
+      expect(game.attackTargetId.value?.isMonster, isTrue);
+    });
+
+    test('異なるレーンのモンスターは射程内でも攻撃対象にならない', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final otherLaneMonster = JungleMonster(id: 'jungle_1', lane: 1, maxHp: 400);
+
+      game.sync([self]);
+      game.syncMonsters([otherLaneMonster]);
+      // モンスターの実座標(lane1中央)へ自キャラを寄せても、レーン不一致のため対象外のはず
+      game.debugSetSelfGridPosition(0, 1.8);
+      game.update(0.2);
+
+      expect(game.attackTargetId.value, isNull);
+    });
+
+    test('死亡中のモンスターは攻撃対象として検出されない', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final monster = JungleMonster(id: 'jungle_0', lane: 0, maxHp: 400)..isAlive = false;
+
+      game.sync([self]);
+      game.syncMonsters([monster]);
+      game.debugSetSelfGridPosition(0, laneCenterYForLane0);
+      game.update(0.2);
+
+      expect(game.attackTargetId.value, isNull);
+    });
+
+    test('敵プレイヤーが射程内にいる場合はモンスターより優先して検出する', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final enemy = _participant(userId: 'enemy_1', team: 1, lane: 0);
+      // モンスターは自然配置のまま（自キャラからは射程外）にしておき、
+      // 敵プレイヤーだけを射程内へ寄せることで優先順位（敵→モンスター）を検証する
+      final monster = JungleMonster(id: 'jungle_0', lane: 0, maxHp: 400);
+
+      game.sync([self, enemy]);
+      game.syncMonsters([monster]);
+      game.debugSetSelfGridPosition(1.8, -2.8); // enemy_1 の自然配置座標と一致させる
+      game.update(0.2);
+
+      expect(game.attackTargetId.value?.isMonster, isFalse);
+      expect(game.attackTargetId.value?.id, 'enemy_1');
+    });
+
+    test('syncMonsters を複数回呼んでも例外を投げない', () {
+      final game = BattlefieldGame();
+      final monster = JungleMonster(id: 'jungle_0', lane: 0, maxHp: 400);
+
+      expect(() {
+        for (var i = 0; i < 5; i++) {
+          game.syncMonsters([monster]);
           game.update(0.2);
         }
       }, returnsNormally);

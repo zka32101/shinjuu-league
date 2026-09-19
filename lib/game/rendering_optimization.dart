@@ -62,7 +62,10 @@ class ComponentPool<T> {
 /// 視錐台カリング（Frustum Culling）
 /// 画面外のオブジェクトをレンダリングしない最適化
 class FrustumCuller {
-  late Rect _viewportBounds;
+  // Before setViewport() is ever called (e.g. the first frame, or in a test
+  // that drives sync() directly without going through Flame's resize
+  // lifecycle), default to "cull nothing" rather than crashing.
+  Rect _viewportBounds = Rect.largest;
   final double _cullingMargin = 100; // 画面外100pxまで余裕を持たせる
 
   /// ビューポート（カメラ表示範囲）を設定
