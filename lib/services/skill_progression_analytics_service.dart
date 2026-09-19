@@ -91,7 +91,7 @@ class SkillProgressionAnalyticsService {
   }
 
   /// 共通のコホート情報をパラメータマップに追加
-  Map<String, dynamic> _addCohortParameters(Map<String, dynamic> params) {
+  Map<String, Object> _addCohortParameters(Map<String, Object> params) {
     return {
       ...params,
       'difficulty_preset': _currentDifficultyPreset,
@@ -324,7 +324,7 @@ class SkillProgressionAnalyticsService {
           'total_damage_dealt': totalDamageDealt,
           'battle_duration_seconds': battleDurationSeconds,
           'won': won,
-          'final_evolution': finalEvolution?.toString().split('.').last,
+          'final_evolution': finalEvolution?.toString().split('.').last ?? 'none',
           'skills_per_minute': (totalSkillsUsed / (battleDurationSeconds / 60.0)).toStringAsFixed(2),
           'timestamp': DateTime.now().toIso8601String(),
         }),

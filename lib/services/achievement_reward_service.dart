@@ -71,6 +71,18 @@ class AchievementRewardService {
         return ['cosmetic_badge_gold', 'cosmetic_frame_gold'];
       case AchievementRewardTier.platinum:
         return ['cosmetic_badge_platinum', 'cosmetic_frame_platinum', 'cosmetic_border_platinum'];
+      case AchievementRewardTier.common:
+        return [];
+      case AchievementRewardTier.uncommon:
+        return ['cosmetic_badge_uncommon'];
+      case AchievementRewardTier.rare:
+        return ['cosmetic_badge_rare'];
+      case AchievementRewardTier.epic:
+        return ['cosmetic_badge_epic', 'cosmetic_frame_epic'];
+      case AchievementRewardTier.legendary:
+        return ['cosmetic_badge_legendary', 'cosmetic_frame_legendary'];
+      case AchievementRewardTier.mythic:
+        return ['cosmetic_badge_mythic', 'cosmetic_frame_mythic', 'cosmetic_border_mythic'];
     }
   }
 

@@ -170,14 +170,9 @@ final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref
   );
 });
 
-final achievementIntegrationServiceProvider = Provider.autoDispose<AchievementIntegrationService>((ref) {
-  return AchievementIntegrationService(
-    detector: ref.watch(achievementDetectorServiceProvider),
-    rewardService: ref.watch(achievementRewardServiceProvider),
-    toastService: ref.watch(achievementToastNotificationServiceProvider),
-    analyticsService: ref.watch(analyticsServiceProvider),
-  );
-});
+// AchievementIntegrationService is likewise constructed directly by its
+// caller (not via a provider here) since it depends on the same
+// per-match AchievementDetectorService described above.
 
 // Phase 11: Daily Quests & Mission System
 final questServiceProvider = Provider<QuestService>((ref) {

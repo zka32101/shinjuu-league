@@ -188,6 +188,8 @@ class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
         return 'マイルストーン';
       case AchievementCategory.progression:
         return '進行';
+      case AchievementCategory.skill:
+        return 'スキル';
       case AchievementCategory.seasonal:
         return 'シーズン';
       case AchievementCategory.special:

@@ -200,6 +200,10 @@ class _AchievementToastWidgetState extends State<AchievementToastWidget>
         return 'S';
       case AchievementRewardTier.gold:
         return 'G';
+      case AchievementRewardTier.bronze:
+        return 'B';
+      case AchievementRewardTier.platinum:
+        return 'P';
     }
   }
 }

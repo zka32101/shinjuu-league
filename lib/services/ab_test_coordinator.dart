@@ -67,10 +67,10 @@ class ABTestCoordinator {
 
     // Log variant assignment
     _analytics.logABTestVariantAssignment(
-      userId: userId,
-      experimentId: experimentId,
-      variantName: variant,
-      isControl: variant == experiment.controlVariant,
+      userId,
+      experimentId,
+      variant,
+      variant == experiment.controlVariant,
     );
 
     return variant;

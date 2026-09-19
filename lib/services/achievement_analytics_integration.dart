@@ -182,6 +182,18 @@ class AchievementAnalyticsIntegration {
         return 'rare';
       case AchievementRewardTier.platinum:
         return 'legendary';
+      case AchievementRewardTier.common:
+        return 'common';
+      case AchievementRewardTier.uncommon:
+        return 'uncommon';
+      case AchievementRewardTier.rare:
+        return 'rare';
+      case AchievementRewardTier.epic:
+        return 'epic';
+      case AchievementRewardTier.legendary:
+        return 'legendary';
+      case AchievementRewardTier.mythic:
+        return 'mythic';
     }
   }
 }
