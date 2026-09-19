@@ -193,7 +193,7 @@ final battleSkillProgressionViewModelProvider = StateNotifierProvider.autoDispos
 /// 単一プレイヤーのスキル進行UI状態を取得するselector
 final playerSkillProgressionSelector = FutureProvider.autoDispose.family<
     BattleSkillProgressionUIState?,
-    String,
+    String
 >(
   (ref, playerId) async {
     final viewModel = ref.watch(battleSkillProgressionViewModelProvider);

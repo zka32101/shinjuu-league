@@ -1,7 +1,11 @@
+import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:shinjuu_league/data/models/progression_stats.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
+
+part 'progression_analytics_service.freezed.dart';
+part 'progression_analytics_service.g.dart';
 
 /// Service for calculating and tracking player progression analytics
 class ProgressionAnalyticsService {
