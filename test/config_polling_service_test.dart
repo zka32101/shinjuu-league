@@ -6,10 +6,52 @@ import 'package:shinjuu_league/services/config_polling_service.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
 
 class MockFirebaseRemoteConfig extends Mock
-    implements FirebaseRemoteConfig {}
+    implements FirebaseRemoteConfig {
+  @override
+  Future<void> fetch() {
+    return super.noSuchMethod(
+      Invocation.method(#fetch, []),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<bool> activate() {
+    return super.noSuchMethod(
+      Invocation.method(#activate, []),
+      returnValue: Future<bool>.value(false),
+      returnValueForMissingStub: Future<bool>.value(false),
+    ) as Future<bool>;
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
-    implements SkillProgressionConfig {}
+    implements SkillProgressionConfig {
+  @override
+  String get difficultyPreset => super.noSuchMethod(
+        Invocation.getter(#difficultyPreset),
+        returnValue: 'normal',
+        returnValueForMissingStub: 'normal',
+      ) as String;
+
+  @override
+  ProgressionDifficultyModifiers getDifficultyModifiers() {
+    return super.noSuchMethod(
+      Invocation.method(#getDifficultyModifiers, []),
+      returnValue: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+      returnValueForMissingStub: ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: 1.0,
+        skillCooldownMultiplier: 1.0,
+        skillDamageMultiplier: 1.0,
+      ),
+    ) as ProgressionDifficultyModifiers;
+  }
+}
 
 class MockFeatureFlagsService extends Mock
     implements FeatureFlagsService {}
