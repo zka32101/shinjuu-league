@@ -17,19 +17,36 @@ class ReportScheduleState {
     this.selectedReportId,
   });
 
+  // Sentinel so copyWith can tell "error not passed" (keep the current
+  // value) apart from "error explicitly passed as null" (clear it) - a
+  // plain `String? error` parameter can't distinguish the two, and using
+  // `error ?? this.error` would make an explicit `error: null` (used
+  // throughout this viewmodel to clear a previous error before a retry)
+  // silently keep the old error forever instead. Without this, any
+  // copyWith call that didn't pass `error:` at all (e.g. a bare
+  // `copyWith(isLoading: false)`) would wipe out whatever error was
+  // already set.
+  static const Object _unset = Object();
+
   ReportScheduleState copyWith({
     List<ScheduledReport>? scheduledReports,
     List<ReportExecutionRecord>? executionHistory,
     bool? isLoading,
-    String? error,
-    String? selectedReportId,
+    Object? error = _unset,
+    // Same sentinel issue as `error`: deleteScheduledReport() needs to
+    // explicitly clear selectedReportId to null when the deleted report was
+    // the selected one, which a plain `?? this.selectedReportId` fallback
+    // can't do (null always fell back to the old, now-deleted id).
+    Object? selectedReportId = _unset,
   }) {
     return ReportScheduleState(
       scheduledReports: scheduledReports ?? this.scheduledReports,
       executionHistory: executionHistory ?? this.executionHistory,
       isLoading: isLoading ?? this.isLoading,
-      error: error,
-      selectedReportId: selectedReportId ?? this.selectedReportId,
+      error: identical(error, _unset) ? this.error : error as String?,
+      selectedReportId: identical(selectedReportId, _unset)
+          ? this.selectedReportId
+          : selectedReportId as String?,
     );
   }
 }
