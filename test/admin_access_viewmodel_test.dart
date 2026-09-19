@@ -46,6 +46,11 @@ void main() {
       ]);
 
       // Act
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Assert
@@ -92,6 +97,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -154,6 +164,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -184,6 +199,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -214,6 +234,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -241,6 +266,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -277,6 +307,11 @@ void main() {
         ),
       ];
       mockRoleService.setAdminUsers(testUsers);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -306,6 +341,11 @@ void main() {
           assignedBy: null,
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -378,6 +418,11 @@ void main() {
           assignedBy: 'admin1',
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -416,6 +461,11 @@ void main() {
           assignedBy: 'admin1',
         ),
       ]);
+      // Constructing AFTER mocks are configured: the ViewModel starts _initialize()
+      // eagerly from its constructor, so building it in the shared setUp() (before this
+      // test's mock data exists) races with that async init reading stale (default) mock
+      // state -- it usually finished before the test ever set currentUser/adminUsers.
+      viewModel = AdminAccessViewModel(roleService: mockRoleService, authService: mockAuthService);
       await Future.delayed(const Duration(milliseconds: 100));
 
       // Act
@@ -499,7 +549,18 @@ class MockAdminRoleService implements AdminRoleService {
 
   @override
   Future<void> loadAdminRoles() async {
-    // Mock implementation
+    // A real (if tiny) Future.delayed, not a bare no-op async body, is
+    // needed here: AdminAccessViewModel._initialize() only awaits this one
+    // call before resolving, and a no-op async function's Future resolves
+    // after just a single microtask. The "should initialize loading state"
+    // test asserts viewModel.state synchronously right after construction
+    // (it can't await anything, since it isn't declared async), and the
+    // test runner's own internal scheduling was enough to flush that one
+    // microtask before the test body ran -- so the loading state was never
+    // actually observable. A delay that goes through a real timer (not
+    // just microtasks) reliably keeps _initialize() suspended past that
+    // synchronous assertion.
+    await Future.delayed(const Duration(milliseconds: 1));
   }
 
   @override
