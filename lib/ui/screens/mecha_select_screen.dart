@@ -150,10 +150,11 @@ class _MechaCard extends StatelessWidget {
   }
 }
 
-/// 実キャラクターアート素材の代わりに、ステータス由来の[MechaGlyph]で
-/// 球体ポートレートを自動生成して表示するウィジェット。
-/// バトル画面の[MechaToken]と同じ生成ロジックを使うため、選択画面と
-/// バトル中で同一キャラの見た目に一貫性が出る。
+/// キャラクターアート素材（[Mecha.iconUrl]）があればそれを円形に表示し、
+/// 未設定または読み込み失敗時はステータス由来の[MechaGlyph]による
+/// 球体ポートレートへ安全にフォールバックするウィジェット。
+/// バトル画面の[MechaToken]と同じ生成ロジックを使うため、フォールバック時は
+/// 選択画面とバトル中で同一キャラの見た目に一貫性が出る。
 class _MechaPortrait extends StatelessWidget {
   const _MechaPortrait({required this.mecha, required this.size});
 
@@ -165,7 +166,16 @@ class _MechaPortrait extends StatelessWidget {
     return SizedBox(
       width: size,
       height: size,
-      child: CustomPaint(painter: _MechaPortraitPainter(mecha)),
+      child: ClipOval(
+        child: mecha.iconUrl.isEmpty
+            ? CustomPaint(painter: _MechaPortraitPainter(mecha))
+            : Image.asset(
+                mecha.iconUrl,
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    CustomPaint(painter: _MechaPortraitPainter(mecha)),
+              ),
+      ),
     );
   }
 }
