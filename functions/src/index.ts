@@ -7,5 +7,6 @@ if (!admin.apps.length) {
 
 // Export all Cloud Functions
 export { validateBattleResult, debugEloCalculation } from './elo-validator';
+export { onSeasonEnded, applyInactivityDecay } from './season-lifecycle';
 export { executeScheduledReports } from './report-executor';
 export { deliverReportViaEmail } from './email-delivery';
