@@ -5,14 +5,33 @@ import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
-class LobbyScreen extends ConsumerWidget {
+class LobbyScreen extends ConsumerStatefulWidget {
   const LobbyScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<LobbyScreen> createState() => _LobbyScreenState();
+}
+
+class _LobbyScreenState extends ConsumerState<LobbyScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // ロビーBGMを開始（未配置時はAudioService側で無音スキップ）
+    AudioService().playBgm('lobby_bgm');
+  }
+
+  @override
+  void dispose() {
+    AudioService().stopBgm();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final userAsync = ref.watch(userViewModelProvider);
 
     return Scaffold(
