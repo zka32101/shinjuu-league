@@ -99,5 +99,57 @@ void main() {
         returnsNormally,
       );
     });
+
+    test('portraitImage指定時もrender()が例外を投げず描画できる', () async {
+      final image = await _tinyImage();
+      final token = MechaToken(
+        userId: 'u1',
+        team: 1,
+        lane: 0,
+        isSelf: true,
+        icon: Icons.local_fire_department,
+        basePosition: Vector2.zero(),
+        portraitImage: image,
+      );
+      token.triggerKillFlash();
+      token.triggerHitFlash(knockbackDirection: Vector2(1, 0));
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      expect(() => token.render(canvas), returnsNormally);
+      recorder.endRecording().dispose();
+    });
+
+    test('portraitImage指定時に死亡状態でもrender()が例外を投げない', () async {
+      final image = await _tinyImage();
+      final token = MechaToken(
+        userId: 'u1',
+        team: 0,
+        lane: 0,
+        isSelf: false,
+        icon: Icons.ac_unit,
+        basePosition: Vector2.zero(),
+        portraitImage: image,
+      );
+      token.setAlive(false);
+      token.update(1 / 60);
+      final recorder = ui.PictureRecorder();
+      final canvas = ui.Canvas(recorder);
+      expect(() => token.render(canvas), returnsNormally);
+      recorder.endRecording().dispose();
+    });
   });
+}
+
+/// テスト用の最小(1x1)デコード済み画像を生成する。
+Future<ui.Image> _tinyImage() async {
+  final recorder = ui.PictureRecorder();
+  final canvas = ui.Canvas(recorder);
+  canvas.drawRect(
+    const ui.Rect.fromLTWH(0, 0, 1, 1),
+    ui.Paint()..color = const ui.Color(0xFFFFFFFF),
+  );
+  final picture = recorder.endRecording();
+  final image = await picture.toImage(1, 1);
+  picture.dispose();
+  return image;
 }

@@ -7,10 +7,14 @@ import 'package:flutter/material.dart'
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/game/mecha_glyph.dart';
 
-/// バトルフィールド上の1参加者を表すトークン。実キャラクター素材が無いため、
-/// 球体シェーディング（放射状グラデ）+ 属性アイコン + 接地影 + 浮遊ボブに加え、
-/// [MechaGlyph]（ステータスから自動生成される幾何学シルエット）で
-/// キャラごとの個性を出した「宙に浮いた立体的な駒」を表現するプレースホルダー。
+/// バトルフィールド上の1参加者を表すトークン。
+/// [portraitImage]（キャラ選択画面と同じAI生成イラスト）があればそれを円形に
+/// 表示し、チーム所属は縁取りリングの色で示す（イラスト自体は東西の配色が
+/// キャラごとに固定のため、色だけではチーム0/1を判別できないため必須）。
+/// [portraitImage]が無い場合は、球体シェーディング（放射状グラデ）+ 属性アイコン
+/// + [MechaGlyph]（ステータスから自動生成される幾何学シルエット）による
+/// 従来のプレースホルダー描画にフォールバックする。
+/// いずれの場合も接地影・浮遊ボブ・各種フラッシュ演出は共通。
 class MechaToken extends PositionComponent {
   MechaToken({
     required this.userId,
@@ -20,9 +24,8 @@ class MechaToken extends PositionComponent {
     required this.icon,
     required Vector2 basePosition,
     String? mechaId,
-  }) : glyph = MechaGlyph.forMecha(
-         mechaById(mechaId ?? defaultMechaId),
-       ),
+    this.portraitImage,
+  }) : glyph = MechaGlyph.forMecha(mechaById(mechaId ?? defaultMechaId)),
        spawnPosition = basePosition.clone(),
        _bobPhase = (basePosition.x + basePosition.y) % (pi * 2),
        super(
@@ -38,8 +41,12 @@ class MechaToken extends PositionComponent {
   final IconData icon;
 
   /// ステータス（HP/ATK/SPD）・属性・レアリティから決定的に生成される
-  /// このキャラ固有のシルエット（実アート素材の代替）。
+  /// このキャラ固有のシルエット（実アート素材が無い場合のフォールバック用）。
   final MechaGlyph glyph;
+
+  /// キャラ選択画面と共通のAI生成イラスト（デコード済み）。null または
+  /// デコード失敗時は[glyph]ベースの従来描画にフォールバックする。
+  final Image? portraitImage;
 
   /// 出撃時の位置。リスポーン時にここへ戻す（死亡地点にとどまらないようにする）。
   final Vector2 spawnPosition;
@@ -161,55 +168,142 @@ class MechaToken extends PositionComponent {
       canvas.drawCircle(center, radius + 6, hitPaint);
     }
 
-    // 球体シェーディング：左上を光源とした放射状グラデで立体的な玉に見せる
-    final lightColor = Color.lerp(_teamColor, Colors.white, 0.55)!;
-    final darkColor = Color.lerp(_teamColor, Colors.black, 0.45)!;
-    final bodyPaint = Paint()
-      ..shader = Gradient.radial(
-        Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
-        radius * 1.3,
-        [
-          lightColor.withValues(alpha: _opacity),
-          _teamColor.withValues(alpha: _opacity),
-          darkColor.withValues(alpha: _opacity),
-        ],
-        [0.0, 0.5, 1.0],
+    final portrait = portraitImage;
+    if (portrait != null) {
+      // 実イラスト：円形にクリップして描画し、チーム所属は縁取りリングの色で
+      // 示す（イラストの配色はキャラ固有で東=紅蓮/西=蒼銀に固定されており、
+      // チーム0/1どちらかとは無関係なため、塗りではなくリングで区別する）。
+      canvas.save();
+      canvas.clipPath(
+        Path()..addOval(Rect.fromCircle(center: center, radius: radius)),
       );
-    canvas.drawCircle(center, radius, bodyPaint);
+      canvas.drawImageRect(
+        portrait,
+        Rect.fromLTWH(
+          0,
+          0,
+          portrait.width.toDouble(),
+          portrait.height.toDouble(),
+        ),
+        Rect.fromCircle(center: center, radius: radius),
+        Paint()..color = Colors.white.withValues(alpha: _opacity),
+      );
+      canvas.restore();
 
-    // リムライト：右下側の縁を暗く締めて球の丸みを強調
-    final rimPaint = Paint()
-      ..color = darkColor.withValues(alpha: _opacity * 0.6)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2;
-    canvas.drawArc(
-      Rect.fromCircle(center: center, radius: radius - 1),
-      0.3,
-      pi * 0.9,
-      false,
-      rimPaint,
-    );
+      final teamRingPaint = Paint()
+        ..color = _teamColor.withValues(alpha: _opacity)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 4;
+      canvas.drawCircle(center, radius - 1, teamRingPaint);
 
-    // ハイライトスポット：光沢のある玉の質感
-    final specPaint = Paint()
-      ..color = Colors.white.withValues(alpha: _opacity * 0.7)
-      ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
-    canvas.drawCircle(
-      Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
-      radius * 0.22,
-      specPaint,
-    );
+      final glowPaint = Paint()
+        ..color = _teamColor.withValues(alpha: _opacity * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
+      canvas.drawCircle(center, radius + 2, glowPaint);
 
-    // 外周グロー（存在感を強調）
-    final glowPaint = Paint()
-      ..color = _teamColor.withValues(alpha: _opacity * 0.5)
-      ..style = PaintingStyle.stroke
-      ..strokeWidth = 2
-      ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
-    canvas.drawCircle(center, radius, glowPaint);
+      // 属性バッジ：中央は顔が隠れるため、右下に小さく表示する
+      final badgeCenter = Offset(
+        center.dx + radius * 0.62,
+        center.dy + radius * 0.62,
+      );
+      canvas.drawCircle(
+        badgeCenter,
+        radius * 0.32,
+        Paint()..color = Colors.black.withValues(alpha: _opacity * 0.55),
+      );
+      final badgePainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(icon.codePoint),
+          style: TextStyle(
+            fontSize: radius * 0.4,
+            fontFamily: icon.fontFamily,
+            package: icon.fontPackage,
+            color: Colors.white.withValues(alpha: _opacity),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      badgePainter.paint(
+        canvas,
+        Offset(
+          badgeCenter.dx - badgePainter.width / 2,
+          badgeCenter.dy - badgePainter.height / 2,
+        ),
+      );
+    } else {
+      // フォールバック：実アート素材が無い/読み込み失敗時の従来描画
+      // （球体シェーディング + MechaGlyph + 中央の属性アイコン）。
+      final lightColor = Color.lerp(_teamColor, Colors.white, 0.55)!;
+      final darkColor = Color.lerp(_teamColor, Colors.black, 0.45)!;
+      final bodyPaint = Paint()
+        ..shader = Gradient.radial(
+          Offset(center.dx - radius * 0.35, center.dy - radius * 0.35),
+          radius * 1.3,
+          [
+            lightColor.withValues(alpha: _opacity),
+            _teamColor.withValues(alpha: _opacity),
+            darkColor.withValues(alpha: _opacity),
+          ],
+          [0.0, 0.5, 1.0],
+        );
+      canvas.drawCircle(center, radius, bodyPaint);
 
-    // キャラ固有シルエット（プレート/フィン + エネルギースパイク）を本体周囲に描画
-    glyph.paint(canvas, center, radius, _opacity);
+      // リムライト：右下側の縁を暗く締めて球の丸みを強調
+      final rimPaint = Paint()
+        ..color = darkColor.withValues(alpha: _opacity * 0.6)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2;
+      canvas.drawArc(
+        Rect.fromCircle(center: center, radius: radius - 1),
+        0.3,
+        pi * 0.9,
+        false,
+        rimPaint,
+      );
+
+      // ハイライトスポット：光沢のある玉の質感
+      final specPaint = Paint()
+        ..color = Colors.white.withValues(alpha: _opacity * 0.7)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
+      canvas.drawCircle(
+        Offset(center.dx - radius * 0.32, center.dy - radius * 0.32),
+        radius * 0.22,
+        specPaint,
+      );
+
+      // 外周グロー（存在感を強調）
+      final glowPaint = Paint()
+        ..color = _teamColor.withValues(alpha: _opacity * 0.5)
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 2
+        ..maskFilter = const MaskFilter.blur(BlurStyle.outer, 3);
+      canvas.drawCircle(center, radius, glowPaint);
+
+      // キャラ固有シルエット（プレート/フィン + エネルギースパイク）を本体周囲に描画
+      glyph.paint(canvas, center, radius, _opacity);
+
+      final iconPainter = TextPainter(
+        text: TextSpan(
+          text: String.fromCharCode(icon.codePoint),
+          style: TextStyle(
+            fontSize: radius,
+            fontFamily: icon.fontFamily,
+            package: icon.fontPackage,
+            color: Colors.white.withValues(alpha: _opacity),
+          ),
+        ),
+        textDirection: TextDirection.ltr,
+      )..layout();
+      iconPainter.paint(
+        canvas,
+        Offset(
+          center.dx - iconPainter.width / 2,
+          center.dy - iconPainter.height / 2,
+        ),
+      );
+    }
 
     if (isSelf) {
       final ringPaint = Paint()
@@ -239,26 +333,6 @@ class MechaToken extends PositionComponent {
         ..strokeWidth = 2;
       canvas.drawCircle(center, radius + (1 - _killFlash) * 18, innerPaint);
     }
-
-    final iconPainter = TextPainter(
-      text: TextSpan(
-        text: String.fromCharCode(icon.codePoint),
-        style: TextStyle(
-          fontSize: radius,
-          fontFamily: icon.fontFamily,
-          package: icon.fontPackage,
-          color: Colors.white.withValues(alpha: _opacity),
-        ),
-      ),
-      textDirection: TextDirection.ltr,
-    )..layout();
-    iconPainter.paint(
-      canvas,
-      Offset(
-        center.dx - iconPainter.width / 2,
-        center.dy - iconPainter.height / 2,
-      ),
-    );
 
     // HPバー：頭上に表示。生存中のみ、削れ具合に応じて緑→黄→赤に変化させる
     if (isAlive) {
