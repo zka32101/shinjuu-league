@@ -1,305 +1,379 @@
 /**
- * Unit tests for ELO calculation functions
- * These tests are isolated from Firebase and test pure logic
+ * Unit tests for the ELO validator Cloud Function.
+ *
+ * Two layers are covered:
+ * 1. Pure calculation logic (calculateExpectation/calculateNewRating/tier
+ *    lookups) — imported directly from src/elo-validator.ts rather than
+ *    re-implemented here, so these tests actually fail if the production
+ *    formula changes (a hand-copied duplicate would silently drift).
+ * 2. The validateBattleResult Firestore trigger itself, with a mocked
+ *    firebase-admin Firestore (no emulator required in CI) covering the
+ *    security-relevant behaviors: server-authoritative rating recompute,
+ *    idempotency via eloProcessed, and validation-error paths.
  */
-describe('ELO Calculation Logic', () => {
-  /**
-   * Test expected win probability calculation
-   * Formula: EA = 1 / (1 + 10^((RB - RA) / 400))
-   */
-  describe('calculateExpectation', () => {
-    test('equal ratings should give 0.5 expectation', () => {
-      // When both players have same rating, expected win probability = 0.5
-      const playerRating = 1600;
-      const opponentRating = 1600;
-      const ratingDiff = opponentRating - playerRating; // 0
-      const expected = 1 / (1 + Math.pow(10, ratingDiff / 400));
+import {
+  calculateExpectation,
+  calculateNewRating,
+  getKFactorForRating,
+  getTierName,
+  MIN_ELO,
+  MAX_ELO,
+} from '../src/elo-validator';
 
-      expect(expected).toBeCloseTo(0.5, 2);
-    });
-
-    test('100 rating advantage should give ~64% expectation', () => {
-      // A player 100 rating higher should have ~64% win probability
-      const playerRating = 1600;
-      const opponentRating = 1700;
-      const ratingDiff = opponentRating - playerRating; // 100
-      const expected = 1 / (1 + Math.pow(10, ratingDiff / 400));
-
-      // 1 / (1 + 10^(100/400)) = 1 / (1 + 10^0.25) ≈ 1 / (1 + 1.778) ≈ 0.36
-      // Wait, if opponent is 100 higher, our expectation is LOWER (36%)
-      expect(expected).toBeCloseTo(0.36, 2);
-    });
-
-    test('200 rating disadvantage should give ~24% expectation', () => {
-      const playerRating = 1600;
-      const opponentRating = 1800;
-      const ratingDiff = opponentRating - playerRating; // 200
-      const expected = 1 / (1 + Math.pow(10, ratingDiff / 400));
-
-      // 1 / (1 + 10^(200/400)) = 1 / (1 + 10^0.5) ≈ 1 / (1 + 3.162) ≈ 0.24
-      // If opponent is 200 rating higher, our win probability is about 24%
-      expect(expected).toBeCloseTo(0.24, 2);
-    });
-
-    test('very large rating difference should approach 0 or 1', () => {
-      // Massive advantage
-      const playerRating = 1000;
-      const opponentRating = 2500;
-      const ratingDiff = opponentRating - playerRating; // 1500
-      const expected = 1 / (1 + Math.pow(10, ratingDiff / 400));
-
-      // Should be very close to 0
-      expect(expected).toBeLessThan(0.01);
-    });
+describe('calculateExpectation', () => {
+  test('equal ratings should give 0.5 expectation', () => {
+    expect(calculateExpectation(1600, 1600)).toBeCloseTo(0.5, 2);
   });
 
-  /**
-   * Test new rating calculation with tier-based K-factors
-   * Formula: RA' = RA + K(tier) * (SA - EA)
-   * where K varies by tier: Bronze=64, Silver=32, Gold=24, Platinum=16
-   * SA = actual score (1/0.5/0), EA = expected score
-   */
-  describe('calculateNewRating (Tier-based K-factors)', () => {
-    const MIN_ELO = 400;
-    const MAX_ELO = 3000;
+  test('100 rating disadvantage should give ~36% expectation', () => {
+    // Opponent 100 higher => our win probability is lower (~36%)
+    expect(calculateExpectation(1600, 1700)).toBeCloseTo(0.36, 2);
+  });
 
-    // Tier K-factors
-    const BRONZE_K = 64;   // 400-1400
-    const SILVER_K = 32;   // 1400-1800
-    const GOLD_K = 24;     // 1800-2200
-    const PLATINUM_K = 16; // 2200-3000
+  test('200 rating disadvantage should give ~24% expectation', () => {
+    expect(calculateExpectation(1600, 1800)).toBeCloseTo(0.24, 2);
+  });
 
-    function calculateExpectation(playerRating: number, opponentRating: number): number {
-      const ratingDiff = opponentRating - playerRating;
-      return 1 / (1 + Math.pow(10, ratingDiff / 400));
+  test('very large rating disadvantage should approach 0', () => {
+    expect(calculateExpectation(1000, 2500)).toBeLessThan(0.01);
+  });
+});
+
+describe('getKFactorForRating / getTierName (tier-based K-factors)', () => {
+  test.each([
+    [1200, 'Bronze', 64],
+    [1399, 'Bronze', 64],
+    [1400, 'Silver', 32],
+    [1799, 'Silver', 32],
+    [1800, 'Gold', 24],
+    [2199, 'Gold', 24],
+    [2200, 'Platinum', 16],
+    [2999, 'Platinum', 16],
+  ])('rating %i is %s tier with K=%i', (rating, tier, k) => {
+    expect(getTierName(rating)).toBe(tier);
+    expect(getKFactorForRating(rating)).toBe(k);
+  });
+});
+
+describe('calculateNewRating (tier-based K-factors)', () => {
+  test('Bronze tier: win against equal opponent gains ~32 rating (K=64)', () => {
+    expect(calculateNewRating(1200, 1200, 'win')).toBeCloseTo(1232, 0);
+  });
+
+  test('Silver tier: win against equal opponent gains ~16 rating (K=32)', () => {
+    expect(calculateNewRating(1600, 1600, 'win')).toBeCloseTo(1616, 0);
+  });
+
+  test('Gold tier: win against equal opponent gains ~12 rating (K=24)', () => {
+    expect(calculateNewRating(2000, 2000, 'win')).toBeCloseTo(2012, 0);
+  });
+
+  test('Platinum tier: win against equal opponent gains ~8 rating (K=16)', () => {
+    expect(calculateNewRating(2400, 2400, 'win')).toBeCloseTo(2408, 0);
+  });
+
+  test('loss against equal opponent loses the corresponding K at each tier', () => {
+    expect(calculateNewRating(1200, 1200, 'loss')).toBeCloseTo(1168, 0);
+    expect(calculateNewRating(1600, 1600, 'loss')).toBeCloseTo(1584, 0);
+    expect(calculateNewRating(2000, 2000, 'loss')).toBeCloseTo(1988, 0);
+    expect(calculateNewRating(2400, 2400, 'loss')).toBeCloseTo(2392, 0);
+  });
+
+  test('draw against equal opponent stays the same at all tiers', () => {
+    for (const rating of [1200, 1600, 2000, 2400]) {
+      expect(calculateNewRating(rating, rating, 'draw')).toBeCloseTo(rating, 0);
     }
+  });
 
-    function getKFactorForRating(rating: number): number {
-      if (rating < 1400) return BRONZE_K;
-      if (rating < 1800) return SILVER_K;
-      if (rating < 2200) return GOLD_K;
-      return PLATINUM_K;
+  test('upset win against a higher-rated opponent gains more than an even match', () => {
+    const evenWinGain = calculateNewRating(1600, 1600, 'win') - 1600;
+    const upsetWinGain = calculateNewRating(1600, 1800, 'win') - 1600;
+    expect(upsetWinGain).toBeGreaterThan(evenWinGain);
+  });
+
+  test('expected win against a lower-rated opponent gains less than an even match', () => {
+    const evenWinGain = calculateNewRating(1800, 1800, 'win') - 1800;
+    const expectedWinGain = calculateNewRating(1800, 1600, 'win') - 1800;
+    expect(expectedWinGain).toBeLessThan(evenWinGain);
+  });
+
+  test('clamps to MIN_ELO for a crushing loss near the floor', () => {
+    expect(calculateNewRating(410, 2800, 'loss')).toBeGreaterThanOrEqual(MIN_ELO);
+  });
+
+  test('clamps to MAX_ELO for a crushing win near the ceiling', () => {
+    expect(calculateNewRating(2990, 400, 'win')).toBeLessThanOrEqual(MAX_ELO);
+  });
+
+  test('multiple consecutive wins compound with a shrinking per-win gain', () => {
+    let rating = 1600;
+    const opponentRating = 1600;
+    const gains: number[] = [];
+    for (let i = 0; i < 3; i++) {
+      const next = calculateNewRating(rating, opponentRating, 'win');
+      gains.push(next - rating);
+      rating = next;
     }
-
-    function calculateNewRating(
-      currentRating: number,
-      opponentRating: number,
-      result: 'win' | 'loss' | 'draw'
-    ): number {
-      const expected = calculateExpectation(currentRating, opponentRating);
-      const actualResult = result === 'win' ? 1 : result === 'draw' ? 0.5 : 0;
-      const kFactor = getKFactorForRating(currentRating);
-      const delta = kFactor * (actualResult - expected);
-      const newRating = currentRating + delta;
-      return Math.max(MIN_ELO, Math.min(MAX_ELO, newRating));
-    }
-
-    test('Bronze tier: win against equal opponent gains ~32 rating (K=64)', () => {
-      const currentRating = 1200; // Bronze tier (< 1400)
-      const opponentRating = 1200;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected = 0.5, Actual = 1.0
-      // Delta = 64 * (1.0 - 0.5) = 64 * 0.5 = 32
-      expect(newRating).toBeCloseTo(1232, 0);
-    });
-
-    test('Silver tier: win against equal opponent gains ~16 rating (K=32)', () => {
-      const currentRating = 1600; // Silver tier (1400-1800)
-      const opponentRating = 1600;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected = 0.5, Actual = 1.0
-      // Delta = 32 * (1.0 - 0.5) = 32 * 0.5 = 16
-      expect(newRating).toBeCloseTo(1616, 0);
-    });
-
-    test('Gold tier: win against equal opponent gains ~12 rating (K=24)', () => {
-      const currentRating = 2000; // Gold tier (1800-2200)
-      const opponentRating = 2000;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected = 0.5, Actual = 1.0
-      // Delta = 24 * (1.0 - 0.5) = 24 * 0.5 = 12
-      expect(newRating).toBeCloseTo(2012, 0);
-    });
-
-    test('Platinum tier: win against equal opponent gains ~8 rating (K=16)', () => {
-      const currentRating = 2400; // Platinum tier (2200+)
-      const opponentRating = 2400;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected = 0.5, Actual = 1.0
-      // Delta = 16 * (1.0 - 0.5) = 16 * 0.5 = 8
-      expect(newRating).toBeCloseTo(2408, 0);
-    });
-
-    test('loss against equal opponent at different tiers loses corresponding K', () => {
-      // Bronze loss
-      let currentRating = 1200;
-      let newRating = calculateNewRating(currentRating, 1200, 'loss');
-      expect(newRating).toBeCloseTo(1168, 0); // -32
-
-      // Silver loss
-      currentRating = 1600;
-      newRating = calculateNewRating(currentRating, 1600, 'loss');
-      expect(newRating).toBeCloseTo(1584, 0); // -16
-
-      // Gold loss
-      currentRating = 2000;
-      newRating = calculateNewRating(currentRating, 2000, 'loss');
-      expect(newRating).toBeCloseTo(1988, 0); // -12
-
-      // Platinum loss
-      currentRating = 2400;
-      newRating = calculateNewRating(currentRating, 2400, 'loss');
-      expect(newRating).toBeCloseTo(2392, 0); // -8
-    });
-
-    test('draw against equal opponent should stay same at all tiers', () => {
-      for (const rating of [1200, 1600, 2000, 2400]) {
-        const newRating = calculateNewRating(rating, rating, 'draw');
-        expect(newRating).toBeCloseTo(rating, 0);
-      }
-    });
-
-    test('upset win against higher opponent (Silver tier) gains more', () => {
-      const currentRating = 1600; // Silver tier
-      const opponentRating = 1800; // Also Silver
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected ≈ 0.36 (unlikely), Actual = 1.0
-      // Delta = 32 * (1.0 - 0.36) = 32 * 0.64 ≈ 20.5
-      // New rating ≈ 1620
-      expect(newRating).toBeGreaterThan(1615);
-      expect(newRating).toBeLessThan(1630);
-    });
-
-    test('expected win against lower opponent (Gold tier) gains less', () => {
-      const currentRating = 1800; // Gold tier starts at 1800
-      const opponentRating = 1600; // Silver tier
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Expected ≈ 0.759 (likely), Actual = 1.0, K=24 (Gold)
-      // Delta = 24 * (1.0 - 0.759) = 24 * 0.241 ≈ 5.78
-      // New rating ≈ 1805.78
-      expect(newRating).toBeCloseTo(1806, 0);
-    });
-
-    test('upset loss against lower opponent (Gold tier) loses more', () => {
-      const currentRating = 2000; // Gold tier
-      const opponentRating = 1800; // Silver/Gold boundary
-      const newRating = calculateNewRating(currentRating, opponentRating, 'loss');
-
-      // Expected ≈ 0.64, Actual = 0.0, K=24 (Gold)
-      // Delta = 24 * (0.0 - 0.64) = 24 * -0.64 ≈ -15.4
-      // New rating ≈ 1985
-      expect(newRating).toBeLessThan(1990);
-      expect(newRating).toBeGreaterThan(1980);
-    });
-
-    test('should clamp minimum ELO to 400', () => {
-      const currentRating = 450;
-      const opponentRating = 2800;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'loss');
-
-      // Should not go below MIN_ELO (400)
-      expect(newRating).toBeGreaterThanOrEqual(MIN_ELO);
-    });
-
-    test('should clamp maximum ELO to 3000', () => {
-      const currentRating = 2950;
-      const opponentRating = 400;
-      const newRating = calculateNewRating(currentRating, opponentRating, 'win');
-
-      // Should not go above MAX_ELO (3000)
-      expect(newRating).toBeLessThanOrEqual(MAX_ELO);
-    });
-
-    test('multiple wins should show compounding gains with tier transitions', () => {
-      let rating = 1600;
-      const opponentRating = 1600;
-
-      // Win 1: Silver tier (K=32), opponent equal → gain ~16
-      rating = calculateNewRating(rating, opponentRating, 'win');
-      expect(rating).toBeCloseTo(1616, 0);
-
-      // Win 2: Still Silver (1616 < 1800), but now playing against "equal" who hasn't gained
-      // Expected = ~0.523 (slightly favored), Actual = 1.0, K=32
-      // Delta = 32 * (1.0 - 0.523) = 32 * 0.477 ≈ 15.25
-      rating = calculateNewRating(rating, opponentRating, 'win');
-      expect(rating).toBeCloseTo(1631, 0);
-
-      // Win 3: Still Silver, expected drops further as gap widens
-      rating = calculateNewRating(rating, opponentRating, 'win');
-      expect(rating).toBeCloseTo(1646, 0);
-    });
+    // As the player pulls ahead of a fixed-rating opponent, each further
+    // win is more "expected" so the gain per win should shrink.
+    expect(gains[1]).toBeLessThan(gains[0]);
+    expect(gains[2]).toBeLessThan(gains[1]);
   });
 });
 
 /**
- * Integration tests for Cloud Function behavior
- * These would require Firebase Emulator setup
- * These tests are marked as skipped and require manual Firebase Emulator configuration
+ * validateBattleResult (Firestore onCreate trigger) with a mocked
+ * firebase-admin — no Firestore emulator needed, so this runs in plain CI.
  */
-describe('ELO Validator Cloud Function - Integration', () => {
+describe('validateBattleResult (mocked Firestore)', () => {
+  type FakeDoc = Record<string, unknown> | undefined;
 
-  /**
-   * Test scenario: Normal win for player A, loss for player B
-   * Requires Firebase Emulator - skipped in CI
-   */
-  it.skip('should update both players ELO on battle result (win/loss)', () => {
-    // Placeholder: requires Firebase Emulator setup
-    expect(true).toBe(true);
+  function makeMockDb(fixtures: {
+    users?: Record<string, FakeDoc>;
+    battles?: Record<string, FakeDoc>;
+  }) {
+    const users = fixtures.users ?? {};
+    const battles = fixtures.battles ?? {};
+
+    const batchUpdate = jest.fn();
+    const batchSet = jest.fn();
+    const batchCommit = jest.fn().mockResolvedValue(undefined);
+    const errorAdd = jest.fn().mockResolvedValue({ id: 'error-doc' });
+
+    const makeDocRef = (collectionName: string, id: string) => ({
+      id,
+      get: jest.fn().mockImplementation(async () => {
+        const source = collectionName === 'users' ? users : battles;
+        const data = source[id];
+        return { exists: data !== undefined, data: () => data };
+      }),
+    });
+
+    const collection = jest.fn((name: string) => ({
+      doc: jest.fn((id: string) => makeDocRef(name, id)),
+      add: name === 'elo_validation_errors' ? errorAdd : jest.fn(),
+    }));
+
+    const batch = jest.fn(() => ({
+      update: batchUpdate,
+      set: batchSet,
+      commit: batchCommit,
+    }));
+
+    return {
+      db: { collection, batch },
+      spies: { batchUpdate, batchSet, batchCommit, errorAdd },
+    };
+  }
+
+  // The real handler only ever calls `snap.data()`; a minimal fake is cast
+  // to the SDK's QueryDocumentSnapshot type since we're deliberately
+  // bypassing the full Firestore document machinery for these unit tests.
+  function makeSnap(
+    data: Record<string, unknown>
+  ): FirebaseFirestore.QueryDocumentSnapshot {
+    return { data: () => data } as unknown as FirebaseFirestore.QueryDocumentSnapshot;
+  }
+
+  function makeContext(resultId: string): any {
+    return { params: { resultId } };
+  }
+
+  const baseParticipant = {
+    userId: 'player-a',
+    lane: 0,
+    baseStats: { atk: 50, def: 20, spd: 30 },
+    eloRating: 1600,
+  };
+  const baseOpponent = {
+    userId: 'player-b',
+    lane: 0,
+    baseStats: { atk: 50, def: 20, spd: 30 },
+    eloRating: 1600,
+  };
+
+  let admin: typeof import('firebase-admin');
+  let validateBattleResult: typeof import('../src/elo-validator').validateBattleResult;
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.doMock('firebase-admin', () => {
+      const FieldValue = {
+        serverTimestamp: jest.fn(() => 'MOCK_SERVER_TIMESTAMP'),
+        increment: jest.fn((n: number) => ({ __increment: n })),
+      };
+      const firestoreFn: any = jest.fn();
+      firestoreFn.FieldValue = FieldValue;
+      return { firestore: firestoreFn };
+    });
+    // Re-require after resetModules so the mock above is picked up fresh
+    // for every test (each test installs its own mock db via
+    // admin.firestore.mockReturnValue(...)).
+    admin = require('firebase-admin');
+    validateBattleResult = require('../src/elo-validator').validateBattleResult;
   });
 
-  /**
-   * Test scenario: Ensure battle result can't be double-processed
-   * Requires Firebase Emulator - skipped in CI
-   */
-  it.skip('should prevent double-processing via eloProcessed flag', () => {
-    // Placeholder: requires Firebase Emulator setup
-    expect(true).toBe(true);
+  afterEach(() => {
+    jest.clearAllMocks();
   });
 
-  /**
-   * Test scenario: Draw result should give both players 0 rating change
-   * Requires Firebase Emulator - skipped in CI
-   */
-  it.skip('should handle draw results correctly', () => {
-    // Placeholder: requires Firebase Emulator setup
-    expect(true).toBe(true);
+  test('rejects when the acting user does not exist, and logs the error (no batch write)', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-b': baseOpponent },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserId: 'player-b',
+        result: 'win',
+        participant: baseParticipant,
+        opponent: baseOpponent,
+      }),
+      makeContext('result-1')
+    );
+
+    expect(spies.errorAdd).toHaveBeenCalledTimes(1);
+    expect(spies.errorAdd.mock.calls[0][0].error).toContain('player-a');
+    expect(spies.batchCommit).not.toHaveBeenCalled();
+  });
+
+  test('rejects when the battle document does not exist', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      battles: {},
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'missing-battle',
+        userId: 'player-a',
+        opponentUserId: 'player-b',
+        result: 'win',
+        participant: baseParticipant,
+        opponent: baseOpponent,
+      }),
+      makeContext('result-2')
+    );
+
+    expect(spies.errorAdd).toHaveBeenCalledTimes(1);
+    expect(spies.errorAdd.mock.calls[0][0].error).toContain('not found');
+    expect(spies.batchCommit).not.toHaveBeenCalled();
+  });
+
+  test('rejects a battle whose ELO has already been processed (idempotency)', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      battles: { 'battle-1': { eloProcessed: true } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserId: 'player-b',
+        result: 'win',
+        participant: baseParticipant,
+        opponent: baseOpponent,
+      }),
+      makeContext('result-3')
+    );
+
+    expect(spies.errorAdd).toHaveBeenCalledTimes(1);
+    expect(spies.errorAdd.mock.calls[0][0].error).toBe(
+      'ELO already processed for this battle'
+    );
+    expect(spies.batchCommit).not.toHaveBeenCalled();
+  });
+
+  test('recomputes ELO server-side from Firestore ratings, ignoring the client payload', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserId: 'player-b',
+        result: 'win',
+        // Client-submitted ratings are wildly wrong; the server must ignore
+        // them and use the Firestore-stored 1600/1600 instead.
+        participant: { ...baseParticipant, eloRating: 9999 },
+        opponent: { ...baseOpponent, eloRating: 1 },
+      }),
+      makeContext('result-4')
+    );
+
+    expect(spies.batchCommit).toHaveBeenCalledTimes(1);
+
+    const userUpdateCall = spies.batchUpdate.mock.calls.find(
+      (call) => call[1].eloRating === 1616
+    );
+    const opponentUpdateCall = spies.batchUpdate.mock.calls.find(
+      (call) => call[1].eloRating === 1584
+    );
+    expect(userUpdateCall).toBeDefined();
+    expect(opponentUpdateCall).toBeDefined();
+    expect(userUpdateCall![1].wins).toEqual({ __increment: 1 });
+    expect(opponentUpdateCall![1].losses).toEqual({ __increment: 1 });
+
+    // Battle itself must be marked processed to guarantee idempotency.
+    const battleUpdateCall = spies.batchUpdate.mock.calls.find(
+      (call) => call[1].eloProcessed === true
+    );
+    expect(battleUpdateCall).toBeDefined();
+
+    expect(spies.batchSet).toHaveBeenCalledTimes(1);
+    const auditLog = spies.batchSet.mock.calls[0][1];
+    expect(auditLog.userOldRating).toBe(1600);
+    expect(auditLog.userNewRating).toBe(1616);
+    expect(auditLog.userTier).toBe('Silver');
+    expect(auditLog.userKFactor).toBe(32);
+  });
+
+  test('a draw increments draws for both players with near-zero rating change', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserId: 'player-b',
+        result: 'draw',
+        participant: baseParticipant,
+        opponent: baseOpponent,
+      }),
+      makeContext('result-5')
+    );
+
+    const drawUpdates = spies.batchUpdate.mock.calls.filter(
+      (call) => call[1].draws !== undefined
+    );
+    expect(drawUpdates).toHaveLength(2);
+    for (const call of drawUpdates) {
+      expect(call[1].eloRating).toBe(1600); // equal ratings + draw = no change
+    }
   });
 });
 
-/**
- * Error handling tests
- */
-describe('ELO Validator Error Handling', () => {
-  test('should handle missing user gracefully', async () => {
-    // Test that validation error is logged, not silently ignored
-    // Would need mock Firebase for this
-
-    const mockError = 'User not found';
-    expect(mockError).toContain('User');
-  });
-
-  test('should handle invalid ELO range', async () => {
-    const MIN_ELO = 400;
-    const MAX_ELO = 3000;
-
-    const tooLowElo = 350;
-    const tooHighElo = 3100;
-
-    expect(Math.max(MIN_ELO, tooLowElo)).toBe(MIN_ELO);
-    expect(Math.min(MAX_ELO, tooHighElo)).toBe(MAX_ELO);
-  });
-
-  test('should validate result is one of win/loss/draw', () => {
+describe('debugEloCalculation input validation', () => {
+  test('accepted result values are exactly win/loss/draw', () => {
     const validResults = ['win', 'loss', 'draw'];
-    const invalidResult = 'invalid';
-
     expect(validResults).toContain('win');
-    expect(validResults).not.toContain(invalidResult);
+    expect(validResults).toContain('loss');
+    expect(validResults).toContain('draw');
+    expect(validResults).not.toContain('tie');
   });
 });

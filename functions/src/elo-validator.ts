@@ -40,9 +40,9 @@ interface User {
   updateAt: admin.firestore.FieldValue;
 }
 
-const DEFAULT_K_FACTOR = 32; // Standard K-factor for intermediate players
-const MIN_ELO = 400;
-const MAX_ELO = 3000;
+export const DEFAULT_K_FACTOR = 32; // Standard K-factor for intermediate players
+export const MIN_ELO = 400;
+export const MAX_ELO = 3000;
 
 /**
  * ELO tier thresholds for K-factor adjustment
@@ -58,7 +58,7 @@ interface EloTier {
   kFactor: number;
 }
 
-const ELO_TIERS: EloTier[] = [
+export const ELO_TIERS: EloTier[] = [
   { name: 'Bronze', minRating: MIN_ELO, maxRating: 1400, kFactor: 64 },
   { name: 'Silver', minRating: 1400, maxRating: 1800, kFactor: 32 },
   { name: 'Gold', minRating: 1800, maxRating: 2200, kFactor: 24 },
@@ -69,7 +69,7 @@ const ELO_TIERS: EloTier[] = [
  * Determine K-factor based on player's current ELO rating
  * Higher tiers have lower K-factors for rating stability
  */
-function getKFactorForRating(rating: number): number {
+export function getKFactorForRating(rating: number): number {
   for (const tier of ELO_TIERS) {
     if (rating >= tier.minRating && rating < tier.maxRating) {
       return tier.kFactor;
@@ -81,7 +81,7 @@ function getKFactorForRating(rating: number): number {
 /**
  * Get ELO tier name from rating
  */
-function getTierName(rating: number): string {
+export function getTierName(rating: number): string {
   for (const tier of ELO_TIERS) {
     if (rating >= tier.minRating && rating < tier.maxRating) {
       return tier.name;
@@ -94,7 +94,7 @@ function getTierName(rating: number): string {
  * Calculate expected win probability for player A against player B
  * Using standard ELO formula: EA = 1 / (1 + 10^((RB - RA) / 400))
  */
-function calculateExpectation(playerRating: number, opponentRating: number): number {
+export function calculateExpectation(playerRating: number, opponentRating: number): number {
   const ratingDiff = opponentRating - playerRating;
   return 1 / (1 + Math.pow(10, ratingDiff / 400));
 }
@@ -105,7 +105,7 @@ function calculateExpectation(playerRating: number, opponentRating: number): num
  * Result: 1 for win, 0.5 for draw, 0 for loss
  * K-factor varies by tier to ensure fair progression and stability
  */
-function calculateNewRating(
+export function calculateNewRating(
   currentRating: number,
   opponentRating: number,
   result: 'win' | 'loss' | 'draw'
