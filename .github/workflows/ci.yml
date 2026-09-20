@@ -72,3 +72,55 @@ jobs:
 
       - name: Run tests
         run: flutter test
+
+      - name: Provide placeholder Firebase config for Android build
+        # google-services.json is intentionally gitignored (real Firebase
+        # credentials, see .gitignore "DO NOT COMMIT" section) and is never
+        # checked into this repo. The com.google.gms.google-services Gradle
+        # plugin still requires *a* file matching the app's package name to
+        # exist at build time (validated against real Firebase project data
+        # only at app runtime, not at build time), so CI writes a
+        # structurally-valid but fake one just to let the APK compile/package
+        # for verification purposes. It must never be used for a real release.
+        run: |
+          cat > android/app/google-services.json <<'EOF'
+          {
+            "project_info": {
+              "project_number": "000000000000",
+              "project_id": "ci-placeholder",
+              "storage_bucket": "ci-placeholder.appspot.com"
+            },
+            "client": [
+              {
+                "client_info": {
+                  "mobilesdk_app_id": "1:000000000000:android:0000000000000000000000",
+                  "android_client_info": {
+                    "package_name": "com.petitworksapps.shinjukuleague"
+                  }
+                },
+                "oauth_client": [],
+                "api_key": [
+                  {
+                    "current_key": "AIzaSyCI0000000000000000000000000000000"
+                  }
+                ],
+                "services": {
+                  "appinvite_service": {
+                    "other_platform_oauth_client": []
+                  }
+                }
+              }
+            ],
+            "configuration_version": "1"
+          }
+          EOF
+
+      - name: Build Android APK (release, verification only)
+        run: flutter build apk --release
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
+          retention-days: 14
