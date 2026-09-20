@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
@@ -13,7 +15,16 @@ class RankScreen extends ConsumerWidget {
     final currentUser = ref.watch(userViewModelProvider).value;
 
     return Scaffold(
-      appBar: AppBar(title: const Text('ランキング')),
+      appBar: AppBar(
+        title: const Text('ランキング'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.show_chart),
+            tooltip: 'ランク推移',
+            onPressed: () => context.push(AppRoutes.rankingHistory),
+          ),
+        ],
+      ),
       body: leaderboardAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
         error: (e, _) => ErrorRetryView(

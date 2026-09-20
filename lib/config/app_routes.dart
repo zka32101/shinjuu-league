@@ -19,6 +19,7 @@ import 'package:shinjuu_league/ui/screens/skill_tree_progression_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
+import 'package:shinjuu_league/ui/screens/ranking_history_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_dashboard_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_difficulty_tuning_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_feature_flags_screen.dart';
@@ -46,6 +47,7 @@ abstract class AppRoutes {
   static const skillTreeProgression = '/skill-tree-progression';
   static const achievements = '/achievements';
   static const quests = '/quests';
+  static const rankingHistory = '/ranking-history';
   static const adminDashboard = '/admin-dashboard';
   static const adminDifficultyTuning = '/admin-difficulty-tuning';
   static const adminFeatureFlags = '/admin-feature-flags';
@@ -108,7 +110,8 @@ final appRouter = GoRouter(
       path: AppRoutes.evolution,
       pageBuilder: (context, state) {
         final match = state.extra as MatchResult?;
-        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        if (match == null)
+          return _buildPage(context, state, const LobbyScreen());
         return _buildPage(context, state, EvolutionSelectScreen(match: match));
       },
     ),
@@ -116,7 +119,8 @@ final appRouter = GoRouter(
       path: AppRoutes.skillBuild,
       pageBuilder: (context, state) {
         final match = state.extra as MatchResult?;
-        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        if (match == null)
+          return _buildPage(context, state, const LobbyScreen());
         return _buildPage(context, state, SkillBuildScreen(match: match));
       },
     ),
@@ -124,7 +128,8 @@ final appRouter = GoRouter(
       path: AppRoutes.battle,
       pageBuilder: (context, state) {
         final match = state.extra as MatchResult?;
-        if (match == null) return _buildPage(context, state, const LobbyScreen());
+        if (match == null)
+          return _buildPage(context, state, const LobbyScreen());
         return _buildPage(context, state, BattleScreen(match: match));
       },
     ),
@@ -132,7 +137,8 @@ final appRouter = GoRouter(
       path: AppRoutes.result,
       pageBuilder: (context, state) {
         final battle = state.extra as Battle?;
-        if (battle == null) return _buildPage(context, state, const LobbyScreen());
+        if (battle == null)
+          return _buildPage(context, state, const LobbyScreen());
         return _buildPage(context, state, ResultScreen(battle: battle));
       },
     ),
@@ -180,6 +186,11 @@ final appRouter = GoRouter(
       path: AppRoutes.quests,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const QuestsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.rankingHistory,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const RankingHistoryScreen()),
     ),
     GoRoute(
       path: AppRoutes.adminDashboard,
@@ -251,21 +262,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.adminRoles,
       pageBuilder: (context, state) {
-        return _buildPage(
-          context,
-          state,
-          const AdminRolesScreen(),
-        );
+        return _buildPage(context, state, const AdminRolesScreen());
       },
     ),
     GoRoute(
       path: AppRoutes.adminAnalytics,
       pageBuilder: (context, state) {
-        return _buildPage(
-          context,
-          state,
-          const AdminAnalyticsScreen(),
-        );
+        return _buildPage(context, state, const AdminAnalyticsScreen());
       },
     ),
   ],
