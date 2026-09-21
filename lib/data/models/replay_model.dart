@@ -31,6 +31,7 @@ class ReplaySummary {
 class Replay {
   final String replayId;
   final String battleId;
+  final String userId;
   final String? videoUrl;
   final String? thumbnailUrl;
   final String shareUrl;
@@ -40,6 +41,7 @@ class Replay {
   Replay({
     required this.replayId,
     required this.battleId,
+    required this.userId,
     this.videoUrl,
     this.thumbnailUrl,
     required this.shareUrl,
@@ -51,6 +53,7 @@ class Replay {
     return Replay(
       replayId: json['replayId'] as String,
       battleId: json['battleId'] as String,
+      userId: json['userId'] as String? ?? '',
       videoUrl: json['videoUrl'] as String?,
       thumbnailUrl: json['thumbnailUrl'] as String?,
       shareUrl: json['shareUrl'] as String,
@@ -66,6 +69,7 @@ class Replay {
   Map<String, dynamic> toJson() => {
     'replayId': replayId,
     'battleId': battleId,
+    'userId': userId,
     'videoUrl': videoUrl,
     'thumbnailUrl': thumbnailUrl,
     'shareUrl': shareUrl,

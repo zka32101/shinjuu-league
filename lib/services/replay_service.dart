@@ -29,6 +29,7 @@ class ReplayService {
     return Replay(
       replayId: 'replay_${battle.battleId}',
       battleId: battle.battleId,
+      userId: battle.userId,
       // 実際のディープリンク配信基盤はまだ無いため、battleIdベースの仮URL
       shareUrl: 'https://shinjuu-league.app/replay/${battle.battleId}',
       summary: ReplaySummary(

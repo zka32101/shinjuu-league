@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 
 /// Tests for Firestore Security Rules
@@ -248,6 +249,41 @@ void main() {
     });
 
     group('Replays Collection - Write Access', () {
+      // Real regression guard (like the Users denylist group above): this
+      // rule's resource.data.userId / request.resource.data.userId checks
+      // were dead code until the Replay model actually gained a userId
+      // field - every replay write/update/delete was unconditionally denied
+      // (isUserOwnData(null) is never true) since Replay had no such field
+      // at all. See lib/data/models/replay_model.dart.
+      test(
+        "the replays rule's userId field actually exists on Replay.toJson()",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final replaysBlock = rulesSource.substring(
+            rulesSource.indexOf('match /replays/{replayId}'),
+            rulesSource.indexOf('match /friend_requests/{requestId}'),
+          );
+          expect(replaysBlock, contains('resource.data.userId'));
+          expect(replaysBlock, contains('request.resource.data.userId'));
+
+          final replay = Replay(
+            replayId: 'r1',
+            battleId: 'b1',
+            userId: 'u1',
+            shareUrl: '',
+            summary: ReplaySummary(mvpUserId: 'u1', topKills: 0, totalScore: 0),
+            createdAt: DateTime(2026),
+          );
+          expect(
+            replay.toJson().containsKey('userId'),
+            isTrue,
+            reason:
+                "firestore.rules' /replays/{replayId} rule checks "
+                "resource.data.userId, but Replay.toJson() has no 'userId' key",
+          );
+        },
+      );
+
       test('Replay owner can update their own replay', () {
         // Rule: allow write: if isUserOwnData(resource.data.userId)
         // Expected: ALLOW

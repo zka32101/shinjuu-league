@@ -29,7 +29,10 @@ class _FixedBattleViewModel extends BattleViewModel {
     BattleState fixedState, {
     required FirestoreService firestoreService,
     required AnalyticsService analyticsService,
-  }) : super(firestoreService: firestoreService, analyticsService: analyticsService) {
+  }) : super(
+         firestoreService: firestoreService,
+         analyticsService: analyticsService,
+       ) {
     state = fixedState;
   }
 }
@@ -50,48 +53,67 @@ class _MockFirebaseAuth extends Mock implements FirebaseAuth {}
 /// several other Firebase-backed singletons (FirestoreService, AuthService,
 /// RankingService, SeasonService). Override all of them with fakes so widget
 /// tests never require Firebase.initializeApp().
-ProviderContainer _fakeFirestoreContainer({List<Override> extraOverrides = const []}) =>
-    ProviderContainer(
-      overrides: [
-        firestoreServiceProvider.overrideWithValue(
-          FirestoreService.forFirestore(FakeFirebaseFirestore()),
-        ),
-        authServiceProvider.overrideWithValue(
-          AuthService.forFirebaseAuth(_MockFirebaseAuth()),
-        ),
-        rankingServiceProvider.overrideWithValue(
-          RankingService(firestore: FakeFirebaseFirestore()),
-        ),
-        seasonServiceProvider.overrideWithValue(
-          SeasonService(firestore: FakeFirebaseFirestore()),
-        ),
-        ...extraOverrides,
-      ],
-    );
+ProviderContainer _fakeFirestoreContainer({
+  List<Override> extraOverrides = const [],
+}) => ProviderContainer(
+  overrides: [
+    firestoreServiceProvider.overrideWithValue(
+      FirestoreService.forFirestore(FakeFirebaseFirestore()),
+    ),
+    authServiceProvider.overrideWithValue(
+      AuthService.forFirebaseAuth(_MockFirebaseAuth()),
+    ),
+    rankingServiceProvider.overrideWithValue(
+      RankingService(firestore: FakeFirebaseFirestore()),
+    ),
+    seasonServiceProvider.overrideWithValue(
+      SeasonService(firestore: FakeFirebaseFirestore()),
+    ),
+    ...extraOverrides,
+  ],
+);
 
 class MockFirestoreService extends Mock implements FirestoreService {}
 
 class MockAnalyticsService extends Mock implements AnalyticsService {
   @override
-  Future<void> logBattleEnd(String? userId, String? battleId, String? result,
-      int? kills, int? deaths) {
+  Future<void> logBattleEnd(
+    String? userId,
+    String? battleId,
+    String? result,
+    int? kills,
+    int? deaths,
+  ) {
     return super.noSuchMethod(
-      Invocation.method(
-          #logBattleEnd, [userId, battleId, result, kills, deaths]),
-      returnValue: Future<void>.value(),
-      returnValueForMissingStub: Future<void>.value(),
-    ) as Future<void>;
+          Invocation.method(#logBattleEnd, [
+            userId,
+            battleId,
+            result,
+            kills,
+            deaths,
+          ]),
+          returnValue: Future<void>.value(),
+          returnValueForMissingStub: Future<void>.value(),
+        )
+        as Future<void>;
   }
 
   @override
   Future<void> logAchievementUnlocked(
-      String? userId, String? achievementId, String? rarity) {
+    String? userId,
+    String? achievementId,
+    String? rarity,
+  ) {
     return super.noSuchMethod(
-      Invocation.method(
-          #logAchievementUnlocked, [userId, achievementId, rarity]),
-      returnValue: Future<void>.value(),
-      returnValueForMissingStub: Future<void>.value(),
-    ) as Future<void>;
+          Invocation.method(#logAchievementUnlocked, [
+            userId,
+            achievementId,
+            rarity,
+          ]),
+          returnValue: Future<void>.value(),
+          returnValueForMissingStub: Future<void>.value(),
+        )
+        as Future<void>;
   }
 }
 
@@ -99,15 +121,23 @@ class MockReplayService extends Mock implements ReplayService {
   @override
   Future<Replay> generateAndSave(Battle? battle) {
     return super.noSuchMethod(
-      Invocation.method(#generateAndSave, [battle]),
-      returnValue: Future<Replay>.value(Replay(
-        replayId: 'stub',
-        battleId: 'stub',
-        shareUrl: '',
-        summary: ReplaySummary(mvpUserId: 'stub', topKills: 0, totalScore: 0),
-        createdAt: DateTime.now(),
-      )),
-    ) as Future<Replay>;
+          Invocation.method(#generateAndSave, [battle]),
+          returnValue: Future<Replay>.value(
+            Replay(
+              replayId: 'stub',
+              battleId: 'stub',
+              userId: 'stub',
+              shareUrl: '',
+              summary: ReplaySummary(
+                mvpUserId: 'stub',
+                topKills: 0,
+                totalScore: 0,
+              ),
+              createdAt: DateTime.now(),
+            ),
+          ),
+        )
+        as Future<Replay>;
   }
 }
 
@@ -129,34 +159,27 @@ void main() {
       mockReplay = MockReplayService();
       mockSkillTree = MockSkillTreeService();
 
-      when(mockAnalytics.logBattleEnd(
-        any,
-        any,
-        any,
-        any,
-        any,
-      )).thenAnswer((_) async {});
-      when(mockAnalytics.logAchievementUnlocked(
-        any,
-        any,
-        any,
-      )).thenAnswer((_) async {});
+      when(
+        mockAnalytics.logBattleEnd(any, any, any, any, any),
+      ).thenAnswer((_) async {});
+      when(
+        mockAnalytics.logAchievementUnlocked(any, any, any),
+      ).thenAnswer((_) async {});
       when(mockReplay.generateAndSave(any)).thenAnswer(
         (_) async => Replay(
           replayId: 'replay_$battleId',
           battleId: battleId,
+          userId: userId,
           shareUrl: 'https://shinjuu-league.app/replay/$battleId',
-          summary: ReplaySummary(
-            mvpUserId: userId,
-            topKills: 0,
-            totalScore: 0,
-          ),
+          summary: ReplaySummary(mvpUserId: userId, topKills: 0, totalScore: 0),
           createdAt: DateTime.now(),
         ),
       );
     });
 
-    testWidgets('displays newly unlocked achievements', (WidgetTester tester) async {
+    testWidgets('displays newly unlocked achievements', (
+      WidgetTester tester,
+    ) async {
       final achievements = [
         Achievement(
           achievementId: 'aha_moment',
@@ -208,9 +231,7 @@ void main() {
           container: _fakeFirestoreContainer(
             extraOverrides: [_battleStateWithAchievements(achievements)],
           ),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -219,8 +240,9 @@ void main() {
       expect(find.text('🏆 新しい成果を解除した！'), findsOneWidget);
     });
 
-    testWidgets('does not show achievements section when none unlocked',
-        (WidgetTester tester) async {
+    testWidgets('does not show achievements section when none unlocked', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -247,9 +269,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -259,8 +279,9 @@ void main() {
       expect(find.text('🏆 新しい成果を解除した！'), findsNothing);
     });
 
-    testWidgets('displays achievement card with tier color',
-        (WidgetTester tester) async {
+    testWidgets('displays achievement card with tier color', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -287,9 +308,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -326,9 +345,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -338,8 +355,9 @@ void main() {
       expect(find.text('戦績をシェア'), findsOneWidget);
     });
 
-    testWidgets('shows player stats on result screen',
-        (WidgetTester tester) async {
+    testWidgets('shows player stats on result screen', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -366,9 +384,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -380,8 +396,9 @@ void main() {
       expect(find.text('スコア'), findsOneWidget);
     });
 
-    testWidgets('displays MVP badge when player is MVP',
-        (WidgetTester tester) async {
+    testWidgets('displays MVP badge when player is MVP', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -416,9 +433,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -428,8 +443,9 @@ void main() {
       expect(find.text('MVP'), findsOneWidget);
     });
 
-    testWidgets('shows Elo change positive for win',
-        (WidgetTester tester) async {
+    testWidgets('shows Elo change positive for win', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -456,9 +472,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -468,8 +482,9 @@ void main() {
       expect(find.textContaining('Elo +16'), findsOneWidget);
     });
 
-    testWidgets('shows Elo change negative for loss',
-        (WidgetTester tester) async {
+    testWidgets('shows Elo change negative for loss', (
+      WidgetTester tester,
+    ) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -496,9 +511,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -508,8 +521,7 @@ void main() {
       expect(find.textContaining('Elo -12'), findsOneWidget);
     });
 
-    testWidgets('shows return to lobby button',
-        (WidgetTester tester) async {
+    testWidgets('shows return to lobby button', (WidgetTester tester) async {
       final battle = Battle(
         battleId: battleId,
         userId: userId,
@@ -536,9 +548,7 @@ void main() {
       await tester.pumpWidget(
         UncontrolledProviderScope(
           container: _fakeFirestoreContainer(),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
@@ -548,8 +558,7 @@ void main() {
       expect(find.text('ロビーへ戻る'), findsOneWidget);
     });
 
-    testWidgets('achievement card is clickable',
-        (WidgetTester tester) async {
+    testWidgets('achievement card is clickable', (WidgetTester tester) async {
       final achievements = [
         Achievement(
           achievementId: 'aha_moment',
@@ -591,9 +600,7 @@ void main() {
           container: _fakeFirestoreContainer(
             extraOverrides: [_battleStateWithAchievements(achievements)],
           ),
-          child: MaterialApp(
-            home: ResultScreen(battle: battle),
-        ),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
         ),
       );
 
