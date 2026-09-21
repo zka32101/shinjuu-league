@@ -206,8 +206,13 @@ service cloud.firestore {
       allow update: if isAuthenticated() &&
         get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid;
 
-      // Only owner can create guild (via Cloud Function)
-      allow create: if isServerUpdate();
+      // Guild creation is a plain client write (FirestoreService.createGuild(),
+      // called from GuildViewModel.createGuild() - there is no Cloud
+      // Function involved at all), so requiring isServerUpdate() here meant
+      // no real user could ever create a guild through the app's actual
+      // "create guild" button (friends_screen.dart) - it always failed.
+      // The creator must name themselves as the owner.
+      allow create: if isAuthenticated() && request.resource.data.ownerId == request.auth.uid;
 
       // Only owner can delete guild
       allow delete: if isAuthenticated() &&

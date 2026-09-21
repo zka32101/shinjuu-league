@@ -375,6 +375,33 @@ void main() {
     });
 
     group('Guilds - Owner Management', () {
+      // Real regression guard: this rule required isServerUpdate() (no
+      // Cloud Function involved at all - FirestoreService.createGuild() is
+      // a plain client write from GuildViewModel.createGuild(), reachable
+      // from the "create guild" button in friends_screen.dart), so every
+      // real guild-creation attempt in the app always failed.
+      test(
+        "guild creation allows the client to create their own guild, not isServerUpdate() only",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final guildsBlockStart = rulesSource.indexOf(
+            'match /guilds/{guildId}',
+          );
+          final createLineStart = rulesSource.indexOf(
+            'allow create:',
+            guildsBlockStart,
+          );
+          final createLineEnd = rulesSource.indexOf(';', createLineStart);
+          final createRule = rulesSource.substring(
+            createLineStart,
+            createLineEnd,
+          );
+          expect(createRule, contains('request.resource.data.ownerId'));
+          expect(createRule, contains('request.auth.uid'));
+          expect(createRule, isNot(contains('isServerUpdate()')));
+        },
+      );
+
       test('Guild owner can update guild settings', () {
         // Rule: allow update if ownerId == request.auth.uid
         // Expected: ALLOW
