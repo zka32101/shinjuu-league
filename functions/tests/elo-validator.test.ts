@@ -142,6 +142,10 @@ describe('validateBattleResult (mocked Firestore)', () => {
 
     const makeDocRef = (collectionName: string, id: string) => ({
       id,
+      // Test-only introspection field (not part of the real Firestore SDK)
+      // so assertions below can tell which collection a batch.set/update
+      // call targeted without relying on call ordering.
+      _collection: collectionName,
       get: jest.fn().mockImplementation(async () => {
         const source = collectionName === 'users' ? users : battles;
         const data = source[id];
@@ -179,18 +183,23 @@ describe('validateBattleResult (mocked Firestore)', () => {
     return { params: { resultId } };
   }
 
-  const baseParticipant = {
-    userId: 'player-a',
-    lane: 0,
-    baseStats: { atk: 50, def: 20, spd: 30 },
-    eloRating: 1600,
-  };
-  const baseOpponent = {
-    userId: 'player-b',
-    lane: 0,
-    baseStats: { atk: 50, def: 20, spd: 30 },
-    eloRating: 1600,
-  };
+  function userFixture(eloRating: number, overrides: Partial<Record<string, unknown>> = {}) {
+    return { eloRating, totalBattles: 10, totalWins: 5, winRate: 0.5, ...overrides };
+  }
+
+  // batch.set() is now called twice on a successful run (leaderboard entry
+  // + audit log), so tests must pick the right call by target collection
+  // rather than assume index 0.
+  function findSet(
+    spies: { batchSet: jest.Mock },
+    collectionName: string
+  ): [Record<string, unknown>, Record<string, unknown>] {
+    const call = spies.batchSet.mock.calls.find(
+      (c) => (c[0] as { _collection: string })._collection === collectionName
+    );
+    expect(call).toBeDefined();
+    return call as [Record<string, unknown>, Record<string, unknown>];
+  }
 
   let admin: typeof import('firebase-admin');
   let validateBattleResult: typeof import('../src/elo-validator').validateBattleResult;
@@ -219,7 +228,7 @@ describe('validateBattleResult (mocked Firestore)', () => {
 
   test('rejects when the acting user does not exist, and logs the error (no batch write)', async () => {
     const { db, spies } = makeMockDb({
-      users: { 'player-b': baseOpponent },
+      users: {},
       battles: { 'battle-1': { eloProcessed: false } },
     });
     (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
@@ -228,10 +237,8 @@ describe('validateBattleResult (mocked Firestore)', () => {
       makeSnap({
         battleId: 'battle-1',
         userId: 'player-a',
-        opponentUserId: 'player-b',
+        opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
-        opponent: baseOpponent,
       }),
       makeContext('result-1')
     );
@@ -243,7 +250,7 @@ describe('validateBattleResult (mocked Firestore)', () => {
 
   test('rejects when the battle document does not exist', async () => {
     const { db, spies } = makeMockDb({
-      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      users: { 'player-a': userFixture(1600), 'player-b': userFixture(1600) },
       battles: {},
     });
     (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
@@ -252,10 +259,8 @@ describe('validateBattleResult (mocked Firestore)', () => {
       makeSnap({
         battleId: 'missing-battle',
         userId: 'player-a',
-        opponentUserId: 'player-b',
+        opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
-        opponent: baseOpponent,
       }),
       makeContext('result-2')
     );
@@ -267,7 +272,7 @@ describe('validateBattleResult (mocked Firestore)', () => {
 
   test('rejects a battle whose ELO has already been processed (idempotency)', async () => {
     const { db, spies } = makeMockDb({
-      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      users: { 'player-a': userFixture(1600), 'player-b': userFixture(1600) },
       battles: { 'battle-1': { eloProcessed: true } },
     });
     (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
@@ -276,10 +281,8 @@ describe('validateBattleResult (mocked Firestore)', () => {
       makeSnap({
         battleId: 'battle-1',
         userId: 'player-a',
-        opponentUserId: 'player-b',
+        opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
-        opponent: baseOpponent,
       }),
       makeContext('result-3')
     );
@@ -291,9 +294,9 @@ describe('validateBattleResult (mocked Firestore)', () => {
     expect(spies.batchCommit).not.toHaveBeenCalled();
   });
 
-  test('recomputes ELO server-side from Firestore ratings, ignoring the client payload', async () => {
+  test('recomputes ELO server-side from the Firestore-stored rating, ignoring any client payload', async () => {
     const { db, spies } = makeMockDb({
-      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      users: { 'player-a': userFixture(1600), 'player-b': userFixture(1600) },
       battles: { 'battle-1': { eloProcessed: false } },
     });
     (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
@@ -302,12 +305,8 @@ describe('validateBattleResult (mocked Firestore)', () => {
       makeSnap({
         battleId: 'battle-1',
         userId: 'player-a',
-        opponentUserId: 'player-b',
+        opponentUserIds: ['player-b'],
         result: 'win',
-        // Client-submitted ratings are wildly wrong; the server must ignore
-        // them and use the Firestore-stored 1600/1600 instead.
-        participant: { ...baseParticipant, eloRating: 9999 },
-        opponent: { ...baseOpponent, eloRating: 1 },
       }),
       makeContext('result-4')
     );
@@ -317,13 +316,17 @@ describe('validateBattleResult (mocked Firestore)', () => {
     const userUpdateCall = spies.batchUpdate.mock.calls.find(
       (call) => call[1].eloRating === 1616
     );
-    const opponentUpdateCall = spies.batchUpdate.mock.calls.find(
-      (call) => call[1].eloRating === 1584
-    );
     expect(userUpdateCall).toBeDefined();
-    expect(opponentUpdateCall).toBeDefined();
-    expect(userUpdateCall![1].wins).toEqual({ __increment: 1 });
-    expect(opponentUpdateCall![1].losses).toEqual({ __increment: 1 });
+    expect(userUpdateCall![1].totalBattles).toBe(11);
+    expect(userUpdateCall![1].totalWins).toBe(6);
+    expect(userUpdateCall![1].winRate).toBeCloseTo(6 / 11, 5);
+
+    // Only the submitting user's own document is touched - the opponent
+    // (a different real player who will submit their own separate
+    // battle_results doc for their own perspective) is never written here.
+    expect(spies.batchUpdate.mock.calls.some((call) => call[1].eloRating === 1584)).toBe(
+      false
+    );
 
     // Battle itself must be marked processed to guarantee idempotency.
     const battleUpdateCall = spies.batchUpdate.mock.calls.find(
@@ -331,17 +334,33 @@ describe('validateBattleResult (mocked Firestore)', () => {
     );
     expect(battleUpdateCall).toBeDefined();
 
-    expect(spies.batchSet).toHaveBeenCalledTimes(1);
-    const auditLog = spies.batchSet.mock.calls[0][1];
+    expect(spies.batchSet).toHaveBeenCalledTimes(2);
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
     expect(auditLog.userOldRating).toBe(1600);
     expect(auditLog.userNewRating).toBe(1616);
     expect(auditLog.userTier).toBe('Silver');
     expect(auditLog.userKFactor).toBe(32);
+    expect(auditLog.opponentAvgRating).toBe(1600);
+
+    // Only the public-safe subset is mirrored into the publicly-readable
+    // leaderboard collection - never gems/gold/fcmTokens/etc.
+    const [leaderboardRef, leaderboardEntry] = findSet(spies, 'leaderboard');
+    expect(leaderboardRef.id).toBe('player-a');
+    expect(leaderboardEntry.uid).toBe('player-a');
+    expect(leaderboardEntry.eloRating).toBe(1616);
+    expect(leaderboardEntry.winRate).toBeCloseTo(6 / 11, 5);
+    expect(Object.keys(leaderboardEntry).sort()).toEqual(
+      ['eloRating', 'name', 'uid', 'updatedAt', 'winRate'].sort()
+    );
   });
 
-  test('a draw increments draws for both players with near-zero rating change', async () => {
+  test('averages ratings across multiple real opponents rather than using just one', async () => {
     const { db, spies } = makeMockDb({
-      users: { 'player-a': baseParticipant, 'player-b': baseOpponent },
+      users: {
+        'player-a': userFixture(1600),
+        'player-b': userFixture(1800),
+        'player-c': userFixture(1400),
+      },
       battles: { 'battle-1': { eloProcessed: false } },
     });
     (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
@@ -350,21 +369,89 @@ describe('validateBattleResult (mocked Firestore)', () => {
       makeSnap({
         battleId: 'battle-1',
         userId: 'player-a',
-        opponentUserId: 'player-b',
+        opponentUserIds: ['player-b', 'player-c'],
+        result: 'win',
+      }),
+      makeContext('result-avg')
+    );
+
+    // Average of 1800 and 1400 is 1600 - identical to the single-opponent
+    // 1600 case above, proving the average (not just the first id) is used.
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
+    expect(auditLog.opponentAvgRating).toBe(1600);
+    expect(auditLog.userNewRating).toBe(1616);
+  });
+
+  test('skips a deleted opponent account instead of failing the whole battle', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': userFixture(1600), 'player-b': userFixture(1800) },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        // 'player-deleted' has no matching user fixture, simulating a
+        // since-deleted account.
+        opponentUserIds: ['player-b', 'player-deleted'],
+        result: 'loss',
+      }),
+      makeContext('result-deleted-opponent')
+    );
+
+    expect(spies.batchCommit).toHaveBeenCalledTimes(1);
+    // Average should be just player-b's 1800 (the deleted account filtered out).
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
+    expect(auditLog.opponentAvgRating).toBe(1800);
+  });
+
+  test('falls back to the default opponent rating when the opposing team was entirely bots', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': userFixture(1600) },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserIds: [], // bots filtered out client-side, none real
+        result: 'win',
+      }),
+      makeContext('result-no-opponents')
+    );
+
+    expect(spies.batchCommit).toHaveBeenCalledTimes(1);
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
+    expect(auditLog.opponentAvgRating).toBe(1000); // DEFAULT_OPPONENT_RATING
+  });
+
+  test('a draw does not increment totalWins but does increment totalBattles, with near-zero rating change', async () => {
+    const { db, spies } = makeMockDb({
+      users: { 'player-a': userFixture(1600), 'player-b': userFixture(1600) },
+      battles: { 'battle-1': { eloProcessed: false } },
+    });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    await validateBattleResult.run(
+      makeSnap({
+        battleId: 'battle-1',
+        userId: 'player-a',
+        opponentUserIds: ['player-b'],
         result: 'draw',
-        participant: baseParticipant,
-        opponent: baseOpponent,
       }),
       makeContext('result-5')
     );
 
-    const drawUpdates = spies.batchUpdate.mock.calls.filter(
-      (call) => call[1].draws !== undefined
+    const userUpdateCall = spies.batchUpdate.mock.calls.find(
+      (call) => call[1].totalBattles === 11
     );
-    expect(drawUpdates).toHaveLength(2);
-    for (const call of drawUpdates) {
-      expect(call[1].eloRating).toBe(1600); // equal ratings + draw = no change
-    }
+    expect(userUpdateCall).toBeDefined();
+    expect(userUpdateCall![1].totalWins).toBe(5); // unchanged - a draw isn't a win
+    expect(userUpdateCall![1].eloRating).toBe(1600); // equal ratings + draw = no change
   });
 });
 

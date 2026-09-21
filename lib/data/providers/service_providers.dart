@@ -12,7 +12,6 @@ import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
-import 'package:shinjuu_league/services/bgm_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
@@ -115,15 +114,13 @@ final assetServiceProvider = Provider<AssetService>((ref) {
   return AssetService();
 });
 
-final bgmServiceProvider = Provider<BGMService>((ref) {
-  return BGMService();
-});
-
 final performanceServiceProvider = Provider<PerformanceService>((ref) {
   return PerformanceService();
 });
 
-final pushNotificationServiceProvider = Provider<PushNotificationService>((ref) {
+final pushNotificationServiceProvider = Provider<PushNotificationService>((
+  ref,
+) {
   return PushNotificationService();
 });
 
@@ -146,17 +143,19 @@ final itemServiceProvider = Provider<ItemService>((ref) {
 });
 
 // Phase 10 Step 6: Achievement Analytics Integration
-final achievementAnalyticsIntegrationProvider = Provider<AchievementAnalyticsIntegration>((ref) {
-  return AchievementAnalyticsIntegration(
-    achievementService: ref.watch(achievementServiceProvider),
-    analyticsService: ref.watch(analyticsServiceProvider),
-  );
-});
+final achievementAnalyticsIntegrationProvider =
+    Provider<AchievementAnalyticsIntegration>((ref) {
+      return AchievementAnalyticsIntegration(
+        achievementService: ref.watch(achievementServiceProvider),
+        analyticsService: ref.watch(analyticsServiceProvider),
+      );
+    });
 
 // Phase 10 Step 9: Achievement Toast Notifications
-final achievementToastNotificationServiceProvider = Provider<AchievementToastNotificationService>((ref) {
-  return AchievementToastNotificationService();
-});
+final achievementToastNotificationServiceProvider =
+    Provider<AchievementToastNotificationService>((ref) {
+      return AchievementToastNotificationService();
+    });
 
 // Phase 10 Step 11: Achievement Unlock Detection & Reward Distribution
 //
@@ -166,7 +165,9 @@ final achievementToastNotificationServiceProvider = Provider<AchievementToastNot
 // started, so callers construct it directly with that instance instead
 // (see BattleViewModel).
 
-final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref) {
+final achievementRewardServiceProvider = Provider<AchievementRewardService>((
+  ref,
+) {
   return AchievementRewardService(
     firestoreService: ref.watch(firestoreServiceProvider),
   );
@@ -178,9 +179,7 @@ final achievementRewardServiceProvider = Provider<AchievementRewardService>((ref
 
 // Phase 11: Daily Quests & Mission System
 final questServiceProvider = Provider<QuestService>((ref) {
-  return QuestService(
-    firestoreService: ref.watch(firestoreServiceProvider),
-  );
+  return QuestService(firestoreService: ref.watch(firestoreServiceProvider));
 });
 
 // Phase 33: Admin Role-Based Access Control
@@ -197,12 +196,15 @@ final auditLoggerServiceProvider = Provider<AuditLoggerService>((ref) {
   );
 });
 
-final adminAccessViewModelProvider = StateNotifierProvider<AdminAccessViewModel, AsyncValue<AdminAccessState>>((ref) {
-  return AdminAccessViewModel(
-    roleService: ref.watch(adminRoleServiceProvider),
-    authService: ref.watch(authServiceProvider),
-  );
-});
+final adminAccessViewModelProvider =
+    StateNotifierProvider<AdminAccessViewModel, AsyncValue<AdminAccessState>>((
+      ref,
+    ) {
+      return AdminAccessViewModel(
+        roleService: ref.watch(adminRoleServiceProvider),
+        authService: ref.watch(authServiceProvider),
+      );
+    });
 
 // Phase 35: Admin Analytics Dashboard
 final adminAnalyticsServiceProvider = Provider<AdminAnalyticsService>((ref) {

@@ -23,6 +23,11 @@ class RankScreen extends ConsumerWidget {
             tooltip: 'ランク推移',
             onPressed: () => context.push(AppRoutes.rankingHistory),
           ),
+          IconButton(
+            icon: const Icon(Icons.card_giftcard),
+            tooltip: '季節報酬',
+            onPressed: () => context.push(AppRoutes.seasonRewards),
+          ),
         ],
       ),
       body: leaderboardAsync.when(

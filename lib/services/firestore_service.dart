@@ -261,10 +261,19 @@ class FirestoreService {
   }
 
   // ============ Leaderboard Methods ============
+  /// Reads the public `leaderboard` collection (mirrored by
+  /// elo-validator.ts's Cloud Function after every processed battle_results
+  /// submission), not `users` directly: `/users/{userId}`'s Firestore rule
+  /// only ever allows a user to read their own document, and Firestore
+  /// rejects any cross-user query it can't statically prove only matches
+  /// documents the rule would allow - a plain `orderBy('eloRating')` query
+  /// over all users can never satisfy that. `leaderboard` entries carry only
+  /// the public-safe subset (uid/name/eloRating/winRate), so User.fromJson()
+  /// fills in every other field (gems/gold/fcmTokens/etc.) with its defaults.
   Future<List<User>> getTopRankedUsers({int limit = 100}) async {
     try {
       final snapshot = await _db
-          .collection('users')
+          .collection('leaderboard')
           .orderBy('eloRating', descending: true)
           .limit(limit)
           .get();
@@ -507,7 +516,10 @@ class FirestoreService {
 
   // ============ Achievement Methods ============
   /// Mark an achievement as unlocked for a user
-  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+  Future<void> markAchievementUnlocked(
+    String userId,
+    String achievementId,
+  ) async {
     try {
       await _db
           .collection('users')
@@ -515,10 +527,10 @@ class FirestoreService {
           .collection('achievements')
           .doc(achievementId)
           .set({
-        'achievementId': achievementId,
-        'unlockedAt': FieldValue.serverTimestamp(),
-        'isHidden': false,
-      }, SetOptions(merge: true));
+            'achievementId': achievementId,
+            'unlockedAt': FieldValue.serverTimestamp(),
+            'isHidden': false,
+          }, SetOptions(merge: true));
     } catch (e) {
       throw 'Failed to mark achievement unlocked: $e';
     }

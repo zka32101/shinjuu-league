@@ -1,6 +1,6 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import { test } from 'firebase-functions-test';
+import test from 'firebase-functions-test';
 import * as elf from '../src/email-delivery';
 
 const projectId = 'shinjuu-league-test';
@@ -118,47 +118,40 @@ File Name: september_report.csv
     });
   });
 
+  // A `const` initialized directly with a string literal keeps that literal
+  // as its control-flow type even with a wider annotation, which is why the
+  // three tests below route through a real function parameter instead: a
+  // parameter's declared type is what TypeScript checks against at each
+  // comparison, so all three branches of the ternary chain type-check
+  // instead of being flagged as unreachable given the specific literal.
+  function attachmentMetaFor(format: 'csv' | 'json' | 'text') {
+    const mimeType =
+      format === 'csv'
+        ? 'text/csv'
+        : format === 'json'
+          ? 'application/json'
+          : 'text/plain';
+    const filename = `report.${format === 'csv' ? 'csv' : format === 'json' ? 'json' : 'txt'}`;
+    return { mimeType, filename };
+  }
+
   describe('Email Attachment Handling', () => {
     it('should create attachment with correct MIME type for CSV', () => {
-      const format = 'csv';
-      const mimeType =
-        format === 'csv'
-          ? 'text/csv'
-          : format === 'json'
-            ? 'application/json'
-            : 'text/plain';
-
-      const filename = `report.${format === 'csv' ? 'csv' : format === 'json' ? 'json' : 'txt'}`;
+      const { mimeType, filename } = attachmentMetaFor('csv');
 
       expect(mimeType).toBe('text/csv');
       expect(filename).toBe('report.csv');
     });
 
     it('should create attachment with correct MIME type for JSON', () => {
-      const format = 'json';
-      const mimeType =
-        format === 'csv'
-          ? 'text/csv'
-          : format === 'json'
-            ? 'application/json'
-            : 'text/plain';
-
-      const filename = `report.${format === 'csv' ? 'csv' : format === 'json' ? 'json' : 'txt'}`;
+      const { mimeType, filename } = attachmentMetaFor('json');
 
       expect(mimeType).toBe('application/json');
       expect(filename).toBe('report.json');
     });
 
     it('should create attachment with correct MIME type for text', () => {
-      const format = 'text';
-      const mimeType =
-        format === 'csv'
-          ? 'text/csv'
-          : format === 'json'
-            ? 'application/json'
-            : 'text/plain';
-
-      const filename = `report.${format === 'csv' ? 'csv' : format === 'json' ? 'json' : 'txt'}`;
+      const { mimeType, filename } = attachmentMetaFor('text');
 
       expect(mimeType).toBe('text/plain');
       expect(filename).toBe('report.txt');

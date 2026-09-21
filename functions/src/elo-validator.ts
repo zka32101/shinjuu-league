@@ -1,44 +1,41 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
+/**
+ * One document per submitting player, not per battle: this is a 5v5 team
+ * game (see lib/data/models/battle_model.dart's Battle.opponentIds), not
+ * 1v1, so there is no single "opponent" to validate/update symmetrically.
+ * Each human player's own client submits their own result after their own
+ * battle ends; opponentUserIds lists only the real (non-bot) players on
+ * the other team - bot IDs (prefixed 'bot_') are filtered out client-side
+ * since bots have no Firestore user document. The Cloud Function updates
+ * only battleResult.userId's own rating, using the average of
+ * opponentUserIds' current ratings as the effective opponent rating -
+ * mirroring lib/services/elo_service.dart's EloService.averageRating(),
+ * this app's existing "team average" convention for both matchmaking and
+ * Elo preview calculations.
+ */
 interface BattleResult {
   battleId: string;
   userId: string;
-  opponentUserId: string;
+  opponentUserIds: string[];
   result: 'win' | 'loss' | 'draw';
-  participant: {
-    userId: string;
-    lane: number;
-    baseStats: {
-      atk: number;
-      def: number;
-      spd: number;
-    };
-    eloRating: number;
-  };
-  opponent: {
-    userId: string;
-    lane: number;
-    baseStats: {
-      atk: number;
-      def: number;
-      spd: number;
-    };
-    eloRating: number;
-  };
   timestamp: admin.firestore.FieldValue;
 }
 
+/** Mirrors lib/data/models/user_model.dart's User - not a separate schema. */
 interface User {
   uid: string;
   name: string;
   eloRating: number;
-  level: number;
-  wins: number;
-  losses: number;
-  draws: number;
-  updateAt: admin.firestore.FieldValue;
+  totalWins: number;
+  totalBattles: number;
+  winRate: number;
 }
+
+/** lib/config/app_config.dart's AppConfig.baseElo - used when a battle had
+ * no real (non-bot) opponents to average, so a rating can still be computed. */
+const DEFAULT_OPPONENT_RATING = 1000;
 
 export const DEFAULT_K_FACTOR = 32; // Standard K-factor for intermediate players
 export const MIN_ELO = 400;
@@ -121,7 +118,10 @@ export function calculateNewRating(
 }
 
 /**
- * Validate that both participants exist and haven't already received Elo for this battle
+ * Validate the submitting user and battle exist and haven't already
+ * received Elo for this battle. opponentUserIds are validated separately
+ * (and tolerantly - a since-deleted opponent account is skipped, not a
+ * hard failure) when computing the opponent average rating.
  */
 async function validateBattleParticipants(
   db: admin.firestore.Firestore,
@@ -129,19 +129,10 @@ async function validateBattleParticipants(
 ): Promise<{ valid: boolean; error?: string }> {
   try {
     const userRef = db.collection('users').doc(battleResult.userId);
-    const opponentRef = db.collection('users').doc(battleResult.opponentUserId);
-
-    const [userSnap, opponentSnap] = await Promise.all([
-      userRef.get(),
-      opponentRef.get(),
-    ]);
+    const userSnap = await userRef.get();
 
     if (!userSnap.exists) {
       return { valid: false, error: `User ${battleResult.userId} not found` };
-    }
-
-    if (!opponentSnap.exists) {
-      return { valid: false, error: `Opponent ${battleResult.opponentUserId} not found` };
     }
 
     // Check if ELO for this battle has already been processed
@@ -165,6 +156,32 @@ async function validateBattleParticipants(
 }
 
 /**
+ * Average current Elo rating across the real (non-bot) opponents on the
+ * other team, fetched fresh from Firestore rather than trusted from the
+ * client. Silently skips an opponent id that no longer resolves to a
+ * user document (deleted account) instead of failing the whole battle.
+ * Falls back to DEFAULT_OPPONENT_RATING when no opponent ratings could be
+ * resolved at all (e.g. an all-bot opposing team).
+ */
+async function computeOpponentAverageRating(
+  db: admin.firestore.Firestore,
+  opponentUserIds: string[]
+): Promise<number> {
+  if (opponentUserIds.length === 0) return DEFAULT_OPPONENT_RATING;
+
+  const snaps = await Promise.all(
+    opponentUserIds.map((id) => db.collection('users').doc(id).get())
+  );
+  const ratings = snaps
+    .filter((snap) => snap.exists)
+    .map((snap) => (snap.data() as User).eloRating)
+    .filter((rating) => typeof rating === 'number');
+
+  if (ratings.length === 0) return DEFAULT_OPPONENT_RATING;
+  return ratings.reduce((a, b) => a + b, 0) / ratings.length;
+}
+
+/**
  * Cloud Function: Triggered when a BattleResult is created in Firestore
  * Validates the battle and recalculates ELO server-side to prevent tampering
  */
@@ -175,11 +192,13 @@ export const validateBattleResult = functions.firestore
     const battleResult = snap.data() as BattleResult;
     const resultId = context.params.resultId;
 
-    console.log(`[ELO Validator] Processing battle result: ${resultId}`);
-    console.log(`User: ${battleResult.userId}, Opponent: ${battleResult.opponentUserId}, Result: ${battleResult.result}`);
+    console.log(
+      `[ELO Validator] Processing battle result: ${resultId} for user ${battleResult.userId}, ${battleResult.opponentUserIds?.length ?? 0} opponent(s), result: ${battleResult.result}`
+    );
 
     try {
-      // Step 1: Validate participants exist
+      // Step 1: Validate the submitting user and battle exist, and this
+      // battle hasn't already had Elo applied.
       const validation = await validateBattleParticipants(db, battleResult);
       if (!validation.valid) {
         console.error(`[ELO Validator] Validation failed: ${validation.error}`);
@@ -194,73 +213,52 @@ export const validateBattleResult = functions.firestore
         return;
       }
 
-      // Step 2: Fetch current user ELO ratings from Firestore
+      // Step 2: Fetch the submitting user's current (authoritative) rating
+      // and stats from Firestore, and the real opponents' current ratings
+      // to average - never the client-submitted values, which prevents a
+      // client from tampering with either its own prior rating or its
+      // opponents' ratings.
       const userRef = db.collection('users').doc(battleResult.userId);
-      const opponentRef = db.collection('users').doc(battleResult.opponentUserId);
-
-      const [userSnap, opponentSnap] = await Promise.all([
+      const [userSnap, opponentAvgRating] = await Promise.all([
         userRef.get(),
-        opponentRef.get(),
+        computeOpponentAverageRating(db, battleResult.opponentUserIds ?? []),
       ]);
 
       const user = userSnap.data() as User;
-      const opponent = opponentSnap.data() as User;
-
-      if (!user || !opponent) {
-        throw new Error('User or opponent data missing');
+      if (!user) {
+        throw new Error('User data missing');
       }
 
-      // Step 3: Recalculate ELO server-side
-      // Note: We use the current Firestore ELO, not the client-submitted values
-      // This prevents clients from tampering with their previous rating
-      let userNewRating = user.eloRating;
-      let opponentNewRating = opponent.eloRating;
-
-      // Determine the actual result from the user's perspective
-      const userResult = battleResult.result as 'win' | 'loss' | 'draw';
-      const opponentResult =
-        userResult === 'win' ? 'loss' : userResult === 'loss' ? 'win' : 'draw';
-
-      // Calculate new ratings
-      userNewRating = calculateNewRating(user.eloRating, opponent.eloRating, userResult);
-      opponentNewRating = calculateNewRating(
-        opponent.eloRating,
-        user.eloRating,
-        opponentResult
-      );
-
+      // Step 3: Recalculate this user's new Elo server-side against the
+      // real opponent-team average rating.
+      const userResult = battleResult.result;
+      const userNewRating = calculateNewRating(user.eloRating, opponentAvgRating, userResult);
       const eloChange = userNewRating - user.eloRating;
-      const opponentEloChange = opponentNewRating - opponent.eloRating;
 
       const userTier = getTierName(user.eloRating);
-      const opponentTier = getTierName(opponent.eloRating);
       const userKFactor = getKFactorForRating(user.eloRating);
-      const opponentKFactor = getKFactorForRating(opponent.eloRating);
+
+      const priorTotalBattles = user.totalBattles ?? 0;
+      const priorTotalWins = user.totalWins ?? 0;
+      const isWin = userResult === 'win';
+      const newTotalBattles = priorTotalBattles + 1;
+      const newTotalWins = priorTotalWins + (isWin ? 1 : 0);
+      const newWinRate = newTotalWins / newTotalBattles;
 
       console.log(
-        `[ELO Validator] ELO Update: User ${battleResult.userId} (${userTier}, K=${userKFactor}) ${user.eloRating} → ${userNewRating} (${eloChange > 0 ? '+' : ''}${eloChange.toFixed(1)})`
-      );
-      console.log(
-        `[ELO Validator] ELO Update: Opponent ${battleResult.opponentUserId} (${opponentTier}, K=${opponentKFactor}) ${opponent.eloRating} → ${opponentNewRating} (${opponentEloChange > 0 ? '+' : ''}${opponentEloChange.toFixed(1)})`
+        `[ELO Validator] ELO Update: User ${battleResult.userId} (${userTier}, K=${userKFactor}) ${user.eloRating} → ${userNewRating} (${eloChange > 0 ? '+' : ''}${eloChange.toFixed(1)}) vs opponent avg ${opponentAvgRating.toFixed(0)}`
       );
 
-      // Step 4: Perform atomic batch write to update both users and mark battle as processed
+      // Step 4: Perform atomic batch write to update the user and mark the
+      // battle as processed.
       const batch = db.batch();
 
-      // Update user ELO and stats
       batch.update(userRef, {
         eloRating: Math.round(userNewRating),
-        [`${userResult === 'win' ? 'wins' : userResult === 'loss' ? 'losses' : 'draws'}`]:
-          admin.firestore.FieldValue.increment(1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      });
-
-      // Update opponent ELO and stats
-      batch.update(opponentRef, {
-        eloRating: Math.round(opponentNewRating),
-        [`${opponentResult === 'win' ? 'wins' : opponentResult === 'loss' ? 'losses' : 'draws'}`]:
-          admin.firestore.FieldValue.increment(1),
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        totalBattles: newTotalBattles,
+        totalWins: newTotalWins,
+        winRate: newWinRate,
+        lastBattleAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
       // Mark battle as ELO-processed to prevent double-application
@@ -269,22 +267,35 @@ export const validateBattleResult = functions.firestore
         eloProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      // Mirror only the public-safe subset of the user's profile into the
+      // publicly-readable leaderboard collection (see firestore.rules'
+      // /leaderboard/{leaderboardId}: `allow read: if true`). The full
+      // /users/{userId} document is intentionally NOT publicly readable -
+      // it also carries gems/gold/fcmTokens/cohortProperties, none of
+      // which belong in a public ranking. This is the only writer of this
+      // collection; the client-side leaderboard query reads it directly
+      // instead of querying /users (which its per-owner read rule can't
+      // authorize as a cross-user query anyway).
+      batch.set(db.collection('leaderboard').doc(battleResult.userId), {
+        uid: battleResult.userId,
+        name: user.name,
+        eloRating: Math.round(userNewRating),
+        winRate: newWinRate,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       // Log successful validation with tier information
       batch.set(db.collection('elo_validation_log').doc(), {
         resultId,
         battleId: battleResult.battleId,
         userId: battleResult.userId,
-        opponentUserId: battleResult.opponentUserId,
+        opponentUserIds: battleResult.opponentUserIds ?? [],
+        opponentAvgRating,
         userOldRating: user.eloRating,
         userNewRating: Math.round(userNewRating),
         userEloChange: eloChange,
         userTier: userTier,
         userKFactor: userKFactor,
-        opponentOldRating: opponent.eloRating,
-        opponentNewRating: Math.round(opponentNewRating),
-        opponentEloChange: opponentEloChange,
-        opponentTier: opponentTier,
-        opponentKFactor: opponentKFactor,
         clientSubmittedResult: battleResult.result,
         serverValidatedResult: userResult,
         timestamp: admin.firestore.FieldValue.serverTimestamp(),

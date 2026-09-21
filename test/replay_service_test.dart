@@ -55,6 +55,10 @@ void main() {
       expect(replay.summary.topKills, 10);
       expect(replay.summary.totalScore, 37);
       expect(replay.replayId, 'replay_battle_1');
+      // Regression guard: firestore.rules' /replays/{replayId} rule checks
+      // resource.data.userId (the submitting battle.userId, not the MVP) to
+      // authorize owner writes - this must always be populated.
+      expect(replay.userId, 'self');
     });
 
     test('1キル以上でkeyMomentが設定される', () {

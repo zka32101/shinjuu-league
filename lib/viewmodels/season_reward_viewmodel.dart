@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/seasonal_reward.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/season_reward_service.dart';
 
 /// State for season reward operations
@@ -40,10 +41,8 @@ class SeasonRewardViewModel extends StateNotifier<SeasonRewardState> {
   final SeasonRewardService _rewardService;
   final String _userId;
 
-  SeasonRewardViewModel(
-    this._rewardService,
-    this._userId,
-  ) : super(SeasonRewardState());
+  SeasonRewardViewModel(this._rewardService, this._userId)
+    : super(SeasonRewardState());
 
   /// Load all rewards for the current player
   Future<void> loadPlayerRewards() async {
@@ -58,10 +57,7 @@ class SeasonRewardViewModel extends StateNotifier<SeasonRewardState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -74,17 +70,12 @@ class SeasonRewardViewModel extends StateNotifier<SeasonRewardState> {
       if (success) {
         // Reload rewards to reflect claimed status
         await loadPlayerRewards();
-        state = state.copyWith(
-          successMessage: 'Rewards claimed successfully!',
-        );
+        state = state.copyWith(successMessage: 'Rewards claimed successfully!');
         return true;
       }
       return false;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -130,21 +121,25 @@ class SeasonRewardViewModel extends StateNotifier<SeasonRewardState> {
   }
 }
 
-/// Riverpod provider for season reward service
+/// Riverpod provider for season reward service.
+/// Constructs a real SeasonRewardService backed by the app's shared
+/// FirestoreService, matching how every other service provider in
+/// service_providers.dart is wired. Previously this threw
+/// UnimplementedError expecting an override that nothing in the app ever
+/// provided, so opening SeasonRewardsScreen would have crashed immediately.
 final seasonRewardServiceProvider = Provider<SeasonRewardService>((ref) {
-  throw UnimplementedError(
-    'seasonRewardServiceProvider must be provided by the application',
-  );
+  return SeasonRewardService(ref.watch(firestoreServiceProvider));
 });
 
 /// Riverpod provider for season reward view model
-final seasonRewardViewModelProvider = StateNotifierProvider.family.autoDispose<
-    SeasonRewardViewModel,
-    SeasonRewardState,
-    String>((ref, userId) {
-  final rewardService = ref.watch(seasonRewardServiceProvider);
-  return SeasonRewardViewModel(rewardService, userId);
-});
+final seasonRewardViewModelProvider = StateNotifierProvider.family
+    .autoDispose<SeasonRewardViewModel, SeasonRewardState, String>((
+      ref,
+      userId,
+    ) {
+      final rewardService = ref.watch(seasonRewardServiceProvider);
+      return SeasonRewardViewModel(rewardService, userId);
+    });
 
 /// Provider to get rewards for a specific tier
 final tierRewardsProvider = FutureProvider.family<List<SeasonalReward>, String>(
@@ -156,10 +151,11 @@ final tierRewardsProvider = FutureProvider.family<List<SeasonalReward>, String>(
 
 /// Provider to get reward status
 final rewardStatusProvider =
-    FutureProvider.family<SeasonRewardStatus, (String, String)>(
-  (ref, args) async {
-    final (userId, seasonId) = args;
-    final rewardService = ref.watch(seasonRewardServiceProvider);
-    return rewardService.getRewardStatus(userId, seasonId);
-  },
-);
+    FutureProvider.family<SeasonRewardStatus, (String, String)>((
+      ref,
+      args,
+    ) async {
+      final (userId, seasonId) = args;
+      final rewardService = ref.watch(seasonRewardServiceProvider);
+      return rewardService.getRewardStatus(userId, seasonId);
+    });

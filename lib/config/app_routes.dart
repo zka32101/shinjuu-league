@@ -20,6 +20,7 @@ import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
 import 'package:shinjuu_league/ui/screens/ranking_history_screen.dart';
+import 'package:shinjuu_league/ui/screens/season_rewards_route_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_dashboard_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_difficulty_tuning_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_feature_flags_screen.dart';
@@ -48,6 +49,7 @@ abstract class AppRoutes {
   static const achievements = '/achievements';
   static const quests = '/quests';
   static const rankingHistory = '/ranking-history';
+  static const seasonRewards = '/season-rewards';
   static const adminDashboard = '/admin-dashboard';
   static const adminDifficultyTuning = '/admin-difficulty-tuning';
   static const adminFeatureFlags = '/admin-feature-flags';
@@ -191,6 +193,11 @@ final appRouter = GoRouter(
       path: AppRoutes.rankingHistory,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const RankingHistoryScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.seasonRewards,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const SeasonRewardsRouteScreen()),
     ),
     GoRoute(
       path: AppRoutes.adminDashboard,

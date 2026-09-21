@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 
 /// Tests for Firestore Security Rules
@@ -248,6 +249,41 @@ void main() {
     });
 
     group('Replays Collection - Write Access', () {
+      // Real regression guard (like the Users denylist group above): this
+      // rule's resource.data.userId / request.resource.data.userId checks
+      // were dead code until the Replay model actually gained a userId
+      // field - every replay write/update/delete was unconditionally denied
+      // (isUserOwnData(null) is never true) since Replay had no such field
+      // at all. See lib/data/models/replay_model.dart.
+      test(
+        "the replays rule's userId field actually exists on Replay.toJson()",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final replaysBlock = rulesSource.substring(
+            rulesSource.indexOf('match /replays/{replayId}'),
+            rulesSource.indexOf('match /friend_requests/{requestId}'),
+          );
+          expect(replaysBlock, contains('resource.data.userId'));
+          expect(replaysBlock, contains('request.resource.data.userId'));
+
+          final replay = Replay(
+            replayId: 'r1',
+            battleId: 'b1',
+            userId: 'u1',
+            shareUrl: '',
+            summary: ReplaySummary(mvpUserId: 'u1', topKills: 0, totalScore: 0),
+            createdAt: DateTime(2026),
+          );
+          expect(
+            replay.toJson().containsKey('userId'),
+            isTrue,
+            reason:
+                "firestore.rules' /replays/{replayId} rule checks "
+                "resource.data.userId, but Replay.toJson() has no 'userId' key",
+          );
+        },
+      );
+
       test('Replay owner can update their own replay', () {
         // Rule: allow write: if isUserOwnData(resource.data.userId)
         // Expected: ALLOW
@@ -399,6 +435,38 @@ void main() {
     // LEADERBOARD - Public Rankings
     // =========================================================================
     group('Leaderboard - Read Access', () {
+      // Real regression guard: /users/{userId}'s rule only ever allows a
+      // user to read their own document (see the denylist group above), so
+      // a cross-user query for a leaderboard can never be satisfied against
+      // 'users' - Firestore rejects any query it can't statically prove
+      // only matches documents the rule allows. getTopRankedUsers() used to
+      // query 'users' directly, which would have failed with a permission
+      // error the first time it ran against real (non-fake) Firestore.
+      test(
+        "getTopRankedUsers() queries the public 'leaderboard' collection, not 'users'",
+        () {
+          final serviceSource = File(
+            'lib/services/firestore_service.dart',
+          ).readAsStringSync();
+          final methodStart = serviceSource.indexOf(
+            'Future<List<User>> getTopRankedUsers',
+          );
+          expect(
+            methodStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'FirestoreService.getTopRankedUsers() no longer exists - '
+                'has the leaderboard read path moved elsewhere?',
+          );
+          final methodBody = serviceSource.substring(
+            methodStart,
+            methodStart + 400,
+          );
+          expect(methodBody, contains(".collection('leaderboard')"));
+          expect(methodBody, isNot(contains(".collection('users')")));
+        },
+      );
+
       test('Anyone can read public leaderboard', () {
         // Rule: allow read: if true;
         // Expected: ALLOW

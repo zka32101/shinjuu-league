@@ -175,7 +175,7 @@ function generateEmailTemplate(
               <div class="stat-item">
                 <span class="stat-label">Generated:</span> ${new Date(
     event.timestamp,
-  ).toIso8601String()}
+  ).toISOString()}
               </div>
             </div>
             <p>The report file is attached to this email.</p>
@@ -196,7 +196,7 @@ Your requested analytics report is ready!
 Records: ${event.recordCount}
 File Size: ${fileSize}
 File Name: ${fileName}
-Generated: ${new Date(event.timestamp).toIso8601String()}
+Generated: ${new Date(event.timestamp).toISOString()}
 
 The report file is attached to this email.
 
