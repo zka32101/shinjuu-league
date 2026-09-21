@@ -52,11 +52,22 @@ service cloud.firestore {
       // User can read their own document
       allow read: if isUserOwnData(userId);
 
-      // User can update their own non-sensitive fields
-      allow update: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
-        'eloRating', 'rank', 'level', 'winRate', 'totalWins', 'totalBattles',
-        'achievementBadges', 'gems', 'gold', 'createdAt', 'lastBattleAt'
-      ]);
+      // User can update their own non-sensitive fields.
+      // Uses diff(resource.data).affectedKeys() rather than
+      // request.resource.data.keys(): for an update(), request.resource.data
+      // is the FULL resulting document (existing fields merged with the
+      // patch), so a plain .keys() check on it would always include every
+      // sensitive field once it's ever been set once (e.g. eloRating after
+      // onboarding) - matching on every single update() call regardless of
+      // whether that call actually touches the field, and blocking even
+      // unrelated updates like selecting a mecha or changing owned skins.
+      // affectedKeys() correctly reflects only the keys this specific write
+      // adds, removes, or changes.
+      allow update: if isUserOwnData(userId) &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny([
+          'eloRating', 'rank', 'level', 'winRate', 'totalWins', 'totalBattles',
+          'achievementBadges', 'gems', 'gold', 'createdAt', 'lastBattleAt'
+        ]);
 
       // User can create their own document (onboarding)
       allow create: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
@@ -80,6 +91,39 @@ service cloud.firestore {
       match /settings/{settingId} {
         allow read: if isUserOwnData(userId);
         allow write: if isUserOwnData(userId);
+      }
+
+      // Per-season rank/win-streak/tier tracking (RankingService). Not yet
+      // migrated to a server-authoritative Cloud Function the way battle
+      // Elo is (see /battle_results below), so it follows its current
+      // actual trust model: fully client-writable for its own owner. A
+      // player could inflate their own displayed tier-transition history
+      // here, but this has no effect on their real (server-authoritative)
+      // eloRating or on other players' data.
+      match /season_data/{seasonId} {
+        allow read, write: if isUserOwnData(userId);
+      }
+
+      // Seasonal reward distributions (SeasonRewardService). Created only
+      // by the onSeasonEnded Cloud Function (Admin SDK bypasses rules), so
+      // the client is never allowed to create/replace one - only to flip
+      // its own claimedAt when claiming.
+      match /season_rewards/{seasonId} {
+        allow read: if isUserOwnData(userId);
+        allow update: if isUserOwnData(userId) &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['claimedAt']);
+        allow write: if isServerUpdate();
+      }
+
+      // Skill tree reset history/snapshots across seasons
+      // (SkillTreeResetService). Client-computed, same trust model as
+      // season_data above.
+      match /season_resets/{seasonId} {
+        allow read, write: if isUserOwnData(userId);
+      }
+
+      match /season_snapshots/{seasonId} {
+        allow read, write: if isUserOwnData(userId);
       }
     }
 
@@ -105,22 +149,30 @@ service cloud.firestore {
     // FRIEND REQUESTS COLLECTION
     // ============================================================================
     // Rules: Users can read/write their own friend requests
+    // Collection name matches FirestoreService's actual 'friend_requests'
+    // (snake_case) - this previously said 'friendRequests' (camelCase),
+    // which doesn't exist anywhere in the app, so every friend-request
+    // read/write fell through to the deny-all fallback below.
     // ============================================================================
-    match /friendRequests/{requestId} {
+    // Field names match FriendRequest.toJson() (fromUserId/toUserId) - this
+    // previously checked senderId/receiverId, which don't exist on any real
+    // document, so every clause here always evaluated false regardless of
+    // the collection-name fix above.
+    match /friend_requests/{requestId} {
       // User can read requests where they are sender or receiver
       allow read: if isAuthenticated() && (
-        resource.data.senderId == request.auth.uid ||
-        resource.data.receiverId == request.auth.uid
+        resource.data.fromUserId == request.auth.uid ||
+        resource.data.toUserId == request.auth.uid
       );
 
       // User can create request (becomes sender)
-      allow create: if isAuthenticated() && request.resource.data.senderId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.fromUserId == request.auth.uid;
 
       // Only receiver can accept/reject request
-      allow update: if isAuthenticated() && resource.data.receiverId == request.auth.uid;
+      allow update: if isAuthenticated() && resource.data.toUserId == request.auth.uid;
 
       // Sender can delete own request (before acceptance)
-      allow delete: if isAuthenticated() && resource.data.senderId == request.auth.uid;
+      allow delete: if isAuthenticated() && resource.data.fromUserId == request.auth.uid;
     }
 
     // ============================================================================
@@ -183,23 +235,54 @@ service cloud.firestore {
     }
 
     // ============================================================================
+    // BATTLES COLLECTION
+    // ============================================================================
+    // Rules: Battle owner can create/read/update their own battle record
+    // (BattleViewModel.createBattle/updateBattle - Battle.userId, not a
+    // participants list, since this is written from one player's own
+    // client for their own battle). This collection previously had no
+    // rule at all, so every createBattle()/updateBattle() call fell
+    // through to the deny-all fallback below.
+    // ============================================================================
+    match /battles/{battleId} {
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
+
+      // eloProcessed/eloProcessedAt are set only by validateBattleResult
+      // (Admin SDK, bypasses rules) once battle_results has been
+      // processed - the client must never be able to set these itself,
+      // which would let it fake "already processed" to block a
+      // legitimate future Elo update for this battle.
+      allow update: if isAuthenticated() && resource.data.userId == request.auth.uid &&
+        !request.resource.data.diff(resource.data).affectedKeys().hasAny(['eloProcessed', 'eloProcessedAt']);
+
+      allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
     // BATTLE RESULTS COLLECTION
     // ============================================================================
-    // Rules: User can read own battle results
-    // User can create battle results (from battle screen)
-    // Server validates and processes results via Cloud Function
+    // Rules: One document per submitting player (not per battle - this is
+    // a 5v5 team game, not 1v1). The submitting user creates it after
+    // their own battle ends; validateBattleResult (Cloud Function)
+    // recalculates their Elo server-side and marks the battle processed.
+    // Collection name matches the Cloud Function's actual trigger path
+    // ('battle_results', snake_case) - this previously said
+    // 'battleResults' (camelCase) and expected a 'participants' array,
+    // neither of which exist anywhere in the app, so every battle result
+    // ever submitted would have fallen through to the deny-all fallback.
     // ============================================================================
-    match /battleResults/{battleResultId} {
-      // User can read their own battle results
-      allow read: if isAuthenticated() &&
-        resource.data.participants.any(p => p.userId == request.auth.uid);
+    match /battle_results/{battleResultId} {
+      // User can read their own submitted battle results
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
 
-      // User can create battle result (submitted from client)
+      // User can create a battle result for themselves
       // Cloud Function validates and processes
       allow create: if isAuthenticated() &&
-        request.resource.data.participants.any(p => p.userId == request.auth.uid);
+        request.resource.data.userId == request.auth.uid;
 
-      // Cloud Functions can update (process result, update Elo)
+      // Cloud Functions can update (mark internal processing state)
       allow update: if isServerUpdate();
 
       // No deletes (audit trail)

@@ -1,6 +1,7 @@
 // ignore_for_file: avoid_print
 
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
@@ -15,12 +16,11 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     AuthService? authService,
     RankingService? rankingService,
     SeasonService? seasonService,
-  })
-    : _firestoreService = firestoreService ?? FirestoreService(),
-      _authService = authService ?? AuthService(),
-      _rankingService = rankingService ?? RankingService(),
-      _seasonService = seasonService ?? SeasonService(),
-      super(const AsyncValue.loading()) {
+  }) : _firestoreService = firestoreService ?? FirestoreService(),
+       _authService = authService ?? AuthService(),
+       _rankingService = rankingService ?? RankingService(),
+       _seasonService = seasonService ?? SeasonService(),
+       super(const AsyncValue.loading()) {
     _init();
   }
 
@@ -48,31 +48,38 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
         );
   }
 
-  /// 試合終了後にELO・勝率・戦績を反映（サーバー側検証済みの eloChange を前提）
+  /// 試合終了後、battle_results ドキュメントを送信してCloud Function
+  /// (elo-validator)経由でELO・勝率・戦績を反映する。これらのフィールドは
+  /// サーバー側検証必須のためクライアントから直接書き込まない（Firestore
+  /// Rules でブロックされる）。サーバーの再計算結果は watchUser() ストリーム
+  /// 経由でこの ViewModel の state に自動反映される。
   /// また、アクティブシーズンがあれば季節進行も同時に更新する
   Future<void> applyBattleResult(Battle battle) async {
     final current = state.value;
     if (current == null) return;
 
     final isWin = battle.result == BattleResult.win;
-    final newTotalBattles = current.totalBattles + 1;
-    final newTotalWins = current.totalWins + (isWin ? 1 : 0);
-    final newWinRate = newTotalWins / newTotalBattles;
-    final newElo = (current.eloRating + battle.eloChange).clamp(0.0, 5000.0);
+    // Bot の相手はFirestoreユーザードキュメントを持たないため、
+    // サーバー側の相手レート平均計算対象から除外する
+    final realOpponentIds = battle.opponentIds
+        .where((id) => !id.startsWith('bot_'))
+        .toList();
 
-    final updated = current.copyWith(
-      eloRating: newElo,
-      winRate: newWinRate,
-      totalWins: newTotalWins,
-      totalBattles: newTotalBattles,
-      lastBattleAt: DateTime.now(),
+    await _firestoreService.addData(
+      path: 'battle_results',
+      data: {
+        'battleId': battle.battleId,
+        'userId': current.uid,
+        'opponentUserIds': realOpponentIds,
+        'result': battle.result.name,
+        'timestamp': FieldValue.serverTimestamp(),
+      },
     );
 
-    await _firestoreService.updateUser(updated);
-
     // 【CRITICAL INTEGRATION】 季節進行を更新
-    // BattleEngine から提供された eloChange を反映後、
-    // 季節ランク進捗・Tier昇降判定を記録する
+    // season_data はまだサーバー権威化されていない設計のため、クライアント側の
+    // 推定ELOをそのまま使って季節Tier進行を先行更新する。本体のELOは上記の
+    // Cloud Function が別途確定し、watchUser() ストリーム経由で自動反映される
     try {
       final userId = _currentUserId;
       if (userId == null) return;
@@ -80,11 +87,16 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
       final activeSeason = await _seasonService.getActiveSeason();
       if (activeSeason == null) return; // シーズンが無い場合はスキップ
 
+      final estimatedElo = (current.eloRating + battle.eloChange).clamp(
+        0.0,
+        5000.0,
+      );
+
       // Record seasonal progress (non-blocking)
       await _rankingService.updateSeasonalProgress(
         userId: userId,
         seasonId: activeSeason.seasonId,
-        newRating: newElo.toInt(),
+        newRating: estimatedElo.toInt(),
         isWin: isWin,
         tierThresholds: activeSeason.tierThresholds,
       );
