@@ -1,7 +1,26 @@
 import * as admin from 'firebase-admin';
 import * as functions from 'firebase-functions';
-import { test } from 'firebase-functions-test';
+import test from 'firebase-functions-test';
 import * as elf from '../src/report-executor';
+
+// report-executor.ts calls admin.firestore() at module load time (line 4),
+// which throws ("The default Firebase app does not exist") unless
+// admin.initializeApp() already ran - true in production because index.ts
+// initializes it before importing this module, but not here since this
+// file imports report-executor.ts directly. ts-jest hoists jest.mock()
+// calls above the imports above in the compiled output (this is required -
+// TypeScript syntax doesn't allow a plain statement between import
+// declarations), so this still takes effect before report-executor.ts
+// itself is loaded.
+jest.mock('firebase-admin', () => {
+  const firestoreFn: any = jest.fn(() => ({}));
+  firestoreFn.Timestamp = {
+    now: jest.fn(() => 'MOCK_TIMESTAMP'),
+    fromDate: jest.fn((d: Date) => d),
+  };
+  firestoreFn.FieldValue = { increment: jest.fn((n: number) => ({ __increment: n })) };
+  return { firestore: firestoreFn, apps: [] };
+});
 
 const projectId = 'shinjuu-league-test';
 const testEnv = test({ projectId });
@@ -204,27 +223,30 @@ describe('Report Executor', () => {
   });
 
   describe('Next Execution Calculation', () => {
+    // These call the real exported calculateNextExecution() rather than
+    // re-implementing the Date arithmetic inline, so a regression in the
+    // actual scheduling logic (e.g. the month-end overflow this test suite
+    // caught: Jan 31 + 1 month naively rolling into March) fails here
+    // instead of only in a hand-copied duplicate that always agrees with
+    // whatever bug the real function has.
     it('should calculate daily next execution correctly', () => {
       const now = new Date('2026-09-01T10:00:00Z');
-      const next = new Date(now);
-      next.setDate(next.getDate() + 1);
+      const next = elf.calculateNextExecution('daily', now);
 
       expect(next.getDate()).toBe(2);
-      expect(next.getHours()).toBe(10);
+      expect(next.getHours()).toBe(now.getHours());
     });
 
     it('should calculate weekly next execution correctly', () => {
       const now = new Date('2026-09-01T10:00:00Z');
-      const next = new Date(now);
-      next.setDate(next.getDate() + 7);
+      const next = elf.calculateNextExecution('weekly', now);
 
       expect(next.getDate()).toBe(8);
     });
 
     it('should calculate monthly next execution correctly', () => {
       const now = new Date('2026-09-01T10:00:00Z');
-      const next = new Date(now);
-      next.setMonth(next.getMonth() + 1);
+      const next = elf.calculateNextExecution('monthly', now);
 
       expect(next.getMonth()).toBe(9);
       expect(next.getDate()).toBe(1);
@@ -232,19 +254,27 @@ describe('Report Executor', () => {
 
     it('should calculate once (one-time) as far future', () => {
       const now = new Date('2026-09-01T10:00:00Z');
-      const next = new Date(now);
-      next.setFullYear(next.getFullYear() + 1);
+      const next = elf.calculateNextExecution('once', now);
 
-      expect(next.getFullYear()).toBe(2027);
+      expect(next.getFullYear()).toBe(now.getFullYear() + 1);
     });
 
-    it('should handle monthly calculation at end of month', () => {
+    it('should handle monthly calculation at end of month by clamping to the target month\'s last day', () => {
       const now = new Date('2026-01-31T10:00:00Z');
-      const next = new Date(now);
-      next.setMonth(next.getMonth() + 1);
+      const next = elf.calculateNextExecution('monthly', now);
 
-      // February 28 (2026 is not a leap year)
+      // February 28 (2026 is not a leap year) - not March 3, which is what
+      // a naive setMonth(getMonth() + 1) on Jan 31 rolls over to.
       expect(next.getMonth()).toBe(1);
+      expect(next.getDate()).toBe(28);
+    });
+
+    it('should preserve the day-of-month for a month with enough days', () => {
+      const now = new Date('2026-01-15T10:00:00Z');
+      const next = elf.calculateNextExecution('monthly', now);
+
+      expect(next.getMonth()).toBe(1);
+      expect(next.getDate()).toBe(15);
     });
   });
 

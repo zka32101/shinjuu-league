@@ -1,8 +1,10 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
+import { PubSub } from '@google-cloud/pubsub';
 
 const db = admin.firestore();
 const logger = functions.logger;
+const pubsub = new PubSub();
 
 interface ScheduledReport {
   id: string;
@@ -37,7 +39,7 @@ export const executeScheduledReports = functions
   .pubsub.schedule('0 * * * *') // Every hour
   .timeZone('America/New_York')
   .onRun(async (context) => {
-    logger.info('Starting scheduled report execution check', { timestamp: new Date().toIso8601String() });
+    logger.info('Starting scheduled report execution check', { timestamp: new Date().toISOString() });
 
     try {
       // Get all active reports with nextExecutionAt <= now
@@ -121,12 +123,12 @@ async function executeReport(reportId: string, report: ScheduledReport): Promise
       nextExecutionAt: admin.firestore.Timestamp.fromDate(nextExecution),
     });
 
-    logger.info(`Updated report execution times. Next: ${nextExecution.toIso8601String()}`);
+    logger.info(`Updated report execution times. Next: ${nextExecution.toISOString()}`);
 
     // Publish execution event for email delivery
-    const topic = admin.pubsub().topic('report-execution-events');
-    await topic.publish(
-      Buffer.from(
+    const topic = pubsub.topic('report-execution-events');
+    await topic.publishMessage({
+      data: Buffer.from(
         JSON.stringify({
           reportId: reportId,
           executionId: executionId,
@@ -136,10 +138,10 @@ async function executeReport(reportId: string, report: ScheduledReport): Promise
           fileSizeBytes: fileSizeBytes,
           recipientEmails: report.recipientEmails,
           exportedData: exportedData,
-          timestamp: new Date().toIso8601String(),
+          timestamp: new Date().toISOString(),
         }),
       ),
-    );
+    });
 
     logger.info(`Published execution event for ${reportId}`);
   } catch (error) {
@@ -187,10 +189,13 @@ async function fetchAuditLogs(report: ScheduledReport): Promise<AuditLog[]> {
     // based on report.lastExecutedAt
     const logsSnapshot = await db.collection('audit_logs').limit(1000).get();
 
-    return logsSnapshot.docs.map((doc) => ({
-      id: doc.id,
-      ...doc.data(),
-    } as AuditLog));
+    return logsSnapshot.docs.map(
+      (doc) =>
+        ({
+          id: doc.id,
+          ...doc.data(),
+        }) as unknown as AuditLog,
+    );
   } catch (error) {
     logger.error('Error fetching audit logs', error);
     throw error;
@@ -245,7 +250,7 @@ function generateCSV(logs: AuditLog[], report: ScheduledReport): string {
     rows.push('');
     rows.push('# Export Metadata');
     rows.push(`# Total Records: ${logs.length}`);
-    rows.push(`# Export Date: ${new Date().toIso8601String()}`);
+    rows.push(`# Export Date: ${new Date().toISOString()}`);
     rows.push(`# Fields: ${fields.join(', ')}`);
   }
 
@@ -270,7 +275,7 @@ function generateJSON(logs: AuditLog[], report: ScheduledReport): string {
 
   if (report.includeMetadata) {
     exportData.metadata = {
-      exportDate: new Date().toIso8601String(),
+      exportDate: new Date().toISOString(),
       totalRecords: logs.length,
       selectedFields: report.selectedFields,
     };
@@ -290,7 +295,7 @@ function generateText(logs: AuditLog[], report: ScheduledReport): string {
   // Header
   lines.push('='.repeat(80));
   lines.push('ANALYTICS EXPORT REPORT');
-  lines.push(`Generated: ${new Date().toIso8601String()}`);
+  lines.push(`Generated: ${new Date().toISOString()}`);
   lines.push(`Total Records: ${logs.length}`);
   lines.push('='.repeat(80));
   lines.push('');
@@ -325,7 +330,7 @@ function generateText(logs: AuditLog[], report: ScheduledReport): string {
 /**
  * Calculate next execution time based on frequency
  */
-function calculateNextExecution(
+export function calculateNextExecution(
   frequency: 'once' | 'daily' | 'weekly' | 'monthly',
   from: Date,
 ): Date {
@@ -342,9 +347,24 @@ function calculateNextExecution(
     case 'weekly':
       next.setDate(next.getDate() + 7);
       break;
-    case 'monthly':
-      next.setMonth(next.getMonth() + 1);
+    case 'monthly': {
+      // A naive next.setMonth(next.getMonth() + 1) overflows for a day that
+      // doesn't exist in the target month (e.g. Jan 31 -> "Feb 31" rolls
+      // over to Mar 3 instead of clamping to Feb 28/29), silently skipping
+      // that month's execution. Advance the month from the 1st, then clamp
+      // the original day-of-month to the target month's actual length.
+      const originalDay = next.getDate();
+      const targetMonth = next.getMonth() + 1;
+      next.setDate(1);
+      next.setMonth(targetMonth);
+      const daysInTargetMonth = new Date(
+        next.getFullYear(),
+        next.getMonth() + 1,
+        0,
+      ).getDate();
+      next.setDate(Math.min(originalDay, daysInTargetMonth));
       break;
+    }
   }
 
   return next;
