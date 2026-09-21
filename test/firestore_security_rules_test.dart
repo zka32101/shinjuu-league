@@ -1,12 +1,153 @@
+import 'dart:io';
+
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shinjuu_league/data/models/user_model.dart';
 
 /// Tests for Firestore Security Rules
 ///
 /// These tests validate the security rules defined in firestore.rules.
 /// Note: Full integration tests require Firestore emulator.
 /// This test suite focuses on rule logic verification.
+///
+/// The "Sensitive Field Denylist" group below is a real regression guard,
+/// not a placeholder: it parses the actual firestore.rules source and
+/// checks its denylist against the real User model's field names. This
+/// caught a genuine bug where the denylist blocked a field named
+/// 'eloPoints', which does not exist anywhere in the app — the real field
+/// is 'eloRating' (see lib/data/models/user_model.dart) — so the rule
+/// never actually blocked a client from writing its own Elo rating
+/// directly, defeating the entire point of elo-validator.ts's
+/// server-authoritative Elo calculation. 'totalWins' and
+/// 'achievementBadges' were missing from the denylist entirely for the
+/// same reason. Every other test in this file below is a placeholder
+/// (`expect(true, isTrue)`) documenting intent for a future Firestore
+/// emulator integration suite; only this group actually executes.
+List<String> _extractDenylist(String rulesSource, String anchor) {
+  final anchorIndex = rulesSource.indexOf(anchor);
+  expect(
+    anchorIndex,
+    greaterThanOrEqualTo(0),
+    reason:
+        'firestore.rules no longer contains "$anchor" — '
+        'has the /users/{userId} block been restructured?',
+  );
+  final listStart = rulesSource.indexOf('[', anchorIndex);
+  final listEnd = rulesSource.indexOf(']', listStart);
+  final listBody = rulesSource.substring(listStart + 1, listEnd);
+  return RegExp(
+    r"'([^']+)'",
+  ).allMatches(listBody).map((m) => m.group(1)!).toList();
+}
+
 void main() {
   group('Firestore Security Rules', () {
+    group(
+      'Users Collection - Sensitive Field Denylist (real rule verification)',
+      () {
+        late String rulesSource;
+
+        setUpAll(() {
+          rulesSource = File('firestore.rules').readAsStringSync();
+        });
+
+        // Every field the User model can hold that must only ever change via
+        // a server-authenticated write (Cloud Functions run with
+        // request.auth == null, so isServerUpdate() lets them bypass this
+        // denylist entirely) — client-facing profile fields like name/
+        // selectedMechaId/guildId/cohortProperties/fcmTokens are deliberately
+        // excluded from this list.
+        const sensitiveFields = [
+          'eloRating',
+          'rank',
+          'level',
+          'winRate',
+          'totalWins',
+          'totalBattles',
+          'achievementBadges',
+          'gems',
+          'gold',
+        ];
+
+        test(
+          'every sensitive User field name actually exists on the User model',
+          () {
+            // Guards the guard: if this fails, the denylist below was updated
+            // with a typo'd or renamed field that doesn't match the real model.
+            final user = User(
+              uid: 'u',
+              name: 'n',
+              rank: 0,
+              level: 1,
+              eloRating: 1200,
+              winRate: 0,
+              gems: 0,
+              gold: 0,
+              createdAt: DateTime(2026),
+              lastBattleAt: DateTime(2026),
+            );
+            final json = user.toJson();
+            for (final field in sensitiveFields) {
+              expect(
+                json.containsKey(field),
+                isTrue,
+                reason: "'$field' is not a real User.toJson() key",
+              );
+            }
+          },
+        );
+
+        test(
+          'allow update denylist blocks every sensitive field by its real name',
+          () {
+            final denylist = _extractDenylist(
+              rulesSource,
+              'allow update: if isUserOwnData(userId)',
+            );
+            for (final field in sensitiveFields) {
+              expect(
+                denylist,
+                contains(field),
+                reason:
+                    "firestore.rules' update denylist for /users/{userId} "
+                    "does not block '$field' — a client could write it directly",
+              );
+            }
+            // The old (wrong) name must not silently remain in place of the fix.
+            expect(denylist, isNot(contains('eloPoints')));
+          },
+        );
+
+        test(
+          'allow create denylist blocks every sensitive stat/currency field by its real name',
+          () {
+            final denylist = _extractDenylist(
+              rulesSource,
+              'allow create: if isUserOwnData(userId)',
+            );
+            for (final field in [
+              'eloRating',
+              'rank',
+              'winRate',
+              'totalWins',
+              'totalBattles',
+              'achievementBadges',
+              'gems',
+              'gold',
+            ]) {
+              expect(
+                denylist,
+                contains(field),
+                reason:
+                    "firestore.rules' create denylist for /users/{userId} "
+                    "does not block '$field' — a client could self-onboard with "
+                    'a pre-filled value',
+              );
+            }
+            expect(denylist, isNot(contains('eloPoints')));
+          },
+        );
+      },
+    );
     // =========================================================================
     // USERS COLLECTION - Access Control Tests
     // =========================================================================
@@ -315,11 +456,14 @@ void main() {
         expect(true, isTrue);
       });
 
-      test('Cloud Function can update battle result (process, calculate Elo)', () {
-        // Rule: allow update: if isServerUpdate()
-        // Expected: ALLOW
-        expect(true, isTrue);
-      });
+      test(
+        'Cloud Function can update battle result (process, calculate Elo)',
+        () {
+          // Rule: allow update: if isServerUpdate()
+          // Expected: ALLOW
+          expect(true, isTrue);
+        },
+      );
 
       test('User cannot modify submitted battle result', () {
         // Rule: allow update only for server

@@ -61,6 +61,10 @@ class BattlefieldGame extends FlameGame {
 
   final Map<String, MechaToken> _tokens = {};
   final Map<String, JungleMonsterToken> _monsterTokens = {};
+  // mechaId -> デコード済みイラスト。キャラ選択画面と同じAI生成PNGを事前ロードし、
+  // MechaToken には既にデコード済みのImageだけを渡す（トークン生成のたびに
+  // 非同期ロードを待つとキャラ出現が遅延するため、onLoad()で先読みしておく）。
+  final Map<String, Image> _mechaPortraits = {};
   final _random = Random();
   double _shakeMagnitude = 0.0;
   double _flashAlpha = 0.0;
@@ -84,7 +88,9 @@ class BattlefieldGame extends FlameGame {
   final ValueNotifier<AttackTarget?> attackTargetId = ValueNotifier(null);
 
   /// ミニマップ表示用のエントリ一覧（自分・味方・敵・モンスター）。
-  final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(const []);
+  final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(
+    const [],
+  );
 
   /// テスト専用：ジョイスティック入力を経由せず自キャラをグリッド座標へ直接移動する。
   /// ユニットテストでは実タッチ入力によるジョイスティック操作を再現できないため、
@@ -103,6 +109,7 @@ class BattlefieldGame extends FlameGame {
 
   @override
   Future<void> onLoad() async {
+    await _preloadMechaPortraits();
     add(
       OpenField(
         halfWidth: _playfieldHalfWidth,
@@ -130,6 +137,22 @@ class BattlefieldGame extends FlameGame {
     _joystick = joystick;
     // カメラシェイク/ズームの影響を受けないHUD空間に配置
     camera.viewport.add(joystick);
+  }
+
+  /// 神獣カタログの全イラストを事前デコードする。1体でも読み込みに失敗しても
+  /// （アセット欠損等）他の神獣の表示やバトル進行を止めない安全設計。失敗した
+  /// mechaIdはMapに登録されず、MechaToken側が自動的に procedural フォールバック
+  /// 描画（MechaGlyph）を使う。
+  Future<void> _preloadMechaPortraits() async {
+    for (final mecha in mechaCatalog) {
+      if (mecha.iconUrl.isEmpty) continue;
+      final key = mecha.iconUrl.replaceFirst('assets/images/', '');
+      try {
+        _mechaPortraits[mecha.mechaId] = await images.load(key);
+      } catch (_) {
+        // アセット欠損時は無視してprocedural描画にフォールバックさせる
+      }
+    }
   }
 
   @override
@@ -318,7 +341,10 @@ class BattlefieldGame extends FlameGame {
     if (nearestEnemy != null) {
       final dist = _gridDistance(nearestEnemy.position, self.position);
       if (dist <= _attackRangeGrid) {
-        attackTargetId.value = AttackTarget(id: nearestEnemy.userId, isMonster: false);
+        attackTargetId.value = AttackTarget(
+          id: nearestEnemy.userId,
+          isMonster: false,
+        );
         return;
       }
     }
@@ -327,7 +353,10 @@ class BattlefieldGame extends FlameGame {
     if (nearestMonster != null) {
       final dist = _gridDistance(nearestMonster.position, self.position);
       if (dist <= _attackRangeGrid) {
-        attackTargetId.value = AttackTarget(id: nearestMonster.monsterId, isMonster: true);
+        attackTargetId.value = AttackTarget(
+          id: nearestMonster.monsterId,
+          isMonster: true,
+        );
         return;
       }
     }
@@ -411,6 +440,7 @@ class BattlefieldGame extends FlameGame {
                 icon: icon,
                 mechaId: p.mechaId,
                 basePosition: screenPos,
+                portraitImage: _mechaPortraits[p.mechaId],
               )
               // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
               ..priority = screenPos.y.round();
@@ -454,9 +484,11 @@ class BattlefieldGame extends FlameGame {
       final token = _monsterTokens.putIfAbsent(m.id, () {
         final gridY = _laneCenterYs[m.lane];
         final screenPos = _projection.toScreen(0, gridY);
-        final newToken =
-            JungleMonsterToken(monsterId: m.id, lane: m.lane, basePosition: screenPos)
-              ..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
+        final newToken = JungleMonsterToken(
+          monsterId: m.id,
+          lane: m.lane,
+          basePosition: screenPos,
+        )..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
         add(newToken);
         return newToken;
       });
@@ -530,7 +562,9 @@ class BattlefieldGame extends FlameGame {
         ),
       );
     } else {
-      add(SkillBurst(worldPosition: self.position.clone(), radius: _skillRadius));
+      add(
+        SkillBurst(worldPosition: self.position.clone(), radius: _skillRadius),
+      );
     }
     _shakeMagnitude = 1.0;
   }
@@ -584,7 +618,11 @@ class BattlefieldGame extends FlameGame {
   }
 
   /// 攻撃側のバフを一時的に表示（攻撃UPなど）。
-  void showAttackerBuff(String attackerId, BuffType buffType, {double duration = 1.0}) {
+  void showAttackerBuff(
+    String attackerId,
+    BuffType buffType, {
+    double duration = 1.0,
+  }) {
     final attacker = _tokens[attackerId];
     if (attacker != null) {
       add(
@@ -598,7 +636,11 @@ class BattlefieldGame extends FlameGame {
   }
 
   /// 被弾側のデバフを一時的に表示（防御ダウンなど）。
-  void showVictimDebuff(String victimId, BuffType debuffType, {double duration = 1.0}) {
+  void showVictimDebuff(
+    String victimId,
+    BuffType debuffType, {
+    double duration = 1.0,
+  }) {
     final victim = _tokens[victimId];
     if (victim != null) {
       add(
@@ -612,7 +654,10 @@ class BattlefieldGame extends FlameGame {
   }
 
   /// 自キャラの位置にスキル範囲インジケーターを表示（視認性向上用）。
-  void showSkillRangeIndicator({SkillType skillType = SkillType.offensive, bool isActive = true}) {
+  void showSkillRangeIndicator({
+    SkillType skillType = SkillType.offensive,
+    bool isActive = true,
+  }) {
     final self = _selfToken;
     if (self == null) return;
 

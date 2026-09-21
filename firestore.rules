@@ -54,13 +54,14 @@ service cloud.firestore {
 
       // User can update their own non-sensitive fields
       allow update: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
-        'eloPoints', 'rank', 'level', 'winRate', 'totalBattles',
-        'gems', 'gold', 'createdAt', 'lastBattleAt'
+        'eloRating', 'rank', 'level', 'winRate', 'totalWins', 'totalBattles',
+        'achievementBadges', 'gems', 'gold', 'createdAt', 'lastBattleAt'
       ]);
 
       // User can create their own document (onboarding)
       allow create: if isUserOwnData(userId) && !request.resource.data.keys().hasAny([
-        'eloPoints', 'rank', 'winRate', 'totalBattles', 'gems', 'gold'
+        'eloRating', 'rank', 'winRate', 'totalWins', 'totalBattles',
+        'achievementBadges', 'gems', 'gold'
       ]);
 
       // Only server can update sensitive fields (Elo, stats, currency)

@@ -1,6 +1,33 @@
 // ignore_for_file: avoid_print
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:shinjuu_league/services/season_service.dart';
+
+/// One season's rating/tier summary for a single user, used to render
+/// season-over-season progression (see [RankingService.getSeasonHistory]).
+class SeasonHistoryEntry {
+  final String seasonId;
+  final String seasonName;
+  final DateTime? startedAt;
+  final int startingRating;
+  final int peakRating;
+  final int finalRating;
+  final String peakTier;
+  final int seasonWins;
+  final int seasonLosses;
+
+  const SeasonHistoryEntry({
+    required this.seasonId,
+    required this.seasonName,
+    required this.startedAt,
+    required this.startingRating,
+    required this.peakRating,
+    required this.finalRating,
+    required this.peakTier,
+    required this.seasonWins,
+    required this.seasonLosses,
+  });
+}
 
 /// Service for managing user ranking progression within a season
 ///
@@ -12,13 +39,10 @@ class RankingService {
   final FirebaseFirestore _firestore;
 
   RankingService({FirebaseFirestore? firestore})
-      : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestore = firestore ?? FirebaseFirestore.instance;
 
   /// Determine current tier based on rating
-  String getTierForRating(
-    int rating, {
-    Map<String, int>? tierThresholds,
-  }) {
+  String getTierForRating(int rating, {Map<String, int>? tierThresholds}) {
     final thresholds = tierThresholds ?? _defaultTierThresholds();
 
     // Sort tiers by rating (descending)
@@ -69,13 +93,15 @@ class RankingService {
     required Map<String, int>? tierThresholds,
   }) async {
     try {
-      final userSeasonPath =
-          'users/$userId/season_data/$seasonId';
+      final userSeasonPath = 'users/$userId/season_data/$seasonId';
       final userSeasonRef = _firestore.doc(userSeasonPath);
       final userSeasonSnapshot = await userSeasonRef.get();
 
       // Fetch current tier info
-      final newTier = getTierForRating(newRating, tierThresholds: tierThresholds);
+      final newTier = getTierForRating(
+        newRating,
+        tierThresholds: tierThresholds,
+      );
 
       if (!userSeasonSnapshot.exists) {
         // First battle of season - initialize
@@ -102,7 +128,9 @@ class RankingService {
           'updatedAt': FieldValue.serverTimestamp(),
         });
 
-        print('[RankingService] Initialized season data for $userId in $seasonId');
+        print(
+          '[RankingService] Initialized season data for $userId in $seasonId',
+        );
       } else {
         // Existing season data - update
         final data = userSeasonSnapshot.data() as Map<String, dynamic>;
@@ -114,7 +142,9 @@ class RankingService {
         // Calculate new streaks
         final newWinStreak = isWin ? currentWinStreak + 1 : 0;
         final newLongestStreak = isWin
-            ? (newWinStreak > longestWinStreak ? newWinStreak : longestWinStreak)
+            ? (newWinStreak > longestWinStreak
+                  ? newWinStreak
+                  : longestWinStreak)
             : longestWinStreak;
 
         // Check for tier change
@@ -154,9 +184,13 @@ class RankingService {
         // Determine peak tier
         final peakTier = data['peakTier'] as String? ?? 'Bronze';
         final peakThreshold =
-            tierThresholds?[peakTier] ?? _defaultTierThresholds()[peakTier] ?? 400;
+            tierThresholds?[peakTier] ??
+            _defaultTierThresholds()[peakTier] ??
+            400;
         final newThreshold =
-            tierThresholds?[newTier] ?? _defaultTierThresholds()[newTier] ?? 400;
+            tierThresholds?[newTier] ??
+            _defaultTierThresholds()[newTier] ??
+            400;
         final shouldUpdatePeak = newThreshold > peakThreshold;
 
         await userSeasonRef.update({
@@ -205,6 +239,59 @@ class RankingService {
     }
   }
 
+  /// Get a user's rating/tier summary for every season they've played,
+  /// ordered oldest-to-newest by the season's start date (falls back to
+  /// seasonId order for any season whose own document has since been
+  /// deleted, which should not normally happen but must not crash the
+  /// history screen if it does).
+  Future<List<SeasonHistoryEntry>> getSeasonHistory(
+    String userId, {
+    SeasonService? seasonService,
+  }) async {
+    try {
+      final docs = await _firestore
+          .collection('users/$userId/season_data')
+          .get();
+      if (docs.docs.isEmpty) return [];
+
+      final resolver = seasonService ?? SeasonService(firestore: _firestore);
+      final entries = <SeasonHistoryEntry>[];
+
+      for (final doc in docs.docs) {
+        final data = doc.data();
+        final seasonId = data['seasonId'] as String? ?? doc.id;
+        final season = await resolver.getSeasonById(seasonId);
+
+        entries.add(
+          SeasonHistoryEntry(
+            seasonId: seasonId,
+            seasonName: season?.name ?? seasonId,
+            startedAt: season?.startedAt,
+            startingRating: data['startingRating'] as int? ?? 1200,
+            peakRating: data['peakRating'] as int? ?? 1200,
+            finalRating: data['currentRating'] as int? ?? 1200,
+            peakTier: data['peakTier'] as String? ?? 'Bronze',
+            seasonWins: data['seasonWins'] as int? ?? 0,
+            seasonLosses: data['seasonLosses'] as int? ?? 0,
+          ),
+        );
+      }
+
+      entries.sort((a, b) {
+        final aDate = a.startedAt;
+        final bDate = b.startedAt;
+        if (aDate == null || bDate == null) {
+          return a.seasonId.compareTo(b.seasonId);
+        }
+        return aDate.compareTo(bDate);
+      });
+      return entries;
+    } catch (e) {
+      print('[RankingService] Error fetching season history: $e');
+      return [];
+    }
+  }
+
   /// Get user's promotion history for season
   Future<List<Map<String, dynamic>>> getPromotionHistory(
     String userId,
@@ -214,7 +301,8 @@ class RankingService {
       final seasonalData = await getSeasonalData(userId, seasonId);
       if (seasonalData == null) return [];
 
-      final transitions = seasonalData['tierTransitions'] as List<dynamic>? ?? [];
+      final transitions =
+          seasonalData['tierTransitions'] as List<dynamic>? ?? [];
       return transitions.cast<Map<String, dynamic>>();
     } catch (e) {
       print('[RankingService] Error fetching promotion history: $e');
@@ -246,8 +334,4 @@ class RankingService {
 }
 
 /// Enum for promotion status
-enum PromotionStatus {
-  promoted,
-  demoted,
-  none,
-}
+enum PromotionStatus { promoted, demoted, none }

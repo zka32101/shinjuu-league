@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/audio_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 import 'package:shinjuu_league/ui/widgets/loading_skeleton.dart';
 
@@ -19,7 +20,18 @@ class _MatchingScreenState extends ConsumerState<MatchingScreen> {
   @override
   void initState() {
     super.initState();
+    // マッチングBGMを開始（未配置時はAudioService側で無音スキップ）
+    AudioService().playBgm('matching_bgm');
     WidgetsBinding.instance.addPostFrameCallback((_) => _startMatching());
+  }
+
+  @override
+  void dispose() {
+    // マッチング成立でバトルへ遷移する場合は battle_screen 側の playBgm() が
+    // クロスフェードで上書きするため、ここで止めても止めなくても問題ないが、
+    // キャンセルしてロビーへ戻るケースのために明示的に停止する。
+    AudioService().stopBgm();
+    super.dispose();
   }
 
   void _startMatching() {
