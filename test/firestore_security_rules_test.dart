@@ -435,6 +435,38 @@ void main() {
     // LEADERBOARD - Public Rankings
     // =========================================================================
     group('Leaderboard - Read Access', () {
+      // Real regression guard: /users/{userId}'s rule only ever allows a
+      // user to read their own document (see the denylist group above), so
+      // a cross-user query for a leaderboard can never be satisfied against
+      // 'users' - Firestore rejects any query it can't statically prove
+      // only matches documents the rule allows. getTopRankedUsers() used to
+      // query 'users' directly, which would have failed with a permission
+      // error the first time it ran against real (non-fake) Firestore.
+      test(
+        "getTopRankedUsers() queries the public 'leaderboard' collection, not 'users'",
+        () {
+          final serviceSource = File(
+            'lib/services/firestore_service.dart',
+          ).readAsStringSync();
+          final methodStart = serviceSource.indexOf(
+            'Future<List<User>> getTopRankedUsers',
+          );
+          expect(
+            methodStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'FirestoreService.getTopRankedUsers() no longer exists - '
+                'has the leaderboard read path moved elsewhere?',
+          );
+          final methodBody = serviceSource.substring(
+            methodStart,
+            methodStart + 400,
+          );
+          expect(methodBody, contains(".collection('leaderboard')"));
+          expect(methodBody, isNot(contains(".collection('users')")));
+        },
+      );
+
       test('Anyone can read public leaderboard', () {
         // Rule: allow read: if true;
         // Expected: ALLOW

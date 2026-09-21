@@ -267,6 +267,23 @@ export const validateBattleResult = functions.firestore
         eloProcessedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
 
+      // Mirror only the public-safe subset of the user's profile into the
+      // publicly-readable leaderboard collection (see firestore.rules'
+      // /leaderboard/{leaderboardId}: `allow read: if true`). The full
+      // /users/{userId} document is intentionally NOT publicly readable -
+      // it also carries gems/gold/fcmTokens/cohortProperties, none of
+      // which belong in a public ranking. This is the only writer of this
+      // collection; the client-side leaderboard query reads it directly
+      // instead of querying /users (which its per-owner read rule can't
+      // authorize as a cross-user query anyway).
+      batch.set(db.collection('leaderboard').doc(battleResult.userId), {
+        uid: battleResult.userId,
+        name: user.name,
+        eloRating: Math.round(userNewRating),
+        winRate: newWinRate,
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
       // Log successful validation with tier information
       batch.set(db.collection('elo_validation_log').doc(), {
         resultId,

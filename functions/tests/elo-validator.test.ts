@@ -142,6 +142,10 @@ describe('validateBattleResult (mocked Firestore)', () => {
 
     const makeDocRef = (collectionName: string, id: string) => ({
       id,
+      // Test-only introspection field (not part of the real Firestore SDK)
+      // so assertions below can tell which collection a batch.set/update
+      // call targeted without relying on call ordering.
+      _collection: collectionName,
       get: jest.fn().mockImplementation(async () => {
         const source = collectionName === 'users' ? users : battles;
         const data = source[id];
@@ -179,13 +183,22 @@ describe('validateBattleResult (mocked Firestore)', () => {
     return { params: { resultId } };
   }
 
-  const baseParticipant = {
-    lane: 0,
-    baseStats: { atk: 50, def: 20, spd: 30 },
-  };
-
   function userFixture(eloRating: number, overrides: Partial<Record<string, unknown>> = {}) {
     return { eloRating, totalBattles: 10, totalWins: 5, winRate: 0.5, ...overrides };
+  }
+
+  // batch.set() is now called twice on a successful run (leaderboard entry
+  // + audit log), so tests must pick the right call by target collection
+  // rather than assume index 0.
+  function findSet(
+    spies: { batchSet: jest.Mock },
+    collectionName: string
+  ): [Record<string, unknown>, Record<string, unknown>] {
+    const call = spies.batchSet.mock.calls.find(
+      (c) => (c[0] as { _collection: string })._collection === collectionName
+    );
+    expect(call).toBeDefined();
+    return call as [Record<string, unknown>, Record<string, unknown>];
   }
 
   let admin: typeof import('firebase-admin');
@@ -226,7 +239,6 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-1')
     );
@@ -249,7 +261,6 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-2')
     );
@@ -272,7 +283,6 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-3')
     );
@@ -297,7 +307,6 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b'],
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-4')
     );
@@ -325,13 +334,24 @@ describe('validateBattleResult (mocked Firestore)', () => {
     );
     expect(battleUpdateCall).toBeDefined();
 
-    expect(spies.batchSet).toHaveBeenCalledTimes(1);
-    const auditLog = spies.batchSet.mock.calls[0][1];
+    expect(spies.batchSet).toHaveBeenCalledTimes(2);
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
     expect(auditLog.userOldRating).toBe(1600);
     expect(auditLog.userNewRating).toBe(1616);
     expect(auditLog.userTier).toBe('Silver');
     expect(auditLog.userKFactor).toBe(32);
     expect(auditLog.opponentAvgRating).toBe(1600);
+
+    // Only the public-safe subset is mirrored into the publicly-readable
+    // leaderboard collection - never gems/gold/fcmTokens/etc.
+    const [leaderboardRef, leaderboardEntry] = findSet(spies, 'leaderboard');
+    expect(leaderboardRef.id).toBe('player-a');
+    expect(leaderboardEntry.uid).toBe('player-a');
+    expect(leaderboardEntry.eloRating).toBe(1616);
+    expect(leaderboardEntry.winRate).toBeCloseTo(6 / 11, 5);
+    expect(Object.keys(leaderboardEntry).sort()).toEqual(
+      ['eloRating', 'name', 'uid', 'updatedAt', 'winRate'].sort()
+    );
   });
 
   test('averages ratings across multiple real opponents rather than using just one', async () => {
@@ -351,14 +371,13 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b', 'player-c'],
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-avg')
     );
 
     // Average of 1800 and 1400 is 1600 - identical to the single-opponent
     // 1600 case above, proving the average (not just the first id) is used.
-    const auditLog = spies.batchSet.mock.calls[0][1];
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
     expect(auditLog.opponentAvgRating).toBe(1600);
     expect(auditLog.userNewRating).toBe(1616);
   });
@@ -378,14 +397,13 @@ describe('validateBattleResult (mocked Firestore)', () => {
         // since-deleted account.
         opponentUserIds: ['player-b', 'player-deleted'],
         result: 'loss',
-        participant: baseParticipant,
       }),
       makeContext('result-deleted-opponent')
     );
 
     expect(spies.batchCommit).toHaveBeenCalledTimes(1);
     // Average should be just player-b's 1800 (the deleted account filtered out).
-    const auditLog = spies.batchSet.mock.calls[0][1];
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
     expect(auditLog.opponentAvgRating).toBe(1800);
   });
 
@@ -402,13 +420,12 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: [], // bots filtered out client-side, none real
         result: 'win',
-        participant: baseParticipant,
       }),
       makeContext('result-no-opponents')
     );
 
     expect(spies.batchCommit).toHaveBeenCalledTimes(1);
-    const auditLog = spies.batchSet.mock.calls[0][1];
+    const [, auditLog] = findSet(spies, 'elo_validation_log');
     expect(auditLog.opponentAvgRating).toBe(1000); // DEFAULT_OPPONENT_RATING
   });
 
@@ -425,7 +442,6 @@ describe('validateBattleResult (mocked Firestore)', () => {
         userId: 'player-a',
         opponentUserIds: ['player-b'],
         result: 'draw',
-        participant: baseParticipant,
       }),
       makeContext('result-5')
     );
