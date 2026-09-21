@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/replay_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 
@@ -394,6 +395,35 @@ void main() {
     });
 
     group('Guild Members & Board', () {
+      // Real regression guard: this rule matched /guilds/{guildId}/board/
+      // {postId}, but FirestoreService.postToGuildBoard()/watchGuildPosts()
+      // actually read/write /guilds/{guildId}/posts/{postId} - the wrong
+      // collection name meant the entire guild board fell through to the
+      // deny-all fallback regardless of membership or ownership.
+      test(
+        "the guild board rule matches 'posts', the collection the app actually uses",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final guildsBlockStart = rulesSource.indexOf(
+            'match /guilds/{guildId}',
+          );
+          final guildsBlockEnd = rulesSource.indexOf(
+            'match /leaderboard/{leaderboardId}',
+          );
+          final guildsBlock = rulesSource.substring(
+            guildsBlockStart,
+            guildsBlockEnd,
+          );
+          expect(guildsBlock, contains('match /posts/{postId}'));
+          expect(guildsBlock, isNot(contains('match /board/{postId}')));
+
+          final serviceSource = File(
+            'lib/services/firestore_service.dart',
+          ).readAsStringSync();
+          expect(serviceSource, contains(".collection('posts')"));
+        },
+      );
+
       test('Any guild member can read member list', () {
         // Rule: allow read: if isAuthenticated()
         // Expected: ALLOW
@@ -590,6 +620,98 @@ void main() {
         // Expected: DENY
         expect(true, isTrue);
       });
+    });
+
+    // =========================================================================
+    // SEASONS - Global Season Definitions (real rule verification)
+    // =========================================================================
+    group('Seasons Collection (real rule verification)', () {
+      // Real regression guard: this collection never had a rule at all, so
+      // SeasonService.getActiveSeason()/getSeasonById()/getPastSeasons() -
+      // load-bearing for the entire ranking/season-progress feature - always
+      // failed with a permission error (silently swallowed and treated as
+      // "no active season" by every caller).
+      test(
+        "firestore.rules has a /seasons/{seasonId} rule that allows public read",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf('match /seasons/{seasonId}');
+          expect(
+            blockStart,
+            greaterThanOrEqualTo(0),
+            reason: 'firestore.rules has no rule for /seasons/{seasonId}',
+          );
+          final block = rulesSource.substring(blockStart, blockStart + 400);
+          expect(block, contains('allow read: if true'));
+          expect(block, contains('isServerUpdate()'));
+        },
+      );
+    });
+
+    // =========================================================================
+    // BATTLEPASSES - Owner Access (real rule verification)
+    // =========================================================================
+    group('BattlePasses Collection (real rule verification)', () {
+      // Real regression guard: this collection never had a rule at all, so
+      // FirestoreService.getBattlePass()/saveBattlePass() - the entire
+      // battle pass feature - always failed with a permission error.
+      test(
+        "the battlepasses rule's userId field actually exists on BattlePass",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf(
+            'match /battlepasses/{battlePassId}',
+          );
+          expect(
+            blockStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'firestore.rules has no rule for /battlepasses/{battlePassId}',
+          );
+          final block = rulesSource.substring(blockStart, blockStart + 400);
+          expect(block, contains('resource.data.userId'));
+          expect(block, contains('request.resource.data.userId'));
+
+          final battlePass = BattlePass(
+            userId: 'u1',
+            seasonId: 's1',
+            progress: 0,
+            level: 1,
+            claimedRewards: const [],
+            isPremium: false,
+            startDate: DateTime(2026),
+            endDate: DateTime(2026, 2),
+          );
+          expect(battlePass.toJson().containsKey('userId'), isTrue);
+        },
+      );
+    });
+
+    // =========================================================================
+    // USER SUBCOLLECTIONS - Items & Quests (real rule verification)
+    // =========================================================================
+    group('User Items & Quests Subcollections (real rule verification)', () {
+      // Real regression guard: /users/{userId}/items/{itemId} (ItemService -
+      // purchase/equip/inventory) and /users/{userId}/quests/{questId}
+      // (FirestoreService.savePlayerQuest and friends) never had rules at
+      // all, so both entire features always fell through to the deny-all
+      // fallback.
+      test(
+        'the /users/{userId} block has rules for both items and quests subcollections',
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final usersBlockStart = rulesSource.indexOf('match /users/{userId}');
+          final usersBlockEnd = rulesSource.indexOf(
+            'match /replays/{replayId}',
+          );
+          final usersBlock = rulesSource.substring(
+            usersBlockStart,
+            usersBlockEnd,
+          );
+          expect(usersBlock, contains('match /items/{itemId}'));
+          expect(usersBlock, contains('match /quests/{questId}'));
+        },
+      );
     });
 
     // =========================================================================

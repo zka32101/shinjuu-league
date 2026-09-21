@@ -125,6 +125,23 @@ service cloud.firestore {
       match /season_snapshots/{seasonId} {
         allow read, write: if isUserOwnData(userId);
       }
+
+      // Player inventory (ItemService: purchase/equip/unequip/sell). Never
+      // had a rule at all, so every read/write here previously fell through
+      // to the deny-all fallback below - the entire item shop/inventory/
+      // equip system was non-functional. Gold cost deduction isn't
+      // implemented anywhere yet (see item_shop_modal.dart), so this is
+      // fully client-trusted for now, same as season_data above.
+      match /items/{itemId} {
+        allow read, write: if isUserOwnData(userId);
+      }
+
+      // Daily/weekly quest progress (FirestoreService.savePlayerQuest and
+      // friends). Never had a rule at all - same missing-collection bug as
+      // items above, breaking the whole quest system.
+      match /quests/{questId} {
+        allow read, write: if isUserOwnData(userId);
+      }
     }
 
     // ============================================================================
@@ -206,8 +223,12 @@ service cloud.firestore {
           get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid;
       }
 
-      // Guild chat/bulletin board
-      match /board/{postId} {
+      // Guild chat/bulletin board. FirestoreService.postToGuildBoard/
+      // watchGuildPosts actually write to 'posts', not 'board' - this rule
+      // named the wrong subcollection entirely, so every guild board
+      // read/write fell through to the deny-all fallback below regardless
+      // of who owned it.
+      match /posts/{postId} {
         // Guild members can read posts
         allow read: if isAuthenticated();
 
@@ -300,6 +321,46 @@ service cloud.firestore {
 
       // Only server can create/update definitions
       allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // SEASONS COLLECTION (Global Season Definitions)
+    // ============================================================================
+    // Rules: Everyone can read season definitions (tier thresholds, dates,
+    // rewards catalog) - every client needs this to know the active season,
+    // its tier thresholds, and past seasons. Never had a rule at all, so
+    // SeasonService.getActiveSeason()/getSeasonById()/getPastSeasons() -
+    // used throughout the ranking/season-progress feature - always failed
+    // with a permission error, silently caught and treated as "no active
+    // season" by every caller. season-lifecycle.ts (Cloud Function) is the
+    // real writer; SeasonService.createSeason()/endSeason() exist as direct
+    // client-write methods but are never called from the app UI - only
+    // server writes are allowed here, matching achievements/config below.
+    // ============================================================================
+    match /seasons/{seasonId} {
+      // Anyone can read season definitions
+      allow read: if true;
+
+      // Only server (Cloud Functions) can create/update seasons
+      allow write: if isServerUpdate();
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // BATTLEPASSES COLLECTION
+    // ============================================================================
+    // Rules: Owner can read/write their own battle pass progress/premium
+    // status. Never had a rule at all, so getBattlePass()/saveBattlePass()
+    // (battlepass_screen.dart/shop_screen.dart) always failed, breaking the
+    // whole battle pass feature. Like season_data, this is fully
+    // client-trusted for now: RevenueCat purchase verification isn't wired
+    // up yet (AppConfig.revenueCatApiKey is empty), so isPremium already has
+    // no real anti-fraud protection regardless of this rule.
+    // ============================================================================
+    match /battlepasses/{battlePassId} {
+      allow read, update: if isAuthenticated() && resource.data.userId == request.auth.uid;
+      allow create: if isAuthenticated() && request.resource.data.userId == request.auth.uid;
       allow delete: if false;
     }
 
