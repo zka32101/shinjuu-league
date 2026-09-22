@@ -423,10 +423,16 @@ void main() {
 
     test('キル報酬でゴールが与えられる', () {
       final killer = _participant(userId: 'killer', team: 0, isSelf: true);
-      final assistant1 =
-          _participant(userId: 'assistant_1', team: 0, isSelf: false);
-      final assistant2 =
-          _participant(userId: 'assistant_2', team: 0, isSelf: false);
+      final assistant1 = _participant(
+        userId: 'assistant_1',
+        team: 0,
+        isSelf: false,
+      );
+      final assistant2 = _participant(
+        userId: 'assistant_2',
+        team: 0,
+        isSelf: false,
+      );
       final victim = _participant(userId: 'victim', team: 1, isSelf: false);
 
       final engine = BattleEngine(
@@ -471,8 +477,7 @@ void main() {
         participants: [self, enemy],
       );
 
-      final result =
-          engine.useSkill('self', 'skill_east_01_q', ['enemy']);
+      final result = engine.useSkill('self', 'skill_east_01_q', ['enemy']);
       expect(result, isFalse); // マナ不足
       engine.dispose();
     });
@@ -503,8 +508,7 @@ void main() {
 
       expect(self.skillCooldowns['skill_east_01_q'], 0.0);
 
-      final result =
-          engine.useSkill('self', 'skill_east_01_q', ['enemy']);
+      final result = engine.useSkill('self', 'skill_east_01_q', ['enemy']);
       expect(result, isTrue);
       expect(
         self.skillCooldowns['skill_east_01_q'],
@@ -586,7 +590,9 @@ void main() {
         participants: [self],
       );
 
-      final otherLaneMonster = engine.jungleMonsters.firstWhere((m) => m.lane == 1);
+      final otherLaneMonster = engine.jungleMonsters.firstWhere(
+        (m) => m.lane == 1,
+      );
       final result = engine.attackJungleMonster('self', otherLaneMonster.id);
 
       expect(result, isFalse);
@@ -709,4 +715,132 @@ void main() {
       expect(changeVsStronger, greaterThan(changeVsEqual));
     });
   });
+
+  group(
+    'BattleEngine.setEquippedItemModifiers (persistent inventory bonuses)',
+    () {
+      // Regression coverage: equipping an item in the persistent inventory
+      // (ItemService/InventoryScreen) used to have zero effect on battle -
+      // effectiveAtk/effectiveHp never read anything but the in-battle
+      // economy's own item system (SkillSystemService.calculateItemBonuses).
+      test('atk bonus percentage multiplies effectiveAtk', () {
+        final self = _participant(
+          userId: 'self',
+          team: 0,
+          isSelf: true,
+          stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        );
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_01',
+          participants: [self],
+        );
+
+        final baseAtk = self.effectiveAtk;
+
+        // weapon_steel_sword: attackBonus +20% -> multiplier 1.2
+        engine.setEquippedItemModifiers(
+          'self',
+          atkMultiplier: 1.2,
+          defMultiplier: 1.0,
+          hpMultiplier: 1.0,
+        );
+
+        expect(self.effectiveAtk, closeTo(baseAtk * 1.2, 0.01));
+      });
+
+      test('defense and hp bonus percentages both multiply effectiveHp', () {
+        final self = _participant(
+          userId: 'self',
+          team: 0,
+          isSelf: true,
+          stats: BaseStats(hp: 200, atk: 50, spd: 40),
+        );
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_01',
+          participants: [self],
+        );
+
+        final baseHp = self.effectiveHp;
+
+        // armor_iron_armor (defenseBonus +25%) + charm_sapphire (hpBonus +20%)
+        // equipped together -> both multipliers stack.
+        engine.setEquippedItemModifiers(
+          'self',
+          atkMultiplier: 1.0,
+          defMultiplier: 1.25,
+          hpMultiplier: 1.2,
+        );
+
+        expect(self.effectiveHp, closeTo(baseHp * 1.25 * 1.2, 0.01));
+      });
+
+      test('raising effective HP mid-battle does not change current HP', () {
+        final self = _participant(userId: 'self', team: 0, isSelf: true);
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_01',
+          participants: [self],
+        );
+        self.currentHp = 10; // simulate having taken damage already
+
+        engine.setEquippedItemModifiers(
+          'self',
+          atkMultiplier: 1.0,
+          defMultiplier: 1.5,
+          hpMultiplier: 1.0,
+        );
+
+        // Only lowering the cap below current HP clamps it - raising the cap
+        // must not heal the participant back up.
+        expect(self.currentHp, 10);
+      });
+
+      test('lowering effective HP mid-battle clamps current HP down', () {
+        final self = _participant(userId: 'self', team: 0, isSelf: true);
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_01',
+          participants: [self],
+        );
+        // This can't actually happen with today's only-positive item bonuses,
+        // but the clamp exists for setSkillTreeModifiers too and must behave
+        // the same way here for consistency.
+        engine.setEquippedItemModifiers(
+          'self',
+          atkMultiplier: 1.0,
+          defMultiplier: 0.5,
+          hpMultiplier: 1.0,
+        );
+
+        expect(self.currentHp, closeTo(self.effectiveHp, 0.01));
+      });
+
+      test('an unknown userId is a safe no-op', () {
+        final self = _participant(userId: 'self', team: 0, isSelf: true);
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_01',
+          participants: [self],
+        );
+
+        expect(
+          () => engine.setEquippedItemModifiers(
+            'nonexistent',
+            atkMultiplier: 2.0,
+            defMultiplier: 2.0,
+            hpMultiplier: 2.0,
+          ),
+          returnsNormally,
+        );
+        expect(self.equippedItemAtkMultiplier, 1.0);
+      });
+    },
+  );
 }

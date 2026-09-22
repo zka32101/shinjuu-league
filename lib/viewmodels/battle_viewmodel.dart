@@ -10,7 +10,8 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 // (attack/defense/mobility) is unrelated and only its `Evolution`/`StatBoost`
 // classes are needed from that import, so it's hidden here to avoid
 // ambiguity.
-import 'package:shinjuu_league/data/models/evolution_model.dart' hide EvolutionType;
+import 'package:shinjuu_league/data/models/evolution_model.dart'
+    hide EvolutionType;
 import 'package:shinjuu_league/data/models/match_result_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/skill_catalog.dart';
@@ -21,6 +22,7 @@ import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
@@ -103,6 +105,7 @@ class BattleState {
   final Map<String, PlayerSkillStateSnapshot> skillProgressionStates;
   final EvolutionSelectionRequiredEvent? pendingEvolutionSelectEvent;
   final bool showLevelUpAnimation;
+
   /// 手動スキル発動の残りクールダウン秒数（0なら発動可能）。UI側のスキルボタンが
   /// 実際の連打防止クールダウンと乖離しないよう、tick毎に再計算して公開する。
   final double skillCooldownRemaining;
@@ -145,18 +148,22 @@ class BattleState {
       isLoading: isLoading ?? this.isLoading,
       isFinished: isFinished ?? this.isFinished,
       error: error,
-      newlyUnlockedAchievements: newlyUnlockedAchievements ?? this.newlyUnlockedAchievements,
-      skillProgressionStates: skillProgressionStates ?? this.skillProgressionStates,
+      newlyUnlockedAchievements:
+          newlyUnlockedAchievements ?? this.newlyUnlockedAchievements,
+      skillProgressionStates:
+          skillProgressionStates ?? this.skillProgressionStates,
       // `pendingEvolutionSelectEvent: null` must actually clear the field
       // (confirmEvolution()/autoConfirmEvolution() rely on this), so a
       // sentinel default distinguishes "not passed" from "explicitly
       // cleared" instead of the usual `?? this.field` fallback, which can
       // never produce null once a value has been set.
-      pendingEvolutionSelectEvent: identical(pendingEvolutionSelectEvent, _unset)
+      pendingEvolutionSelectEvent:
+          identical(pendingEvolutionSelectEvent, _unset)
           ? this.pendingEvolutionSelectEvent
           : pendingEvolutionSelectEvent as EvolutionSelectionRequiredEvent?,
       showLevelUpAnimation: showLevelUpAnimation ?? this.showLevelUpAnimation,
-      skillCooldownRemaining: skillCooldownRemaining ?? this.skillCooldownRemaining,
+      skillCooldownRemaining:
+          skillCooldownRemaining ?? this.skillCooldownRemaining,
     );
   }
 }
@@ -169,13 +176,17 @@ class BattleViewModel extends StateNotifier<BattleState> {
     AnalyticsService? analyticsService,
     SkillTreeService? skillTreeService,
     AchievementService? achievementService,
+    ItemService? itemService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _analyticsService = analyticsService ?? AnalyticsService(),
        _skillTreeService = skillTreeService ?? SkillTreeService(),
-       _achievementService = achievementService ??
+       _itemService = itemService ?? ItemService(),
+       _achievementService =
+           achievementService ??
            AchievementService(firestoreService ?? FirestoreService()),
        _triggerDetector = AchievementTriggerDetector(
-         achievementService: achievementService ??
+         achievementService:
+             achievementService ??
              AchievementService(firestoreService ?? FirestoreService()),
        ),
        super(BattleState.initial()) {
@@ -187,6 +198,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   final FirestoreService _firestoreService;
   final AnalyticsService _analyticsService;
   final SkillTreeService _skillTreeService;
+  final ItemService _itemService;
   final AchievementService _achievementService;
   final AchievementTriggerDetector _triggerDetector;
   late final SkillProgressionAnalyticsService _skillProgressionAnalytics;
@@ -238,32 +250,28 @@ class BattleViewModel extends StateNotifier<BattleState> {
     _totalSkillsUsed = 0;
     _totalDamageDealt = 0;
 
-    final participants = match.allParticipants
-        .map(
-          (mp) {
-            // 自分の場合は初期リソース（100 mana, 0 gold）を設定、Botは後で設定
-            final initialResources = mp.userId == selfUserId
-                ? PlayerResources(
-                    currentMana: 100,
-                    maxMana: 100,
-                    gold: 0,
-                    ownedItemIds: [],
-                  )
-                : null;
+    final participants = match.allParticipants.map((mp) {
+      // 自分の場合は初期リソース（100 mana, 0 gold）を設定、Botは後で設定
+      final initialResources = mp.userId == selfUserId
+          ? PlayerResources(
+              currentMana: 100,
+              maxMana: 100,
+              gold: 0,
+              ownedItemIds: [],
+            )
+          : null;
 
-            return BattleParticipantState(
-              userId: mp.userId,
-              mechaId: mp.mechaId,
-              isBot: mp.isBot,
-              isSelf: mp.userId == selfUserId,
-              team: mp.team,
-              lane: mp.lane,
-              baseStats: mechaById(mp.mechaId).baseStats,
-              initialResources: initialResources,
-            );
-          },
-        )
-        .toList();
+      return BattleParticipantState(
+        userId: mp.userId,
+        mechaId: mp.mechaId,
+        isBot: mp.isBot,
+        isSelf: mp.userId == selfUserId,
+        team: mp.team,
+        lane: mp.lane,
+        baseStats: mechaById(mp.mechaId).baseStats,
+        initialResources: initialResources,
+      );
+    }).toList();
 
     final engine = BattleEngine(
       battleId: match.matchId,
@@ -275,11 +283,17 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // スキルツリーの修正倍率をロードして適用
     await _applySkillTreeModifiers(engine, selfUserId);
 
+    // 永続インベントリ（ItemService/InventoryScreen）の装備ボーナスをロードして適用
+    await _applyEquippedItemModifiers(engine, selfUserId);
+
     // スキル進行システムを初期化
     _skillCoordinator = BattleSkillProgressionCoordinator();
     _skillCoordinatorInitialized = true;
     for (final mp in match.allParticipants) {
-      _skillCoordinator.initializePlayer(playerId: mp.userId, mechaId: mp.mechaId);
+      _skillCoordinator.initializePlayer(
+        playerId: mp.userId,
+        mechaId: mp.mechaId,
+      );
     }
 
     _combatSub = engine.combatEvents.listen(_onCombatEvent);
@@ -347,6 +361,29 @@ class BattleViewModel extends StateNotifier<BattleState> {
     } catch (e) {
       // スキルツリーロード失敗時は修正倍率を適用しない（デフォルト1.0倍で継続）
       // エラーログの詳細はAnalyticsで送信済みのため、ここでは無言で続行
+    }
+  }
+
+  /// 永続インベントリ（ItemService/InventoryScreen、/users/{userId}/items）の
+  /// 装備ボーナスをロードしてエンジンに適用する。ItemBonus はパーセント値
+  /// （例: attackBonus=10.0 → +10%）なので乗算倍率へ変換して渡す。
+  /// 試合中に稼ぐ在庫アイテム（resources.ownedItemIds）とは別物で、
+  /// こちらは試合をまたいで持続する永続装備由来。ロード失敗時は修正なし
+  /// （デフォルト1.0倍）で継続。
+  Future<void> _applyEquippedItemModifiers(
+    BattleEngine engine,
+    String userId,
+  ) async {
+    try {
+      final bonus = await _itemService.getEquippedBonuses(userId);
+      engine.setEquippedItemModifiers(
+        userId,
+        atkMultiplier: 1.0 + (bonus.attackBonus ?? 0) / 100.0,
+        defMultiplier: 1.0 + (bonus.defenseBonus ?? 0) / 100.0,
+        hpMultiplier: 1.0 + (bonus.hpBonus ?? 0) / 100.0,
+      );
+    } catch (e) {
+      // インベントリロード失敗時は修正倍率を適用しない（デフォルト1.0倍で継続）
     }
   }
 
@@ -422,7 +459,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
   double _computeSkillCooldownRemaining() {
     if (_lastManualSkillAt == null) return 0.0;
-    final elapsedMs = DateTime.now().difference(_lastManualSkillAt!).inMilliseconds;
+    final elapsedMs = DateTime.now()
+        .difference(_lastManualSkillAt!)
+        .inMilliseconds;
     final remaining = _manualSkillCooldown.inMilliseconds - elapsedMs;
     return remaining > 0 ? remaining / 1000.0 : 0.0;
   }
@@ -436,7 +475,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
 
     engine.manualSkill(_selfUserId, targetIdsInRange);
     _lastManualSkillAt = DateTime.now();
-    state = state.copyWith(skillCooldownRemaining: _computeSkillCooldownRemaining());
+    state = state.copyWith(
+      skillCooldownRemaining: _computeSkillCooldownRemaining(),
+    );
     return true;
   }
 
@@ -549,7 +590,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
   void _updateSkillProgressionUI() {
     final states = <String, PlayerSkillStateSnapshot>{};
     for (final participant in (state.engine?.participants ?? [])) {
-      final skillState = _skillCoordinator.getPlayerSkillState(participant.userId);
+      final skillState = _skillCoordinator.getPlayerSkillState(
+        participant.userId,
+      );
       if (skillState != null) {
         states[participant.userId] = skillState;
       }
@@ -636,7 +679,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // Log skill progression battle summary
     final skillState = _skillCoordinator.getPlayerSkillState(_selfUserId);
     if (skillState != null) {
-      final battleDuration = DateTime.now().difference(_battleStartTime).inSeconds;
+      final battleDuration = DateTime.now()
+          .difference(_battleStartTime)
+          .inSeconds;
 
       unawaited(
         _skillProgressionAnalytics.logBattleSkillProgressionSummary(
@@ -686,29 +731,27 @@ class BattleViewModel extends StateNotifier<BattleState> {
       const currentTier = 'Bronze';
 
       // Check all achievement triggers
-      final unlockedAchievements =
-          await _triggerDetector.checkAllTriggersForBattle(
-        _selfUserId,
-        kills: kills,
-        totalKills: kills,
-        won: finishedBattle.result == BattleResult.win,
-        deaths: deaths,
-        assists: assists,
-        damageDealt: damageDealt,
-        totalBattles: totalBattles,
-        winCount: winCount,
-        statPoints: statPoints,
-        pathDiversity: pathDiversity,
-        seasonsParticipated: seasonsParticipated,
-        consistentSeasons: consistentSeasons,
-        currentTier: currentTier,
-      );
+      final unlockedAchievements = await _triggerDetector
+          .checkAllTriggersForBattle(
+            _selfUserId,
+            kills: kills,
+            totalKills: kills,
+            won: finishedBattle.result == BattleResult.win,
+            deaths: deaths,
+            assists: assists,
+            damageDealt: damageDealt,
+            totalBattles: totalBattles,
+            winCount: winCount,
+            statPoints: statPoints,
+            pathDiversity: pathDiversity,
+            seasonsParticipated: seasonsParticipated,
+            consistentSeasons: consistentSeasons,
+            currentTier: currentTier,
+          );
 
       if (unlockedAchievements.isNotEmpty) {
         // Update state with newly unlocked achievements
-        state = state.copyWith(
-          newlyUnlockedAchievements: unlockedAchievements,
-        );
+        state = state.copyWith(newlyUnlockedAchievements: unlockedAchievements);
 
         // Emit analytics events for each unlocked achievement
         for (final achievement in unlockedAchievements) {
@@ -745,7 +788,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // Calculate selection time and log analytics
     final eventTimestamp = _evolutionEventTimestamps[playerId];
     if (eventTimestamp != null) {
-      final selectionTimeMs = DateTime.now().difference(eventTimestamp).inMilliseconds;
+      final selectionTimeMs = DateTime.now()
+          .difference(eventTimestamp)
+          .inMilliseconds;
       final skillState = _skillCoordinator.getPlayerSkillState(playerId);
       final level = skillState?.currentLevel ?? 1;
 
@@ -776,7 +821,8 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // Track and log evolution switch analytics
     if (previousEvolution != null) {
       // Increment switch count for this player
-      _evolutionSwitchCounts[playerId] = (_evolutionSwitchCounts[playerId] ?? 0) + 1;
+      _evolutionSwitchCounts[playerId] =
+          (_evolutionSwitchCounts[playerId] ?? 0) + 1;
       final switchCount = _evolutionSwitchCounts[playerId]!;
 
       unawaited(
@@ -800,7 +846,9 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // Calculate selection time and log analytics for auto-selected evolution
     final eventTimestamp = _evolutionEventTimestamps[playerId];
     if (eventTimestamp != null) {
-      final selectionTimeMs = DateTime.now().difference(eventTimestamp).inMilliseconds;
+      final selectionTimeMs = DateTime.now()
+          .difference(eventTimestamp)
+          .inMilliseconds;
       final skillState = _skillCoordinator.getPlayerSkillState(playerId);
       final level = skillState?.currentLevel ?? 1;
 

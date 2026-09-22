@@ -126,14 +126,17 @@ service cloud.firestore {
         allow read, write: if isUserOwnData(userId);
       }
 
-      // Player inventory (ItemService: purchase/equip/unequip/sell). Never
-      // had a rule at all, so every read/write here previously fell through
-      // to the deny-all fallback below - the entire item shop/inventory/
-      // equip system was non-functional. Gold cost deduction isn't
-      // implemented anywhere yet (see item_shop_modal.dart), so this is
-      // fully client-trusted for now, same as season_data above.
+      // Player inventory (ItemService: purchase/equip/unequip/sell). New
+      // items are granted only by the item-purchase-validator Cloud
+      // Function, which deducts gold server-side after checking the
+      // catalog price and the user's actual balance (gold is denylisted
+      // for direct client writes above, same as eloRating) - a client
+      // create() here would bypass that check entirely. Equip/unequip/sell
+      // don't touch currency, so they stay client-writable.
       match /items/{itemId} {
-        allow read, write: if isUserOwnData(userId);
+        allow read: if isUserOwnData(userId);
+        allow create: if isServerUpdate();
+        allow update, delete: if isUserOwnData(userId);
       }
 
       // Daily/weekly quest progress (FirestoreService.savePlayerQuest and
@@ -309,6 +312,31 @@ service cloud.firestore {
         request.resource.data.userId == request.auth.uid;
 
       // Cloud Functions can update (mark internal processing state)
+      allow update: if isServerUpdate();
+
+      // No deletes (audit trail)
+      allow delete: if false;
+    }
+
+    // ============================================================================
+    // ITEM PURCHASES COLLECTION
+    // ============================================================================
+    // Rules: Same "submit a request, server processes it" pattern as
+    // battle_results above. The submitting user creates a request naming
+    // only which catalog item they want; item-purchase-validator (Cloud
+    // Function) looks up the real price server-side, checks their gold,
+    // and marks this document processed either way so the client's
+    // listener (with a timeout) knows the outcome.
+    // ============================================================================
+    match /item_purchases/{purchaseId} {
+      // User can read their own submitted purchase requests
+      allow read: if isAuthenticated() && resource.data.userId == request.auth.uid;
+
+      // User can request a purchase for themselves
+      allow create: if isAuthenticated() &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Only the Cloud Function marks a request processed
       allow update: if isServerUpdate();
 
       // No deletes (audit trail)

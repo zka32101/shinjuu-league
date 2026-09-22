@@ -49,6 +49,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             onPressed: () => context.push(AppRoutes.shop),
           ),
           IconButton(
+            icon: const Icon(Icons.inventory_2),
+            tooltip: 'インベントリ',
+            onPressed: () => context.push(AppRoutes.inventory),
+          ),
+          IconButton(
             icon: const Icon(Icons.leaderboard),
             tooltip: 'ランク',
             onPressed: () => context.push(AppRoutes.rank),

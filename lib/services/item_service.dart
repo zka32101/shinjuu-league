@@ -1,7 +1,20 @@
 import 'dart:async';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 import 'package:shinjuu_league/data/models/item_model.dart';
 import 'firestore_service.dart';
+
+/// アイテム購入リクエストの結果。
+/// gold フィールドはクライアントから直接書き込めない（Firestore Rules）ため、
+/// 購入は item_purchases ドキュメント経由でサーバー側検証（Cloud Function）に
+/// 委ねる。この enum はその検証結果をUI層に伝える。
+enum ItemPurchaseResult {
+  success,
+  insufficientGold,
+  invalidItem,
+  timeout,
+  error,
+}
 
 /// アイテムシステムサービス
 /// プレイヤーのアイテム在庫管理、装備管理、購入管理
@@ -11,7 +24,14 @@ class ItemService {
   factory ItemService() => _instance;
   ItemService._internal();
 
-  final FirestoreService _firestoreService = FirestoreService();
+  /// Test-only seam: builds a standalone (non-singleton) ItemService backed
+  /// by a caller-provided FirestoreService, matching ReplayService's pattern.
+  ItemService.forFirestore(FirestoreService firestoreService)
+    : _firestoreServiceOverride = firestoreService;
+
+  FirestoreService? _firestoreServiceOverride;
+  FirestoreService get _firestoreService =>
+      _firestoreServiceOverride ??= FirestoreService();
 
   /// ユーザーの所有アイテム一覧を取得
   Future<List<Item>> getUserItems(String userId) async {
@@ -46,46 +66,52 @@ class ItemService {
     }
   }
 
-  /// アイテムを購入して在庫に追加
-  Future<bool> purchaseItem(
+  /// アイテムを購入（サーバー側検証）
+  /// gold フィールドはクライアントから直接書き込めない（Firestore Rules、
+  /// 他の通貨/統計フィールドと同様）ため、item_purchases ドキュメントを
+  /// 送信して item-purchase-validator Cloud Function にゴールド消費と
+  /// アイテム付与を委ねる。これは battle_results → elo-validator.ts と
+  /// 同じサーバー権威検証パターン。Cloud Function は独自の価格カタログを
+  /// 参照するため、クライアントが送るのは catalogItemId のみで価格は
+  /// 一切信用しない。
+  Future<ItemPurchaseResult> purchaseItem(
     String userId,
-    String catalogItemId,
-    int goldCost,
-  ) async {
+    String catalogItemId, {
+    Duration timeout = const Duration(seconds: 15),
+  }) async {
+    if (ItemCatalog.itemById(catalogItemId) == null) {
+      return ItemPurchaseResult.invalidItem;
+    }
+
     try {
-      final catalogItem = ItemCatalog.itemById(catalogItemId);
-      if (catalogItem == null) {
-        if (kDebugMode) {
-          debugPrint('Item not found in catalog: $catalogItemId');
-        }
-        return false;
+      final purchaseRef = await _firestoreService.db
+          .collection('item_purchases')
+          .add({
+            'userId': userId,
+            'catalogItemId': catalogItemId,
+            'timestamp': FieldValue.serverTimestamp(),
+          });
+
+      final processedSnap = await purchaseRef
+          .snapshots()
+          .firstWhere((snap) => snap.data()?['processed'] == true)
+          .timeout(timeout);
+
+      final data = processedSnap.data();
+      if (data?['success'] == true) {
+        return ItemPurchaseResult.success;
       }
-
-      // アイテムインスタンスを作成（既に所有しているか確認）
-      final newItem = catalogItem.copyWith(
-        itemId: '${catalogItemId}_${DateTime.now().millisecondsSinceEpoch}',
-        acquiredAt: DateTime.now(),
-      );
-
-      // Firestore に追加
-      await _firestoreService.db
-          .collection('users')
-          .doc(userId)
-          .collection('items')
-          .doc(newItem.itemId)
-          .set(newItem.toJson());
-
-      // ゴール消費をユーザー側で処理（呼び出し元が責任を持つ）
-      if (kDebugMode) {
-        debugPrint('Item purchased: $catalogItemId, cost: $goldCost');
+      if (data?['reason'] == 'insufficient_gold') {
+        return ItemPurchaseResult.insufficientGold;
       }
-
-      return true;
+      return ItemPurchaseResult.error;
+    } on TimeoutException {
+      return ItemPurchaseResult.timeout;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error purchasing item: $e');
       }
-      return false;
+      return ItemPurchaseResult.error;
     }
   }
 
@@ -97,7 +123,9 @@ class ItemService {
       final equippedItems = await getEquippedItems(userId);
 
       // 既に装備中の場合はスキップ
-      final isAlreadyEquipped = equippedItems.any((item) => item.itemId == itemId);
+      final isAlreadyEquipped = equippedItems.any(
+        (item) => item.itemId == itemId,
+      );
       if (isAlreadyEquipped) {
         if (kDebugMode) {
           debugPrint('Item already equipped: $itemId');
@@ -131,8 +159,9 @@ class ItemService {
       final item = Item.fromJson(itemDoc.data()!);
 
       // 同じタイプのアイテムが既に装備中の場合は外す
-      final sameTypeEquipped =
-          equippedItems.where((i) => i.type == item.type).toList();
+      final sameTypeEquipped = equippedItems
+          .where((i) => i.type == item.type)
+          .toList();
       for (final equipped in sameTypeEquipped) {
         await unequipItem(userId, equipped.itemId);
       }
@@ -258,13 +287,15 @@ class ItemService {
           'hp': bonuses.hpBonus,
         },
         'items': allItems
-            .map((i) => {
-                  'id': i.itemId,
-                  'name': i.name,
-                  'type': i.type.toString(),
-                  'rarity': i.rarity.toString(),
-                  'equipped': i.isEquipped,
-                })
+            .map(
+              (i) => {
+                'id': i.itemId,
+                'name': i.name,
+                'type': i.type.toString(),
+                'rarity': i.rarity.toString(),
+                'equipped': i.isEquipped,
+              },
+            )
             .toList(),
       };
     } catch (e) {

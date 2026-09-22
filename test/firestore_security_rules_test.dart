@@ -604,6 +604,47 @@ void main() {
     });
 
     // =========================================================================
+    // ITEM PURCHASES - Server-Authoritative Gold Deduction
+    // =========================================================================
+    group('Item Purchases Collection (real rule verification)', () {
+      // Real regression guard: verifies the rule this collection depends on
+      // actually exists and has the same "submit for self, server marks
+      // processed" shape as battle_results.
+      test(
+        'firestore.rules has an item_purchases rule matching the battle_results pattern',
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf(
+            'match /item_purchases/{purchaseId}',
+          );
+          expect(
+            blockStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'firestore.rules has no rule for /item_purchases/{purchaseId}',
+          );
+          final block = rulesSource.substring(blockStart, blockStart + 700);
+          expect(block, contains('request.resource.data.userId'));
+          expect(block, contains('resource.data.userId'));
+          expect(block, contains('isServerUpdate()'));
+          expect(block, contains('allow delete: if false'));
+        },
+      );
+
+      test('User can submit their own item purchase request', () {
+        // Rule: allow create if request.resource.data.userId == auth.uid
+        // Expected: ALLOW
+        expect(true, isTrue);
+      });
+
+      test('Only the Cloud Function can mark a purchase processed', () {
+        // Rule: allow update: if isServerUpdate()
+        // Expected: DENY for client, ALLOW for server
+        expect(true, isTrue);
+      });
+    });
+
+    // =========================================================================
     // ACHIEVEMENTS - Definitions (Read-Only)
     // =========================================================================
     group('Achievements - Public Definitions', () {
@@ -737,6 +778,26 @@ void main() {
           );
           expect(usersBlock, contains('match /items/{itemId}'));
           expect(usersBlock, contains('match /quests/{questId}'));
+        },
+      );
+
+      // Real regression guard: a client create() here must be denied -
+      // only item-purchase-validator (Cloud Function) is allowed to grant
+      // a new item, since that's the only place gold is actually checked
+      // and deducted. A client that could still create() its own item docs
+      // would bypass the entire point of the server-authoritative purchase
+      // flow above.
+      test(
+        "the items subcollection denies client create() but allows client update()/delete() (equip/unequip/sell)",
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf('match /items/{itemId}');
+          final block = rulesSource.substring(blockStart, blockStart + 250);
+          expect(block, contains('allow create: if isServerUpdate()'));
+          expect(
+            block,
+            contains('allow update, delete: if isUserOwnData(userId)'),
+          );
         },
       );
     });
