@@ -173,12 +173,16 @@ class _GuildTab extends ConsumerStatefulWidget {
 class _GuildTabState extends ConsumerState<_GuildTab> {
   final _nameController = TextEditingController();
   final _postController = TextEditingController();
+  final _searchController = TextEditingController();
   bool _watchStarted = false;
+  List<Guild> _searchResults = const [];
+  bool _isSearching = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     _postController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -205,6 +209,43 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text('ギルド作成に失敗しました: $e')));
+    }
+  }
+
+  Future<void> _searchGuilds(String query) async {
+    if (query.trim().isEmpty) {
+      setState(() => _searchResults = const []);
+      return;
+    }
+    setState(() => _isSearching = true);
+    try {
+      final results = await ref
+          .read(guildViewModelProvider.notifier)
+          .searchGuilds(query.trim());
+      if (!mounted) return;
+      setState(() {
+        _searchResults = results;
+        _isSearching = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSearching = false);
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('検索に失敗しました: $e')));
+    }
+  }
+
+  Future<void> _joinGuild(Guild guild, String userId) async {
+    try {
+      await ref
+          .read(guildViewModelProvider.notifier)
+          .joinGuild(guild.guildId, userId);
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('参加に失敗しました: $e')));
     }
   }
 
@@ -253,15 +294,57 @@ class _GuildTabState extends ConsumerState<_GuildTab> {
     final guildState = ref.watch(guildViewModelProvider);
 
     if (currentUser.guildId == null) {
-      return Padding(
+      return SingleChildScrollView(
         padding: const EdgeInsets.all(24),
         child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             const Icon(Icons.groups_2, size: 64, color: Colors.grey),
             const SizedBox(height: 16),
-            const Text('まだギルドに所属していません', style: TextStyle(color: Colors.grey)),
+            const Text(
+              'まだギルドに所属していません',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.grey),
+            ),
             const SizedBox(height: 24),
+            Text('ギルドを探して参加', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
+            TextField(
+              controller: _searchController,
+              decoration: const InputDecoration(
+                labelText: 'ギルド名で検索',
+                border: OutlineInputBorder(),
+                suffixIcon: Icon(Icons.search),
+              ),
+              onSubmitted: _searchGuilds,
+            ),
+            if (_isSearching)
+              const Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: Center(child: CircularProgressIndicator()),
+              )
+            else if (_searchResults.isNotEmpty)
+              ..._searchResults.map(
+                (guild) => Card(
+                  child: ListTile(
+                    title: Text(guild.name),
+                    subtitle: Text(
+                      'メンバー ${guild.memberIds.length}/${guild.maxMembers}',
+                    ),
+                    trailing: TextButton(
+                      onPressed: guild.isFull
+                          ? null
+                          : () => _joinGuild(guild, currentUser.uid),
+                      child: Text(guild.isFull ? '満員' : '参加'),
+                    ),
+                  ),
+                ),
+              ),
+            const SizedBox(height: 24),
+            const Divider(),
+            const SizedBox(height: 12),
+            Text('ギルドを新規作成', style: Theme.of(context).textTheme.titleMedium),
+            const SizedBox(height: 12),
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(

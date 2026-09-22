@@ -205,9 +205,37 @@ service cloud.firestore {
       // Anyone can read guild info (for search/join flow)
       allow read: if true;
 
-      // Guild owner can update guild settings
-      allow update: if isAuthenticated() &&
-        get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid;
+      // Guild owner can update anything (settings, membership, etc).
+      // Any other authenticated user can also update - but ONLY by adding
+      // or removing exactly their own uid from memberIds (self-service
+      // join/leave, FirestoreService.joinGuild()/leaveGuild(), called from
+      // GuildViewModel/friends_screen.dart's join button and "脱退" leave
+      // button). Before this, only the owner could update the document at
+      // all, so a non-owner member clicking "脱退" (leave) - a live,
+      // reachable button - always failed, and joinGuild() (dead code with
+      // no caller until this change wires one up) would have failed too
+      // the moment it was ever called.
+      allow update: if isAuthenticated() && (
+        get(/databases/$(database)/documents/guilds/$(guildId)).data.ownerId == request.auth.uid ||
+        (
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds']) &&
+          (
+            // Self-join: I wasn't a member, the new list is the old list
+            // plus exactly me, and the guild isn't already full.
+            (!resource.data.memberIds.hasAny([request.auth.uid]) &&
+              request.resource.data.memberIds.hasAll(resource.data.memberIds) &&
+              request.resource.data.memberIds.hasAny([request.auth.uid]) &&
+              request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1 &&
+              request.resource.data.memberIds.size() <= resource.data.maxMembers) ||
+            // Self-leave: I was a member, the new list is the old list
+            // minus exactly me.
+            (resource.data.memberIds.hasAny([request.auth.uid]) &&
+              resource.data.memberIds.hasAll(request.resource.data.memberIds) &&
+              !request.resource.data.memberIds.hasAny([request.auth.uid]) &&
+              resource.data.memberIds.size() == request.resource.data.memberIds.size() + 1)
+          )
+        )
+      );
 
       // Guild creation is a plain client write (FirestoreService.createGuild(),
       // called from GuildViewModel.createGuild() - there is no Cloud
