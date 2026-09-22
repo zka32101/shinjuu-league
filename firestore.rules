@@ -264,6 +264,55 @@ service cloud.firestore {
     }
 
     // ============================================================================
+    // MATCHMAKING QUEUE / MATCHES COLLECTIONS
+    // ============================================================================
+    // Rules: There is no dedicated matchmaking server - MatchmakingService
+    // runs a client-driven protocol over these two collections instead.
+    // A searching player writes their own /matchmaking_queue/{userId} entry,
+    // then periodically looks for another compatible waiting entry and, on
+    // finding one, claims it (in a transaction, so it can't be double-claimed)
+    // by writing a /matchmaking_matches/{matchId} document and deleting the
+    // claimed player's queue entry. The claimed player discovers the match by
+    // querying matchmaking_matches for a document listing their own uid.
+    // Neither collection previously had a rule at all.
+    // ============================================================================
+    match /matchmaking_queue/{userId} {
+      // Every authenticated player must be able to see other players'
+      // waiting entries to find opponents - the fields (userId/mode/
+      // eloRating/mechaId/joinedAt) carry nothing sensitive.
+      allow read: if isAuthenticated();
+
+      // A player can only create their own waiting entry
+      allow create: if isAuthenticated() && userId == request.auth.uid &&
+        request.resource.data.userId == request.auth.uid;
+
+      // Claiming another player's entry requires deleting it (not just
+      // your own, when you leave without matching) - so this is
+      // intentionally not owner-restricted. Worst case a malicious client
+      // deletes someone else's entry without actually matching them,
+      // which only forces an earlier bot-filled fallback - no fairness or
+      // security impact, since Elo/currency are never touched here.
+      allow delete: if isAuthenticated();
+
+      allow update: if false;
+    }
+
+    match /matchmaking_matches/{matchId} {
+      // Only the real (non-bot) participants of this match can read it
+      allow read: if isAuthenticated() &&
+        request.auth.uid in resource.data.participantUserIds;
+
+      // The player who claims a match creates this document, and must
+      // name themselves as one of its participants (so an unrelated
+      // client can't fabricate a match involving someone else)
+      allow create: if isAuthenticated() &&
+        request.auth.uid in request.resource.data.participantUserIds;
+
+      allow update: if false;
+      allow delete: if false;
+    }
+
+    // ============================================================================
     // BATTLES COLLECTION
     // ============================================================================
     // Rules: Battle owner can create/read/update their own battle record
