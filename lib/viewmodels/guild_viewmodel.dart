@@ -87,6 +87,24 @@ class GuildViewModel extends StateNotifier<GuildState> {
     state = GuildState.initial();
   }
 
+  /// ギルド名で参加先を検索（参加フロー用）
+  Future<List<Guild>> searchGuilds(String query) {
+    return _firestoreService.searchGuildsByName(query);
+  }
+
+  Future<void> joinGuild(String guildId, String userId) async {
+    state = state.copyWith(isLoading: true, error: null);
+    try {
+      await _firestoreService.joinGuild(guildId, userId);
+      await _firestoreService.updateUserGuildId(userId, guildId);
+      state = state.copyWith(isLoading: false);
+      watchGuild(guildId);
+    } catch (e) {
+      state = state.copyWith(isLoading: false, error: '$e');
+      rethrow;
+    }
+  }
+
   Future<void> postMessage({
     required String authorId,
     required String authorName,

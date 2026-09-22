@@ -413,6 +413,22 @@ class FirestoreService {
     }
   }
 
+  /// ギルド名の前方一致検索（参加先を探すフロー用）
+  Future<List<Guild>> searchGuildsByName(String query) async {
+    if (query.isEmpty) return [];
+    try {
+      final snapshot = await _db
+          .collection('guilds')
+          .where('name', isGreaterThanOrEqualTo: query)
+          .where('name', isLessThan: '$query')
+          .limit(20)
+          .get();
+      return snapshot.docs.map((doc) => Guild.fromJson(doc.data())).toList();
+    } catch (e) {
+      throw 'Failed to search guilds: $e';
+    }
+  }
+
   Stream<Guild?> watchGuild(String guildId) {
     return _db
         .collection('guilds')

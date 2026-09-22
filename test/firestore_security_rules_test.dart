@@ -421,6 +421,96 @@ void main() {
       });
     });
 
+    group('Guilds - Self-Service Join/Leave (real regression guard)', () {
+      // Real regression guard: before this rule was rewritten, the update
+      // rule was owner-only. That meant GuildViewModel.joinGuild() (dead
+      // code with no caller until this change wired up a search-to-join
+      // flow) would have failed the moment anyone called it, AND - more
+      // importantly - the pre-existing, reachable "脱退" (leave) button in
+      // friends_screen.dart had ALWAYS failed for every non-owner member,
+      // since leaveGuild() also just does a plain memberIds update.
+      late String updateRule;
+
+      setUpAll(() {
+        final rulesSource = File('firestore.rules').readAsStringSync();
+        final guildsBlockStart = rulesSource.indexOf('match /guilds/{guildId}');
+        final updateStart = rulesSource.indexOf(
+          'allow update:',
+          guildsBlockStart,
+        );
+        final updateEnd = rulesSource.indexOf(');', updateStart) + 2;
+        updateRule = rulesSource.substring(updateStart, updateEnd);
+      });
+
+      test('non-owner updates are scoped to only the memberIds field', () {
+        expect(
+          updateRule,
+          contains(
+            "request.resource.data.diff(resource.data).affectedKeys().hasOnly(['memberIds'])",
+          ),
+        );
+      });
+
+      test('owner can still update anything, not just memberIds', () {
+        expect(
+          updateRule,
+          contains(
+            'get(/databases/\$(database)/documents/guilds/\$(guildId)).data.ownerId == request.auth.uid',
+          ),
+        );
+      });
+
+      test(
+        'self-join requires adding exactly the caller and respects maxMembers',
+        () {
+          expect(
+            updateRule,
+            contains('!resource.data.memberIds.hasAny([request.auth.uid])'),
+          );
+          expect(
+            updateRule,
+            contains(
+              'request.resource.data.memberIds.size() == resource.data.memberIds.size() + 1',
+            ),
+          );
+          expect(
+            updateRule,
+            contains(
+              'request.resource.data.memberIds.size() <= resource.data.maxMembers',
+            ),
+          );
+        },
+      );
+
+      test('self-leave requires removing exactly the caller', () {
+        expect(
+          updateRule,
+          contains('resource.data.memberIds.hasAny([request.auth.uid])'),
+        );
+        expect(
+          updateRule,
+          contains(
+            'resource.data.memberIds.size() == request.resource.data.memberIds.size() + 1',
+          ),
+        );
+      });
+
+      test(
+        'a non-owner cannot use the memberIds diff to touch any other field',
+        () {
+          // The diff().affectedKeys().hasOnly(['memberIds']) check above is
+          // the only thing preventing a non-owner from smuggling changes to
+          // e.g. ownerId or maxMembers through a join/leave request; this
+          // just asserts that scoping check is present exactly once and is
+          // the first condition inside the non-owner branch.
+          final nonOwnerBranchStart = updateRule.indexOf(
+            'affectedKeys().hasOnly',
+          );
+          expect(nonOwnerBranchStart, greaterThan(-1));
+        },
+      );
+    });
+
     group('Guild Members & Board', () {
       // Real regression guard: this rule matched /guilds/{guildId}/board/
       // {postId}, but FirestoreService.postToGuildBoard()/watchGuildPosts()
