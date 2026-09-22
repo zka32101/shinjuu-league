@@ -756,6 +756,59 @@ void main() {
     });
 
     // =========================================================================
+    // MATCHMAKING QUEUE / MATCHES - Client-Driven Matchmaking Protocol
+    // =========================================================================
+    group('Matchmaking Collections (real rule verification)', () {
+      // Real regression guard: both collections never had a rule at all
+      // before MatchmakingService actually wrote to them, so the whole
+      // real-player matching path (findMatch's queue join/claim protocol)
+      // would have failed with a permission error and silently fallen back
+      // to always-bot matches (the same failure mode _searchQueueForOpponents'
+      // own try/catch was written to tolerate).
+      test(
+        'matchmaking_queue allows any authenticated read but only self create, and cross-user delete for claiming',
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf(
+            'match /matchmaking_queue/{userId}',
+          );
+          expect(
+            blockStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'firestore.rules has no rule for /matchmaking_queue/{userId}',
+          );
+          final block = rulesSource.substring(blockStart, blockStart + 1300);
+          expect(block, contains('allow read: if isAuthenticated()'));
+          expect(block, contains('userId == request.auth.uid'));
+          // Claiming an opponent means deleting *their* queue entry, not
+          // your own, so this must not be restricted to the entry's owner.
+          expect(block, contains('allow delete: if isAuthenticated()'));
+        },
+      );
+
+      test(
+        'matchmaking_matches only lets a participant read it, and only a named participant can create it',
+        () {
+          final rulesSource = File('firestore.rules').readAsStringSync();
+          final blockStart = rulesSource.indexOf(
+            'match /matchmaking_matches/{matchId}',
+          );
+          expect(
+            blockStart,
+            greaterThanOrEqualTo(0),
+            reason:
+                'firestore.rules has no rule for /matchmaking_matches/{matchId}',
+          );
+          final block = rulesSource.substring(blockStart, blockStart + 700);
+          expect(block, contains('participantUserIds'));
+          expect(block, contains('allow update: if false'));
+          expect(block, contains('allow delete: if false'));
+        },
+      );
+    });
+
+    // =========================================================================
     // USER SUBCOLLECTIONS - Items & Quests (real rule verification)
     // =========================================================================
     group('User Items & Quests Subcollections (real rule verification)', () {
