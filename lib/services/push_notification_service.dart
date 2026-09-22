@@ -20,6 +20,7 @@ class PushNotificationService {
   FirebaseMessaging? _messaging;
   late final FlutterLocalNotificationsPlugin _localNotifications =
       FlutterLocalNotificationsPlugin();
+  StreamSubscription<User?>? _authStateSubscription;
 
   /// 初期化
   Future<void> init() async {
@@ -61,6 +62,22 @@ class PushNotificationService {
       // トークンリフレッシュ時にキャッシュを更新
       messaging.onTokenRefresh.listen((token) => _onTokenRefresh(token));
 
+      // main() は signInAnonymously() より前に init() を呼ぶため、初回起動時は
+      // 上の _saveFCMToken 呼び出し時点で currentUser が常に null で、トークンが
+      // 保存されずに静かに失われていた（onTokenRefresh はトークンローテーション時
+      // にしか発火せず、ログイン直後には発火しない）。認証状態の変化を監視して、
+      // サインインが完了した時点で改めてトークンを取得・保存する。
+      await _authStateSubscription?.cancel();
+      _authStateSubscription = FirebaseAuth.instance.authStateChanges().listen((
+        user,
+      ) async {
+        if (user == null) return;
+        final currentToken = await messaging.getToken();
+        if (currentToken != null) {
+          await _saveFCMToken(currentToken);
+        }
+      });
+
       // ローカル通知の初期化
       await _initializeLocalNotifications();
 
@@ -95,7 +112,9 @@ class PushNotificationService {
         final status = await Permission.notification.request();
 
         if (kDebugMode) {
-          debugPrint('Android 13+ notification permission: ${status.toString()}');
+          debugPrint(
+            'Android 13+ notification permission: ${status.toString()}',
+          );
         }
 
         if (status.isDenied) {
@@ -128,10 +147,10 @@ class PushNotificationService {
 
     const DarwinInitializationSettings iosSettings =
         DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
-    );
+          requestAlertPermission: true,
+          requestBadgePermission: true,
+          requestSoundPermission: true,
+        );
 
     const InitializationSettings settings = InitializationSettings(
       android: androidSettings,
@@ -205,13 +224,13 @@ class PushNotificationService {
     try {
       const AndroidNotificationDetails androidDetails =
           AndroidNotificationDetails(
-        'shinjuu_league_channel',
-        'Game Notifications',
-        channelDescription: 'Important game notifications and achievements',
-        importance: Importance.max,
-        priority: Priority.high,
-        showWhen: true,
-      );
+            'shinjuu_league_channel',
+            'Game Notifications',
+            channelDescription: 'Important game notifications and achievements',
+            importance: Importance.max,
+            priority: Priority.high,
+            showWhen: true,
+          );
 
       const DarwinNotificationDetails iosDetails = DarwinNotificationDetails(
         presentAlert: true,
@@ -224,13 +243,7 @@ class PushNotificationService {
         iOS: iosDetails,
       );
 
-      await _localNotifications.show(
-        0,
-        title,
-        body,
-        details,
-        payload: payload,
-      );
+      await _localNotifications.show(0, title, body, details, payload: payload);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('Error showing local notification: $e');
@@ -279,7 +292,9 @@ class PushNotificationService {
       // Firebase未初期化の場合（テスト環境など）は安全にスキップ
       if (_messaging == null) {
         if (kDebugMode) {
-          debugPrint('PushNotificationService not initialized, skipping topic subscription: $topic');
+          debugPrint(
+            'PushNotificationService not initialized, skipping topic subscription: $topic',
+          );
         }
         return;
       }
@@ -300,7 +315,9 @@ class PushNotificationService {
       // Firebase未初期化の場合（テスト環境など）は安全にスキップ
       if (_messaging == null) {
         if (kDebugMode) {
-          debugPrint('PushNotificationService not initialized, skipping topic unsubscription: $topic');
+          debugPrint(
+            'PushNotificationService not initialized, skipping topic unsubscription: $topic',
+          );
         }
         return;
       }
@@ -320,26 +337,21 @@ class PushNotificationService {
     try {
       // Firebase未初期化の場合（テスト環境など）はエラーを返す
       if (_messaging == null) {
-        return {
-          'error': 'PushNotificationService not initialized',
-        };
+        return {'error': 'PushNotificationService not initialized'};
       }
 
       final settings = await _messaging!.getNotificationSettings();
       final token = await _messaging!.getToken();
 
       return {
-        'authorization_status':
-            settings.authorizationStatus.toString(),
+        'authorization_status': settings.authorizationStatus.toString(),
         'alert': settings.alert.toString(),
         'sound': settings.sound.toString(),
         'badge': settings.badge.toString(),
         'fcm_token': token ?? 'not_available',
       };
     } catch (e) {
-      return {
-        'error': e.toString(),
-      };
+      return {'error': e.toString()};
     }
   }
 }
@@ -368,10 +380,7 @@ class NotificationPayload {
   final String type;
   final Map<String, dynamic> data;
 
-  NotificationPayload({
-    required this.type,
-    required this.data,
-  });
+  NotificationPayload({required this.type, required this.data});
 
   factory NotificationPayload.fromJson(Map<String, dynamic> json) {
     return NotificationPayload(
@@ -380,8 +389,5 @@ class NotificationPayload {
     );
   }
 
-  Map<String, dynamic> toJson() => {
-    'type': type,
-    'data': data,
-  };
+  Map<String, dynamic> toJson() => {'type': type, 'data': data};
 }

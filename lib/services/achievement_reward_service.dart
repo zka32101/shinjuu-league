@@ -6,9 +6,8 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 class AchievementRewardService {
   final FirestoreService _firestoreService;
 
-  AchievementRewardService({
-    required FirestoreService firestoreService,
-  }) : _firestoreService = firestoreService;
+  AchievementRewardService({required FirestoreService firestoreService})
+    : _firestoreService = firestoreService;
 
   /// Process unlock and distribute rewards
   /// Returns the total rewards granted
@@ -23,6 +22,7 @@ class AchievementRewardService {
       await _firestoreService.markAchievementUnlocked(
         userId,
         achievement.achievementId,
+        achievementName: achievement.name,
       );
 
       // Apply currency reward
@@ -70,7 +70,11 @@ class AchievementRewardService {
       case AchievementRewardTier.gold:
         return ['cosmetic_badge_gold', 'cosmetic_frame_gold'];
       case AchievementRewardTier.platinum:
-        return ['cosmetic_badge_platinum', 'cosmetic_frame_platinum', 'cosmetic_border_platinum'];
+        return [
+          'cosmetic_badge_platinum',
+          'cosmetic_frame_platinum',
+          'cosmetic_border_platinum',
+        ];
       case AchievementRewardTier.common:
         return [];
       case AchievementRewardTier.uncommon:
@@ -82,7 +86,11 @@ class AchievementRewardService {
       case AchievementRewardTier.legendary:
         return ['cosmetic_badge_legendary', 'cosmetic_frame_legendary'];
       case AchievementRewardTier.mythic:
-        return ['cosmetic_badge_mythic', 'cosmetic_frame_mythic', 'cosmetic_border_mythic'];
+        return [
+          'cosmetic_badge_mythic',
+          'cosmetic_frame_mythic',
+          'cosmetic_border_mythic',
+        ];
     }
   }
 
@@ -106,7 +114,10 @@ class AchievementRewardService {
   }
 
   /// Apply cosmetic reward to user
-  Future<void> _applyCosmeticReward(String userId, List<String> cosmetics) async {
+  Future<void> _applyCosmeticReward(
+    String userId,
+    List<String> cosmetics,
+  ) async {
     try {
       for (final cosmetic in cosmetics) {
         await _firestoreService.addUserCosmetic(userId, cosmetic);

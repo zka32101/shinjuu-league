@@ -17,14 +17,19 @@ class MockFirestoreService implements FirestoreService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+  Future<void> markAchievementUnlocked(
+    String userId,
+    String achievementId, {
+    String? achievementName,
+  }) async {
     _achievements.putIfAbsent(userId, () => {}).add(achievementId);
   }
 
   @override
   Future<void> incrementUserCurrency(String userId, int amount) async {
     _userData[userId] ??= <String, dynamic>{'currency': 0};
-    _userData[userId]!['currency'] = (_userData[userId]!['currency'] ?? 0) + amount;
+    _userData[userId]!['currency'] =
+        (_userData[userId]!['currency'] ?? 0) + amount;
   }
 
   @override
@@ -159,7 +164,10 @@ void main() {
       await service.processUnlock(testUserId, achievement);
 
       // Mock tracks achievements via _achievements map
-      expect(firestoreService._achievements[testUserId], contains('first_blood'));
+      expect(
+        firestoreService._achievements[testUserId],
+        contains('first_blood'),
+      );
     });
 
     test('accumulates rewards for multiple achievements', () async {
@@ -186,9 +194,15 @@ void main() {
     });
 
     test('cosmetic rewards vary by tier', () {
-      final bronzeRewards = service.debugGetRewardInfo(AchievementsCatalog.firstBlood);
-      final silverRewards = service.debugGetRewardInfo(AchievementsCatalog.statMaster);
-      final goldRewards = service.debugGetRewardInfo(AchievementsCatalog.seasonWarrior);
+      final bronzeRewards = service.debugGetRewardInfo(
+        AchievementsCatalog.firstBlood,
+      );
+      final silverRewards = service.debugGetRewardInfo(
+        AchievementsCatalog.statMaster,
+      );
+      final goldRewards = service.debugGetRewardInfo(
+        AchievementsCatalog.seasonWarrior,
+      );
 
       expect((bronzeRewards['cosmetics'] as List).isEmpty, isTrue);
       expect((silverRewards['cosmetics'] as List).length, equals(1));
