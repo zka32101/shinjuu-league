@@ -531,11 +531,20 @@ class FirestoreService {
   }
 
   // ============ Achievement Methods ============
-  /// Mark an achievement as unlocked for a user
+  /// Mark an achievement as unlocked for a user.
+  ///
+  /// [achievementName] is stored alongside the ID purely as display text
+  /// for the push notification Cloud Function trigger
+  /// (functions/src/push-notifications.ts's notifyAchievementUnlocked) -
+  /// it isn't security- or economy-sensitive (unlike gold/eloRating), so
+  /// trusting the client's copy of the catalog's display name here (rather
+  /// than duplicating the whole achievement catalog server-side, the way
+  /// item-purchase-validator.ts must for prices) is an acceptable tradeoff.
   Future<void> markAchievementUnlocked(
     String userId,
-    String achievementId,
-  ) async {
+    String achievementId, {
+    String? achievementName,
+  }) async {
     try {
       await _db
           .collection('users')
@@ -544,6 +553,7 @@ class FirestoreService {
           .doc(achievementId)
           .set({
             'achievementId': achievementId,
+            if (achievementName != null) 'name': achievementName,
             'unlockedAt': FieldValue.serverTimestamp(),
             'isHidden': false,
           }, SetOptions(merge: true));

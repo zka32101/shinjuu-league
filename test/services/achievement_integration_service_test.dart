@@ -17,12 +17,12 @@ import 'package:shinjuu_league/services/firestore_service.dart';
 // achievement_detector_service_test.dart.)
 class MockBattleEngineService extends BattleEngine {
   MockBattleEngineService()
-      : super(
-          battleId: 'test_battle',
-          mode: BattleMode.quick,
-          mapId: 'test_map',
-          participants: const [],
-        );
+    : super(
+        battleId: 'test_battle',
+        mode: BattleMode.quick,
+        mapId: 'test_map',
+        participants: const [],
+      );
 
   final _testCombatController = StreamController<CombatEvent>.broadcast();
   final _testDamageController = StreamController<DamageEvent>.broadcast();
@@ -55,14 +55,19 @@ class MockFirestoreService implements FirestoreService {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 
   @override
-  Future<void> markAchievementUnlocked(String userId, String achievementId) async {
+  Future<void> markAchievementUnlocked(
+    String userId,
+    String achievementId, {
+    String? achievementName,
+  }) async {
     // Mock implementation
   }
 
   @override
   Future<void> incrementUserCurrency(String userId, int amount) async {
     _userData[userId] ??= {'currency': 0};
-    _userData[userId]!['currency'] = (_userData[userId]!['currency'] ?? 0) + amount;
+    _userData[userId]!['currency'] =
+        (_userData[userId]!['currency'] ?? 0) + amount;
   }
 
   @override
@@ -124,7 +129,9 @@ void main() {
       toastService = AchievementToastNotificationService();
 
       detector = AchievementDetectorService(battleEngine: battleEngine);
-      rewardService = AchievementRewardService(firestoreService: firestoreService);
+      rewardService = AchievementRewardService(
+        firestoreService: firestoreService,
+      );
 
       service = AchievementIntegrationService(
         detector: detector,

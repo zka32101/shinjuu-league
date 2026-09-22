@@ -10,14 +10,6 @@ service cloud.firestore {
       return request.auth.uid == userId;
     }
 
-    function hasOnlyAllowedUserFields() {
-      // Users can only update non-sensitive fields (profile, selectedMechaId, etc)
-      // Elo/stats changes are ONLY via Cloud Functions
-      let allowedFields = ['name', 'selectedMechaId', 'guildId', 'cohortProperties', 'fcmTokens'];
-      let updatingFields = request.resource.data.keys();
-      return updatingFields.hasAll(allowedFields) || updatingFields.size() == allowedFields.size();
-    }
-
     function isServerUpdate() {
       // Only Cloud Functions (no auth.uid) can perform these writes
       return request.auth == null;
