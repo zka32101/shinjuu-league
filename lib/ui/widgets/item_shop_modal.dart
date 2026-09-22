@@ -11,10 +11,7 @@ import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 class ItemShopModal extends ConsumerStatefulWidget {
   final Function()? onPurchaseComplete;
 
-  const ItemShopModal({
-    Key? key,
-    this.onPurchaseComplete,
-  }) : super(key: key);
+  const ItemShopModal({Key? key, this.onPurchaseComplete}) : super(key: key);
 
   /// モーダルを表示するヘルパーメソッド
   static Future<void> show(
@@ -31,9 +28,8 @@ class ItemShopModal extends ConsumerStatefulWidget {
           topRight: Radius.circular(16),
         ),
       ),
-      builder: (context) => ItemShopModal(
-        onPurchaseComplete: onPurchaseComplete,
-      ),
+      builder: (context) =>
+          ItemShopModal(onPurchaseComplete: onPurchaseComplete),
     );
   }
 
@@ -85,9 +81,7 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: AppColors.dark2,
-        border: Border(
-          bottom: BorderSide(color: AppColors.dark3),
-        ),
+        border: Border(bottom: BorderSide(color: AppColors.dark3)),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -95,10 +89,7 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'アイテムショップ',
-                style: Theme.of(context).textTheme.titleLarge,
-              ),
+              Text('アイテムショップ', style: Theme.of(context).textTheme.titleLarge),
               IconButton(
                 icon: const Icon(Icons.close),
                 onPressed: () => Navigator.pop(context),
@@ -127,7 +118,10 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
           borderRadius: BorderRadius.circular(8),
           borderSide: BorderSide.none,
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: 16,
+          vertical: 12,
+        ),
       ),
       onChanged: (value) {
         setState(() {});
@@ -158,11 +152,7 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
   }
 
   /// タブボタン
-  Widget _buildTabButton(
-    BuildContext context,
-    String label,
-    int index,
-  ) {
+  Widget _buildTabButton(BuildContext context, String label, int index) {
     final isSelected = _selectedTabIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedTabIndex = index),
@@ -224,10 +214,7 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
         decoration: BoxDecoration(
           color: AppColors.dark3,
           borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _getRarityColor(item.rarity),
-            width: 2,
-          ),
+          border: Border.all(color: _getRarityColor(item.rarity), width: 2),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -336,9 +323,13 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
             if (item.bonus != null) ...[
               const Text('ボーナス:'),
               if (item.bonus!.attackBonus != null)
-                Text('  ⚔️  攻撃力: +${item.bonus!.attackBonus!.toStringAsFixed(1)}%'),
+                Text(
+                  '  ⚔️  攻撃力: +${item.bonus!.attackBonus!.toStringAsFixed(1)}%',
+                ),
               if (item.bonus!.defenseBonus != null)
-                Text('  🛡️  防御力: +${item.bonus!.defenseBonus!.toStringAsFixed(1)}%'),
+                Text(
+                  '  🛡️  防御力: +${item.bonus!.defenseBonus!.toStringAsFixed(1)}%',
+                ),
               if (item.bonus!.hpBonus != null)
                 Text('  ❤️  体力: +${item.bonus!.hpBonus!.toStringAsFixed(1)}%'),
               const SizedBox(height: 12),
@@ -358,9 +349,7 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
             onPressed: () async {
               await _purchaseItem(context, item);
             },
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.primary,
-            ),
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.primary),
             child: const Text('購入'),
           ),
         ],
@@ -368,41 +357,50 @@ class _ItemShopModalState extends ConsumerState<ItemShopModal> {
     );
   }
 
-  /// アイテムを購入
+  /// アイテムを購入（サーバー側でゴールド消費を検証、結果を待って表示を更新する）
   Future<void> _purchaseItem(BuildContext context, Item item) async {
-    try {
-      final authService = AuthService();
-      final itemService = ItemService();
-      final userId = authService.currentUser?.uid;
+    final authService = AuthService();
+    final itemService = ItemService();
+    final userId = authService.currentUser?.uid;
 
-      if (userId == null) {
-        if (!mounted) return;
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('ログインが必要です')),
-        );
-        return;
-      }
-
-      // 購入処理（実装ではゴールドチェックなど追加予定）
-      await itemService.purchaseItem(
-        userId,
-        item.itemId,
-        item.purchasePrice,
-      );
-
+    if (userId == null) {
       if (!mounted) return;
-      Navigator.pop(context); // Detail dialog を閉じる
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('ログインが必要です')));
+      return;
+    }
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('購入しました！')),
-      );
+    if (!mounted) return;
+    Navigator.pop(context); // Detail dialog を閉じる（結果を待つ間はショップに戻る）
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('購入処理中...')));
 
+    final result = await itemService.purchaseItem(userId, item.itemId);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(SnackBar(content: Text(_purchaseResultMessage(result))));
+
+    if (result == ItemPurchaseResult.success) {
       widget.onPurchaseComplete?.call();
-    } catch (e) {
-      if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('購入に失敗しました: $e')),
-      );
+    }
+  }
+
+  String _purchaseResultMessage(ItemPurchaseResult result) {
+    switch (result) {
+      case ItemPurchaseResult.success:
+        return '購入しました！';
+      case ItemPurchaseResult.insufficientGold:
+        return 'ゴールドが足りません';
+      case ItemPurchaseResult.invalidItem:
+        return 'このアイテムは購入できません';
+      case ItemPurchaseResult.timeout:
+        return '購入処理がタイムアウトしました。しばらくして再度お試しください';
+      case ItemPurchaseResult.error:
+        return '購入に失敗しました';
     }
   }
 

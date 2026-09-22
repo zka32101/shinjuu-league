@@ -4,6 +4,7 @@ import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/item_model.dart';
 import 'package:shinjuu_league/viewmodels/inventory_viewmodel.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
+import 'package:shinjuu_league/ui/widgets/item_shop_modal.dart';
 import 'package:shinjuu_league/ui/widgets/loading_skeleton.dart';
 
 /// ユーザーのアイテムインベントリを表示・管理する画面
@@ -44,6 +45,14 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ),
         ),
       ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => ItemShopModal.show(
+          context,
+          onPurchaseComplete: () => ref.invalidate(inventoryViewModelProvider),
+        ),
+        icon: const Icon(Icons.storefront),
+        label: const Text('ショップ'),
+      ),
     );
   }
 
@@ -59,19 +68,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'インベントリ統計',
-            style: Theme.of(context).textTheme.titleLarge,
-          ),
+          Text('インベントリ統計', style: Theme.of(context).textTheme.titleLarge),
           const SizedBox(height: 16),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
-              _buildStatChip(
-                context,
-                'アイテム数',
-                '${items.length}',
-              ),
+              _buildStatChip(context, 'アイテム数', '${items.length}'),
               _buildStatChip(
                 context,
                 '装備中',
@@ -80,10 +82,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
             ],
           ),
           const SizedBox(height: 16),
-          Text(
-            '装備ボーナス',
-            style: Theme.of(context).textTheme.titleMedium,
-          ),
+          Text('装備ボーナス', style: Theme.of(context).textTheme.titleMedium),
           const SizedBox(height: 8),
           totalBonusAsync.when(
             data: (bonus) => Column(
@@ -98,10 +97,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
                 if (bonus.attackBonus == null &&
                     bonus.defenseBonus == null &&
                     bonus.hpBonus == null)
-                  Text(
-                    'ボーナスなし',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
+                  Text('ボーナスなし', style: Theme.of(context).textTheme.bodySmall),
               ],
             ),
             loading: () => const CircularProgressIndicator(),
@@ -113,22 +109,12 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   /// ステータスチップ
-  Widget _buildStatChip(
-    BuildContext context,
-    String label,
-    String value,
-  ) {
+  Widget _buildStatChip(BuildContext context, String label, String value) {
     return Column(
       children: [
-        Text(
-          label,
-          style: Theme.of(context).textTheme.labelSmall,
-        ),
+        Text(label, style: Theme.of(context).textTheme.labelSmall),
         const SizedBox(height: 4),
-        Text(
-          value,
-          style: Theme.of(context).textTheme.titleMedium,
-        ),
+        Text(value, style: Theme.of(context).textTheme.titleMedium),
       ],
     );
   }
@@ -150,11 +136,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   /// タブボタン
-  Widget _buildTabButton(
-    BuildContext context,
-    String label,
-    int index,
-  ) {
+  Widget _buildTabButton(BuildContext context, String label, int index) {
     final isSelected = _selectedTabIndex == index;
     return GestureDetector(
       onTap: () => setState(() => _selectedTabIndex = index),
@@ -179,19 +161,13 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
   }
 
   /// アイテムセクション
-  Widget _buildItemsSection(
-    BuildContext context,
-    List<Item> items,
-  ) {
+  Widget _buildItemsSection(BuildContext context, List<Item> items) {
     final displayItems = _getDisplayItems(items);
 
     if (displayItems.isEmpty) {
       return Padding(
         padding: const EdgeInsets.all(32),
-        child: Text(
-          'アイテムがありません',
-          style: Theme.of(context).textTheme.bodyLarge,
-        ),
+        child: Text('アイテムがありません', style: Theme.of(context).textTheme.bodyLarge),
       );
     }
 
@@ -233,10 +209,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       decoration: BoxDecoration(
         color: AppColors.dark2,
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: _getRarityColor(item.rarity),
-          width: 2,
-        ),
+        border: Border.all(color: _getRarityColor(item.rarity), width: 2),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -283,10 +256,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
           ),
           const SizedBox(height: 12),
           // 説明
-          Text(
-            item.description,
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(item.description, style: Theme.of(context).textTheme.bodySmall),
           const SizedBox(height: 12),
           // ボーナス表示
           if (item.bonus != null) _buildBonusDisplay(context, item.bonus!),
@@ -353,10 +323,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
       ),
       child: Text(
         _getTypeLabel(type),
-        style: const TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.bold,
-        ),
+        style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -393,10 +360,7 @@ class _InventoryScreenState extends ConsumerState<InventoryScreen> {
         children: [
           Text('エラーが発生しました'),
           const SizedBox(height: 16),
-          Text(
-            error.toString(),
-            style: Theme.of(context).textTheme.bodySmall,
-          ),
+          Text(error.toString(), style: Theme.of(context).textTheme.bodySmall),
         ],
       ),
     );

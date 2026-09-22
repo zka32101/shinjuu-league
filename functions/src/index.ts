@@ -10,3 +10,4 @@ export { validateBattleResult, debugEloCalculation } from './elo-validator';
 export { onSeasonEnded, applyInactivityDecay } from './season-lifecycle';
 export { executeScheduledReports } from './report-executor';
 export { deliverReportViaEmail } from './email-delivery';
+export { validateItemPurchase } from './item-purchase-validator';

@@ -90,6 +90,14 @@ class BattleParticipantState {
   double skillTreeDefMultiplier = 1.0;
   double skillTreeSpdMultiplier = 1.0;
 
+  // 永続インベントリ（ItemService/InventoryScreen、/users/{userId}/items）の
+  // 装備ボーナス倍率（デフォルト: 修正なし）。試合中に稼ぐ在庫アイテム
+  // （resources.ownedItemIds、SkillSystemService.calculateItemBonuses）とは
+  // 別物 - こちらは試合をまたいで持続する永続装備由来
+  double equippedItemAtkMultiplier = 1.0;
+  double equippedItemDefMultiplier = 1.0;
+  double equippedItemHpMultiplier = 1.0;
+
   int kills = 0;
   int deaths = 0;
   int assists = 0;
@@ -114,12 +122,9 @@ class BattleParticipantState {
     this.skillBuild,
     PlayerResources? initialResources,
   }) {
-    resources = initialResources ??
-        PlayerResources(
-          currentMana: 100,
-          maxMana: 100,
-          gold: 0,
-        );
+    resources =
+        initialResources ??
+        PlayerResources(currentMana: 100, maxMana: 100, gold: 0);
     currentHp = effectiveHp;
     _initializeSkillCooldowns();
   }
@@ -138,8 +143,12 @@ class BattleParticipantState {
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
     );
-    // スキルツリー修正倍率 + ジャングルモンスター討伐バフを適用（ベースATK + アイテムボーナス）に対して
-    return (baseAtk + itemBonuses.atk) * skillTreeAtkMultiplier * jungleBuffMultiplier;
+    // スキルツリー修正倍率 + ジャングルモンスター討伐バフ + 永続装備の攻撃%ボーナスを
+    // 適用（ベースATK + 試合内アイテムボーナス）に対して
+    return (baseAtk + itemBonuses.atk) *
+        skillTreeAtkMultiplier *
+        jungleBuffMultiplier *
+        equippedItemAtkMultiplier;
   }
 
   double get effectiveHp {
@@ -147,9 +156,13 @@ class BattleParticipantState {
     final itemBonuses = SkillSystemService.calculateItemBonuses(
       ownedItemIds: resources.ownedItemIds,
     );
-    // スキルツリー修正倍率を適用（ベースHP + アイテムボーナス）に対して
-    // 防御ツリーのボーナスは有効HPに影響する（体力の多さで防御力を高める）
-    return (baseHp + itemBonuses.hp) * skillTreeDefMultiplier;
+    // スキルツリー修正倍率を適用（ベースHP + 試合内アイテムボーナス）に対して
+    // 防御ツリーのボーナスは有効HPに影響する（体力の多さで防御力を高める）。
+    // 永続装備の防御%/体力%ボーナスも同じ考え方でHPへ反映する
+    return (baseHp + itemBonuses.hp) *
+        skillTreeDefMultiplier *
+        equippedItemDefMultiplier *
+        equippedItemHpMultiplier;
   }
 
   double get effectiveSpd {
@@ -234,7 +247,8 @@ class BattleEngine {
        _random = random ?? Random() {
     jungleMonsters = List.generate(
       AppConfig.teamsCount,
-      (lane) => JungleMonster(id: 'jungle_$lane', lane: lane, maxHp: _monsterMaxHp),
+      (lane) =>
+          JungleMonster(id: 'jungle_$lane', lane: lane, maxHp: _monsterMaxHp),
     );
   }
 
@@ -251,7 +265,9 @@ class BattleEngine {
   // ダメージイベント（ダメージ数値表示用）
   final _damageController = StreamController<DamageEvent>.broadcast(sync: true);
   // ジャングルモンスター討伐イベント
-  final _monsterController = StreamController<MonsterEvent>.broadcast(sync: true);
+  final _monsterController = StreamController<MonsterEvent>.broadcast(
+    sync: true,
+  );
 
   Stream<CombatEvent> get combatEvents => _combatController.stream;
   Stream<int> get onTick => _tickController.stream;
@@ -289,6 +305,29 @@ class BattleEngine {
     participant.skillTreeAtkMultiplier = atkMultiplier;
     participant.skillTreeDefMultiplier = defMultiplier;
     participant.skillTreeSpdMultiplier = spdMultiplier;
+
+    // HP上限が変わるため、現在HPを再計算する
+    if (participant.currentHp > participant.effectiveHp) {
+      participant.currentHp = participant.effectiveHp;
+    }
+  }
+
+  /// 永続インベントリの装備ボーナス倍率を設定（マップ上の戦闘開始前に呼び出す）
+  /// ItemBonus のパーセント値（例: attackBonus=10.0 → +10%）を乗算倍率に変換して渡す
+  void setEquippedItemModifiers(
+    String userId, {
+    required double atkMultiplier,
+    required double defMultiplier,
+    required double hpMultiplier,
+  }) {
+    final participant = participants
+        .where((p) => p.userId == userId)
+        .firstOrNull;
+    if (participant == null) return;
+
+    participant.equippedItemAtkMultiplier = atkMultiplier;
+    participant.equippedItemDefMultiplier = defMultiplier;
+    participant.equippedItemHpMultiplier = hpMultiplier;
 
     // HP上限が変わるため、現在HPを再計算する
     if (participant.currentHp > participant.effectiveHp) {
@@ -337,7 +376,9 @@ class BattleEngine {
       if (!p.isAlive) continue;
 
       // マナ回復
-      p.resources = p.resources.regenMana(SkillSystemService.manaRegenPerSecond);
+      p.resources = p.resources.regenMana(
+        SkillSystemService.manaRegenPerSecond,
+      );
 
       // パッシブゴール獲得
       p.resources = p.resources.addGold(GoldRewards.passiveGoldPerSecond);
@@ -345,7 +386,8 @@ class BattleEngine {
 
       // スキルクールダウン減少（Remote Config の難易度プリセット倍率を適用）
       final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
-      final cooldownReduction = 1.0 * difficultyModifiers.skillCooldownMultiplier;
+      final cooldownReduction =
+          1.0 * difficultyModifiers.skillCooldownMultiplier;
       p.skillCooldowns.forEach((skillId, cooldown) {
         if (cooldown > 0) {
           p.skillCooldowns[skillId] = cooldown - cooldownReduction;
@@ -378,14 +420,15 @@ class BattleEngine {
         .firstOrNull;
     if (attacker == null || !attacker.isAlive) return false;
 
-    final monster = jungleMonsters
-        .where((m) => m.id == monsterId)
-        .firstOrNull;
+    final monster = jungleMonsters.where((m) => m.id == monsterId).firstOrNull;
     if (monster == null || !monster.isAlive) return false;
     if (monster.lane != attacker.lane) return false;
 
     final damage = attacker.effectiveAtk * _hitDamageFactor;
-    monster.currentHp = (monster.currentHp - damage).clamp(0.0, double.infinity);
+    monster.currentHp = (monster.currentHp - damage).clamp(
+      0.0,
+      double.infinity,
+    );
 
     _damageController.add(
       DamageEvent(
@@ -471,7 +514,10 @@ class BattleEngine {
     if (!participant.resources.canAffordGold(item.cost)) return false;
 
     // ゴール消費・アイテム購入
-    participant.resources = participant.resources.purchaseItem(itemId, item.cost);
+    participant.resources = participant.resources.purchaseItem(
+      itemId,
+      item.cost,
+    );
 
     // TODO: アイテムボーナスをステータスに反映
     // 今後：EffectiveStatの計算でアイテムボーナスを加算
@@ -494,7 +540,9 @@ class BattleEngine {
         (p) => p.userId == assistantId,
         orElse: () => throw Exception('Assistant not found: $assistantId'),
       );
-      assistant.resources = assistant.resources.addGold(GoldRewards.assistReward);
+      assistant.resources = assistant.resources.addGold(
+        GoldRewards.assistReward,
+      );
       assistant.totalGoldEarned += GoldRewards.assistReward;
     }
   }
@@ -526,7 +574,12 @@ class BattleEngine {
         if (aliveDefenders.isEmpty) continue;
         final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
         final damageResult = _computeDamage(attacker, defender);
-        _applyDamage(attacker, defender, damageResult.damage, damageResult.isCritical);
+        _applyDamage(
+          attacker,
+          defender,
+          damageResult.damage,
+          damageResult.isCritical,
+        );
       }
 
       for (final attacker in teamBAlive) {
@@ -536,7 +589,12 @@ class BattleEngine {
         if (aliveDefenders.isEmpty) continue;
         final defender = aliveDefenders[_random.nextInt(aliveDefenders.length)];
         final damageResult = _computeDamage(attacker, defender);
-        _applyDamage(attacker, defender, damageResult.damage, damageResult.isCritical);
+        _applyDamage(
+          attacker,
+          defender,
+          damageResult.damage,
+          damageResult.isCritical,
+        );
       }
     }
   }
@@ -554,7 +612,8 @@ class BattleEngine {
 
     // Remote Config の難易度プリセット倍率を適用
     final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
-    final effectiveDamage = baseDamage * difficultyModifiers.skillDamageMultiplier;
+    final effectiveDamage =
+        baseDamage * difficultyModifiers.skillDamageMultiplier;
 
     // クリティカル判定：攻撃力 / 600 が基本確率（最大25%）
     final critChance = (attacker.effectiveAtk / 600).clamp(0, 0.25);
@@ -634,7 +693,12 @@ class BattleEngine {
     if (attacker.lane != victim.lane) return false;
 
     final damageResult = _computeDamage(attacker, victim);
-    _applyDamage(attacker, victim, damageResult.damage, damageResult.isCritical);
+    _applyDamage(
+      attacker,
+      victim,
+      damageResult.damage,
+      damageResult.isCritical,
+    );
     return true;
   }
 
