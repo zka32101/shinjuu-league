@@ -63,6 +63,11 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             tooltip: 'フレンド',
             onPressed: () => context.push(AppRoutes.friends),
           ),
+          IconButton(
+            icon: const Icon(Icons.emoji_events),
+            tooltip: '成果',
+            onPressed: () => context.push(AppRoutes.achievements),
+          ),
         ],
       ),
       body: userAsync.when(

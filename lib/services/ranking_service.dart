@@ -36,10 +36,22 @@ class SeasonHistoryEntry {
 /// - Track seasonal stats (wins, losses, streaks)
 /// - Manage promotion history
 class RankingService {
-  final FirebaseFirestore _firestore;
-
   RankingService({FirebaseFirestore? firestore})
-    : _firestore = firestore ?? FirebaseFirestore.instance;
+    : _firestoreOverride = firestore;
+
+  final FirebaseFirestore? _firestoreOverride;
+
+  /// Resolves the real Firebase-backed singleton lazily, on first actual
+  /// use, rather than eagerly in the constructor (the same pattern
+  /// AuthService/FirestoreService use). Previously this was a plain
+  /// `firestore ?? FirebaseFirestore.instance` field initializer, which
+  /// meant simply constructing a `RankingService()` - e.g. as
+  /// BattleViewModel's default `rankingService` param - touched Firebase
+  /// immediately and crashed with `[core/no-app]` in any test that
+  /// constructs a BattleViewModel without Firebase.initializeApp() having
+  /// run, even if that test never calls a RankingService method at all.
+  FirebaseFirestore get _firestore =>
+      _firestoreOverride ?? FirebaseFirestore.instance;
 
   /// Determine current tier based on rating
   String getTierForRating(int rating, {Map<String, int>? tierThresholds}) {

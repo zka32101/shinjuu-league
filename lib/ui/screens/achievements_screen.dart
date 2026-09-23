@@ -2,183 +2,226 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
-import 'package:shinjuu_league/services/achievement_service.dart';
-import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/achievement_trigger_detector.dart'
+    show tierAtLeast;
+import 'package:shinjuu_league/services/auth_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
+import 'package:shinjuu_league/services/skill_tree_service.dart';
+import 'package:shinjuu_league/viewmodels/achievement_viewmodel.dart';
 
 /// Achievement collection/gallery screen showing all available achievements
 /// Displays achievement status, progress, rewards, and unlock dates
+///
+/// Previously this screen's grid was entirely backed by a hard-coded sample
+/// list (with a literal `// TODO: Fetch actual achievements from
+/// AchievementService`), and the route to reach it (AppRoutes.achievements)
+/// was defined in app_routes.dart but never linked from anywhere in the
+/// app's navigation - nothing ever pushed it. Both are fixed here: the grid
+/// now reflects real per-player unlock state via AchievementViewModel, and
+/// lobby_screen.dart links to this route.
 class AchievementsScreen extends ConsumerStatefulWidget {
-  const AchievementsScreen({super.key});
+  const AchievementsScreen({super.key, this.userIdOverride});
+
+  /// Test-only seam: supplies the user ID directly instead of resolving it
+  /// from AuthService()/FirebaseAuth (which requires Firebase.initializeApp()
+  /// to have run - not something most widget tests in this suite do).
+  final String? userIdOverride;
 
   @override
   ConsumerState<AchievementsScreen> createState() => _AchievementsScreenState();
 }
 
 class _AchievementsScreenState extends ConsumerState<AchievementsScreen> {
-  late String _selectedCategory = AchievementCategory.milestone.name;
+  String _selectedCategory = 'all';
+  String? _userId;
+
+  // Live progress toward not-yet-unlocked, progress-based achievements.
+  // This is never persisted (see AchievementService.getPlayerAchievements's
+  // doc comment - a document in the achievements subcollection only ever
+  // exists for a genuine unlock), so it's recomputed here the same way
+  // BattleViewModel._checkAchievementTriggers computes it: from the live
+  // skill tree and season history, not from any stored "progress" field.
+  Map<String, int> _liveProgress = const {};
+
+  @override
+  void initState() {
+    super.initState();
+    final userId = widget.userIdOverride ?? _resolveCurrentUserId();
+    _userId = userId;
+    if (userId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(achievementViewModelProvider(userId).notifier)
+            .loadPlayerAchievements();
+      });
+      _loadLiveProgress(userId);
+    }
+  }
+
+  /// FirebaseAuth.instance throws (rather than returning null) when
+  /// Firebase.initializeApp() hasn't run - true of most widget tests in
+  /// this suite. Falling back to null here (rendered as "ログインが必要です")
+  /// keeps that a graceful, testable state instead of a crash.
+  String? _resolveCurrentUserId() {
+    try {
+      return AuthService().currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
+  }
+
+  Future<void> _loadLiveProgress(String userId) async {
+    try {
+      final skillTree = await SkillTreeService().getSkillTree(userId);
+      final statPoints = skillTree == null
+          ? 0
+          : skillTree.trees
+                .map((branch) => branch.allocatedTiers)
+                .reduce((a, b) => a > b ? a : b);
+      final pathDiversity =
+          skillTree?.trees
+              .where((branch) => branch.allocatedTiers > 0)
+              .length ??
+          0;
+
+      final seasonHistory = await RankingService().getSeasonHistory(userId);
+      final seasonsParticipated = seasonHistory.length;
+      var consistentSeasons = 0;
+      for (final season in seasonHistory.reversed) {
+        if (!tierAtLeast(season.peakTier, 'Gold')) break;
+        consistentSeasons++;
+      }
+
+      if (!mounted) return;
+      setState(() {
+        _liveProgress = {
+          'stat_master': statPoints,
+          'balanced_fighter': pathDiversity,
+          'season_warrior': seasonsParticipated,
+          'consistency': consistentSeasons,
+        };
+      });
+    } catch (e) {
+      // Live progress is a display-only nicety - if it fails to load,
+      // achievements just show 0 progress rather than breaking the screen.
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final userId = _userId;
+
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('成果'),
-        centerTitle: true,
-      ),
-      body: Column(
-        children: [
-          // Category filter tabs
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              child: Row(
-                children: [
-                  _CategoryTab(
-                    label: 'すべて',
-                    isSelected: _selectedCategory == 'all',
-                    onTap: () {
-                      setState(() => _selectedCategory = 'all');
-                    },
-                  ),
-                  const SizedBox(width: 8),
-                  for (final category in AchievementCategory.values)
-                    Padding(
-                      padding: const EdgeInsets.only(right: 8),
-                      child: _CategoryTab(
-                        label: _categoryLabel(category),
-                        isSelected: _selectedCategory == category.name,
-                        onTap: () {
-                          setState(() => _selectedCategory = category.name);
-                        },
-                      ),
-                    ),
-                ],
-              ),
+      appBar: AppBar(title: const Text('成果'), centerTitle: true),
+      body: userId == null
+          ? const Center(child: Text('ログインが必要です'))
+          : Column(
+              children: [
+                _buildCategoryTabs(),
+                Expanded(child: _buildGrid(userId)),
+              ],
             ),
-          ),
-          // Achievements grid
-          Expanded(
-            child: FutureBuilder<List<Achievement>>(
-              future: _getAchievements(),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator());
-                }
+    );
+  }
 
-                if (snapshot.hasError) {
-                  return Center(
-                    child: Text('エラー: ${snapshot.error}'),
-                  );
-                }
-
-                final achievements = snapshot.data ?? [];
-                if (achievements.isEmpty) {
-                  return const Center(
-                    child: Text('成果がありません'),
-                  );
-                }
-
-                return GridView.builder(
-                  padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 2,
-                    childAspectRatio: 1.0,
-                    crossAxisSpacing: 12,
-                    mainAxisSpacing: 12,
-                  ),
-                  itemCount: achievements.length,
-                  itemBuilder: (context, index) {
-                    final achievement = achievements[index];
-                    return _AchievementGridCard(
-                      achievement: achievement,
-                      onTap: () {
-                        _showAchievementDetail(context, achievement);
-                      },
-                    );
-                  },
-                );
+  Widget _buildCategoryTabs() {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        child: Row(
+          children: [
+            _CategoryTab(
+              label: 'すべて',
+              isSelected: _selectedCategory == 'all',
+              onTap: () {
+                setState(() => _selectedCategory = 'all');
               },
             ),
-          ),
-        ],
+            const SizedBox(width: 8),
+            for (final category in AchievementCategory.values)
+              Padding(
+                padding: const EdgeInsets.only(right: 8),
+                child: _CategoryTab(
+                  label: _categoryLabel(category),
+                  isSelected: _selectedCategory == category.name,
+                  onTap: () {
+                    setState(() => _selectedCategory = category.name);
+                  },
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
 
-  Future<List<Achievement>> _getAchievements() async {
-    // TODO: Fetch actual achievements from AchievementService
-    // For now, return sample achievements
-    return [
-      Achievement(
-        achievementId: 'aha_moment',
-        category: AchievementCategory.milestone,
-        name: 'Aha Moment',
-        description: 'Get your first kill',
-        iconUrl: 'assets/icons/aha_moment.png',
-        rewardTier: AchievementRewardTier.common,
-        maxProgress: 1,
-        isProgressBased: false,
+  Widget _buildGrid(String userId) {
+    final achievementState = ref.watch(achievementViewModelProvider(userId));
+
+    if (achievementState.isLoading &&
+        achievementState.playerAchievements.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (achievementState.error != null) {
+      return Center(child: Text('エラー: ${achievementState.error}'));
+    }
+
+    final unlockedIds = achievementState.playerAchievements
+        .where((a) => a.isUnlocked)
+        .map((a) => a.achievementId)
+        .toSet();
+
+    final achievements = AchievementsCatalog.all
+        .where((a) => a.isAvailable)
+        .where(
+          (a) =>
+              _selectedCategory == 'all' ||
+              a.category.name == _selectedCategory,
+        )
+        .toList();
+
+    if (achievements.isEmpty) {
+      return const Center(child: Text('成果がありません'));
+    }
+
+    return GridView.builder(
+      padding: const EdgeInsets.all(16),
+      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+        crossAxisCount: 2,
+        childAspectRatio: 1.0,
+        crossAxisSpacing: 12,
+        mainAxisSpacing: 12,
       ),
-      Achievement(
-        achievementId: 'rising_star',
-        category: AchievementCategory.milestone,
-        name: 'Rising Star',
-        description: 'Win your first battle',
-        iconUrl: 'assets/icons/rising_star.png',
-        rewardTier: AchievementRewardTier.uncommon,
-        maxProgress: 1,
-        isProgressBased: false,
-      ),
-      Achievement(
-        achievementId: 'stat_master',
-        category: AchievementCategory.progression,
-        name: 'Stat Master',
-        description: 'Collect 50 stat points',
-        iconUrl: 'assets/icons/stat_master.png',
-        rewardTier: AchievementRewardTier.rare,
-        maxProgress: 50,
-        isProgressBased: true,
-      ),
-      Achievement(
-        achievementId: 'balanced_fighter',
-        category: AchievementCategory.progression,
-        name: 'Balanced Fighter',
-        description: 'Unlock 3 different skill paths',
-        iconUrl: 'assets/icons/balanced_fighter.png',
-        rewardTier: AchievementRewardTier.rare,
-        maxProgress: 3,
-        isProgressBased: true,
-      ),
-      Achievement(
-        achievementId: 'season_warrior',
-        category: AchievementCategory.seasonal,
-        name: 'Season Warrior',
-        description: 'Participate in 10 seasons',
-        iconUrl: 'assets/icons/season_warrior.png',
-        rewardTier: AchievementRewardTier.epic,
-        maxProgress: 10,
-        isProgressBased: true,
-      ),
-      Achievement(
-        achievementId: 'consistency',
-        category: AchievementCategory.seasonal,
-        name: 'Consistency',
-        description: 'Reach Gold tier for 3 consecutive seasons',
-        iconUrl: 'assets/icons/consistency.png',
-        rewardTier: AchievementRewardTier.legendary,
-        maxProgress: 3,
-        isProgressBased: true,
-      ),
-    ];
+      itemCount: achievements.length,
+      itemBuilder: (context, index) {
+        final achievement = achievements[index];
+        final isUnlocked = unlockedIds.contains(achievement.achievementId);
+        return _AchievementGridCard(
+          achievement: achievement,
+          isUnlocked: isUnlocked,
+          onTap: () {
+            _showAchievementDetail(context, achievement, isUnlocked);
+          },
+        );
+      },
+    );
   }
 
   void _showAchievementDetail(
     BuildContext context,
     Achievement achievement,
+    bool isUnlocked,
   ) {
     showDialog(
       context: context,
-      builder: (context) => _AchievementDetailDialog(achievement: achievement),
+      builder: (context) => _AchievementDetailDialog(
+        achievement: achievement,
+        isUnlocked: isUnlocked,
+        currentProgress: _liveProgress[achievement.achievementId] ?? 0,
+      ),
     );
   }
 
@@ -235,10 +278,12 @@ class _CategoryTab extends StatelessWidget {
 /// Achievement grid card widget
 class _AchievementGridCard extends StatelessWidget {
   final Achievement achievement;
+  final bool isUnlocked;
   final VoidCallback onTap;
 
   const _AchievementGridCard({
     required this.achievement,
+    required this.isUnlocked,
     required this.onTap,
   });
 
@@ -270,69 +315,72 @@ class _AchievementGridCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final tierColor = _getRewardTierColor(achievement.rewardTier);
+    // Locked achievements render dimmed/grayscale so unlocked ones stand
+    // out at a glance, without hiding what's still available to pursue.
+    final opacity = isUnlocked ? 1.0 : 0.4;
 
     return GestureDetector(
       onTap: onTap,
-      child: Card(
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: tierColor.withOpacity(0.5),
-            width: 2,
+      child: Opacity(
+        opacity: opacity,
+        child: Card(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+            side: BorderSide(color: tierColor.withValues(alpha: 0.5), width: 2),
           ),
-        ),
-        child: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: [
-                tierColor.withOpacity(0.1),
-                tierColor.withOpacity(0.05),
+          child: Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [
+                  tierColor.withValues(alpha: 0.1),
+                  tierColor.withValues(alpha: 0.05),
+                ],
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Text(
+                  isUnlocked ? '🏆' : '🔒',
+                  style: const TextStyle(fontSize: 40),
+                ),
+                const SizedBox(height: 8),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  child: Text(
+                    achievement.name,
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                    ),
+                    textAlign: TextAlign.center,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: tierColor.withValues(alpha: 0.2),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    _tierLabel(achievement.rewardTier),
+                    style: Theme.of(context).textTheme.labelSmall?.copyWith(
+                      fontSize: 10,
+                      color: tierColor,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text(
-                '🏆',
-                style: TextStyle(fontSize: 40),
-              ),
-              const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 8),
-                child: Text(
-                  achievement.name,
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                  textAlign: TextAlign.center,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
-              const SizedBox(height: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 8,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: tierColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: Text(
-                  _tierLabel(achievement.rewardTier),
-                  style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                        fontSize: 10,
-                        color: tierColor,
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-              ),
-            ],
           ),
         ),
       ),
@@ -368,8 +416,14 @@ class _AchievementGridCard extends StatelessWidget {
 /// Achievement detail dialog
 class _AchievementDetailDialog extends StatelessWidget {
   final Achievement achievement;
+  final bool isUnlocked;
+  final int currentProgress;
 
-  const _AchievementDetailDialog({required this.achievement});
+  const _AchievementDetailDialog({
+    required this.achievement,
+    required this.isUnlocked,
+    required this.currentProgress,
+  });
 
   Color _getRewardTierColor(AchievementRewardTier tier) {
     switch (tier) {
@@ -408,15 +462,12 @@ class _AchievementDetailDialog extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              tierColor.withOpacity(0.1),
-              tierColor.withOpacity(0.05),
+              tierColor.withValues(alpha: 0.1),
+              tierColor.withValues(alpha: 0.05),
             ],
           ),
           borderRadius: BorderRadius.circular(16),
-          border: Border.all(
-            color: tierColor.withOpacity(0.3),
-            width: 2,
-          ),
+          border: Border.all(color: tierColor.withValues(alpha: 0.3), width: 2),
         ),
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -424,17 +475,17 @@ class _AchievementDetailDialog extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Text(
-                  '🏆',
-                  style: TextStyle(fontSize: 56),
+                Text(
+                  isUnlocked ? '🏆' : '🔒',
+                  style: const TextStyle(fontSize: 56),
                 ),
                 const SizedBox(height: 16),
                 Text(
                   achievement.name,
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: tierColor,
-                      ),
+                    fontWeight: FontWeight.bold,
+                    color: tierColor,
+                  ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
@@ -444,15 +495,15 @@ class _AchievementDetailDialog extends StatelessWidget {
                     vertical: 6,
                   ),
                   decoration: BoxDecoration(
-                    color: tierColor.withOpacity(0.2),
+                    color: tierColor.withValues(alpha: 0.2),
                     borderRadius: BorderRadius.circular(8),
                   ),
                   child: Text(
                     _tierLabel(achievement.rewardTier),
                     style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                          color: tierColor,
-                          fontWeight: FontWeight.bold,
-                        ),
+                      color: tierColor,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -461,17 +512,20 @@ class _AchievementDetailDialog extends StatelessWidget {
                   style: Theme.of(context).textTheme.bodyMedium,
                   textAlign: TextAlign.center,
                 ),
-                if (achievement.isProgressBased) ...[
+                if (achievement.isProgressBased && !isUnlocked) ...[
                   const SizedBox(height: 16),
                   Text(
-                    '進捗: 0/${achievement.maxProgress}',
+                    '進捗: $currentProgress/${achievement.maxProgress}',
                     style: Theme.of(context).textTheme.bodySmall,
                   ),
                   const SizedBox(height: 8),
                   ClipRRect(
                     borderRadius: BorderRadius.circular(4),
                     child: LinearProgressIndicator(
-                      value: 0,
+                      value: (currentProgress / achievement.maxProgress).clamp(
+                        0.0,
+                        1.0,
+                      ),
                       minHeight: 8,
                       backgroundColor: Colors.grey.shade300,
                       valueColor: AlwaysStoppedAnimation<Color>(tierColor),

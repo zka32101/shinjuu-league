@@ -1,30 +1,61 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
-import 'package:shinjuu_league/data/models/progression_stats.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 
 class MockFirestoreService extends Mock implements FirestoreService {
   @override
-  Future<void> set(String? path, dynamic data) {
+  Future<void> markAchievementUnlocked(
+    String? userId,
+    String? achievementId, {
+    String? achievementName,
+  }) {
     return super.noSuchMethod(
-      Invocation.method(#set, [path, data]),
-      returnValue: Future<void>.value(),
-      returnValueForMissingStub: Future<void>.value(),
-    ) as Future<void>;
+          Invocation.method(
+            #markAchievementUnlocked,
+            [userId, achievementId],
+            {#achievementName: achievementName},
+          ),
+          returnValue: Future<void>.value(),
+          returnValueForMissingStub: Future<void>.value(),
+        )
+        as Future<void>;
   }
 
   @override
   Future<List<Map<String, dynamic>>> getCollection(String? path) {
     return super.noSuchMethod(
-      Invocation.method(#getCollection, [path]),
-      returnValue: Future<List<Map<String, dynamic>>>.value(
-          <Map<String, dynamic>>[]),
-      returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
-          <Map<String, dynamic>>[]),
-    ) as Future<List<Map<String, dynamic>>>;
+          Invocation.method(#getCollection, [path]),
+          returnValue: Future<List<Map<String, dynamic>>>.value(
+            <Map<String, dynamic>>[],
+          ),
+          returnValueForMissingStub: Future<List<Map<String, dynamic>>>.value(
+            <Map<String, dynamic>>[],
+          ),
+        )
+        as Future<List<Map<String, dynamic>>>;
   }
+}
+
+/// A doc shaped exactly like FirestoreService.markAchievementUnlocked()
+/// actually writes - {achievementId, name?, unlockedAt, isHidden} - the
+/// only shape ever found in users/{userId}/achievements/{achievementId}
+/// now (see AchievementService.getPlayerAchievements's doc comment: a
+/// document here always represents a genuine unlock, never partial
+/// progress).
+Map<String, dynamic> _unlockedDoc(
+  String achievementId, {
+  String? name,
+  bool isHidden = false,
+}) {
+  return {
+    'achievementId': achievementId,
+    if (name != null) 'name': name,
+    'unlockedAt': Timestamp.now(),
+    'isHidden': isHidden,
+  };
 }
 
 void main() {
@@ -39,42 +70,65 @@ void main() {
 
     group('getPlayerAchievements', () {
       test('returns empty list for new player', () async {
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => []);
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer((_) async => []);
 
         final achievements = await service.getPlayerAchievements('user_123');
         expect(achievements, isEmpty);
       });
 
-      test('returns player achievements', () async {
-        final docs = [
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'stat_master',
-            unlockedAt: DateTime.now(),
-            progress: AchievementProgress(current: 50, target: 50),
-          ).toJson(),
-        ];
+      // Real regression guard: this used to do
+      // `PlayerAchievement.fromJson(doc)`, which throws on the actual shape
+      // FirestoreService.markAchievementUnlocked() writes (no `userId` key,
+      // `unlockedAt` as a Firestore Timestamp rather than an ISO string).
+      test('parses the real unlock doc shape without throwing', () async {
+        final docs = [_unlockedDoc('stat_master', name: 'ステータスマスター')];
 
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => docs);
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer((_) async => docs);
 
         final achievements = await service.getPlayerAchievements('user_123');
         expect(achievements.length, equals(1));
         expect(achievements.first.achievementId, equals('stat_master'));
+        expect(achievements.first.userId, equals('user_123'));
+        expect(achievements.first.isUnlocked, isTrue);
+      });
+
+      test('skips a doc missing achievementId rather than throwing', () async {
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer(
+          (_) async => [
+            {'unlockedAt': Timestamp.now()},
+          ],
+        );
+
+        final achievements = await service.getPlayerAchievements('user_123');
+        expect(achievements, isEmpty);
       });
     });
 
     group('unlockAchievement', () {
-      test('unlocks achievement successfully', () async {
-        when(mockFirestore.set(any, any)).thenAnswer((_) async {});
-
+      // Real regression guard: this used to write a full
+      // PlayerAchievement.toJson() directly via a bare `_firestoreService.set()`
+      // call - a different, incompatible shape from every other unlock path
+      // in the app (AchievementRewardService.processUnlock(), used by both
+      // the kill-detection and battle-trigger-detection systems, which both
+      // go through FirestoreService.markAchievementUnlocked()). It now
+      // delegates to that same method, so every unlock in the app writes
+      // one consistent shape.
+      test('delegates to FirestoreService.markAchievementUnlocked', () async {
         await service.unlockAchievement('user_123', 'rising_star');
 
-        verify(mockFirestore.set(
-          'users/user_123/achievements/rising_star',
-          any,
-        )).called(1);
+        verify(
+          mockFirestore.markAchievementUnlocked(
+            'user_123',
+            'rising_star',
+            achievementName: AchievementsCatalog.risingStar.name,
+          ),
+        ).called(1);
       });
 
       test('throws for invalid achievement ID', () {
@@ -86,50 +140,38 @@ void main() {
     });
 
     group('getUnlockedAchievements', () {
-      test('returns only unlocked achievements', () async {
-        final docs = [
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'rising_star',
-            unlockedAt: DateTime.now(),
-            progress: null,
-          ).toJson(),
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'stat_master',
-            unlockedAt: DateTime.now(),
-            progress: AchievementProgress(current: 30, target: 50),
-          ).toJson(),
-        ];
+      test(
+        'returns every doc in the achievements collection (all are unlocks)',
+        () async {
+          final docs = [
+            _unlockedDoc('rising_star'),
+            _unlockedDoc('stat_master'),
+          ];
 
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => docs);
+          when(
+            mockFirestore.getCollection('users/user_123/achievements'),
+          ).thenAnswer((_) async => docs);
 
-        final unlocked = await service.getUnlockedAchievements('user_123');
-        expect(unlocked.length, equals(1));
-        expect(unlocked.first.achievementId, equals('rising_star'));
-      });
+          final unlocked = await service.getUnlockedAchievements('user_123');
+          expect(unlocked.length, equals(2));
+          expect(
+            unlocked.map((a) => a.achievementId),
+            containsAll(['rising_star', 'stat_master']),
+          );
+        },
+      );
     });
 
     group('getAchievementsByCategory', () {
       test('filters achievements by category', () async {
         final docs = [
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'rising_star',
-            unlockedAt: DateTime.now(),
-            progress: null,
-          ).toJson(),
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'stat_master',
-            unlockedAt: DateTime.now(),
-            progress: AchievementProgress(current: 50, target: 50),
-          ).toJson(),
+          _unlockedDoc('rising_star'), // progression
+          _unlockedDoc('stat_master'), // skill
         ];
 
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => docs);
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer((_) async => docs);
 
         final skillAch = await service.getAchievementsByCategory(
           'user_123',
@@ -143,22 +185,11 @@ void main() {
 
     group('getUnlockCount', () {
       test('counts unlocked achievements', () async {
-        final docs = [
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'rising_star',
-            unlockedAt: DateTime.now(),
-          ).toJson(),
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'stat_master',
-            unlockedAt: DateTime.now(),
-            progress: AchievementProgress(current: 30, target: 50),
-          ).toJson(),
-        ];
+        final docs = [_unlockedDoc('rising_star')];
 
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => docs);
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer((_) async => docs);
 
         final count = await service.getUnlockCount('user_123');
         expect(count, equals(1));
@@ -175,20 +206,26 @@ void main() {
 
     group('getCompletionPercentage', () {
       test('calculates completion percentage', () async {
-        final docs = [
-          PlayerAchievement(
-            userId: 'user_123',
-            achievementId: 'rising_star',
-            unlockedAt: DateTime.now(),
-          ).toJson(),
-        ];
+        final docs = [_unlockedDoc('rising_star')];
 
-        when(mockFirestore.getCollection('users/user_123/achievements'))
-            .thenAnswer((_) async => docs);
+        when(
+          mockFirestore.getCollection('users/user_123/achievements'),
+        ).thenAnswer((_) async => docs);
 
         final percentage = await service.getCompletionPercentage('user_123');
         expect(percentage, greaterThan(0.0));
         expect(percentage, lessThanOrEqualTo(100.0));
+      });
+    });
+
+    group('getProgress', () {
+      // Progress toward a not-yet-unlocked achievement is never persisted
+      // (see getPlayerAchievements's doc comment) - it's computed
+      // transiently from live game state (skill tree, season history)
+      // wherever it's needed for display, e.g. AchievementsScreen.
+      test('always returns null', () async {
+        final progress = await service.getProgress('user_123', 'stat_master');
+        expect(progress, isNull);
       });
     });
 
@@ -209,9 +246,12 @@ void main() {
         );
       });
 
-      test('stat_master is progress-based', () {
+      // Real regression guard: maxProgress used to be 50, far beyond the
+      // real skill tree's 5-tier-per-branch cap - this achievement could
+      // never actually be unlocked. It's 5 now, matching that real cap.
+      test('stat_master is progress-based with an achievable threshold', () {
         expect(AchievementsCatalog.statMaster.isProgressBased, isTrue);
-        expect(AchievementsCatalog.statMaster.maxProgress, equals(50));
+        expect(AchievementsCatalog.statMaster.maxProgress, equals(5));
       });
 
       test('getById returns achievement', () {
@@ -266,11 +306,11 @@ void main() {
           userId: 'user_123',
           achievementId: 'stat_master',
           unlockedAt: DateTime.now(),
-          progress: AchievementProgress(current: 25, target: 50),
+          progress: AchievementProgress(current: 2, target: 5),
         );
 
         expect(ach.isUnlocked, isFalse);
-        expect(ach.getProgressPercentage(), equals(50));
+        expect(ach.getProgressPercentage(), equals(40));
       });
     });
   });

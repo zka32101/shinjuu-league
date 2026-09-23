@@ -36,7 +36,8 @@ class AchievementState {
       isLoading: isLoading ?? this.isLoading,
       error: error,
       successMessage: successMessage,
-      lastUnlockedAchievement: lastUnlockedAchievement ?? this.lastUnlockedAchievement,
+      lastUnlockedAchievement:
+          lastUnlockedAchievement ?? this.lastUnlockedAchievement,
     );
   }
 }
@@ -51,15 +52,19 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
     this._achievementService,
     this._userId, {
     AchievementAnalyticsIntegration? analyticsIntegration,
-  })  : _analyticsIntegration = analyticsIntegration,
-        super(AchievementState());
+  }) : _analyticsIntegration = analyticsIntegration,
+       super(AchievementState());
 
   /// Load all achievements for the current player
   Future<void> loadPlayerAchievements() async {
     state = state.copyWith(isLoading: true, error: null);
     try {
-      final achievements = await _achievementService.getPlayerAchievements(_userId);
-      final unlocked = await _achievementService.getUnlockedAchievements(_userId);
+      final achievements = await _achievementService.getPlayerAchievements(
+        _userId,
+      );
+      final unlocked = await _achievementService.getUnlockedAchievements(
+        _userId,
+      );
 
       state = state.copyWith(
         playerAchievements: achievements,
@@ -70,10 +75,7 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
       // Track completion stats for analytics
       _analyticsIntegration?.trackCompletionStats(_userId);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -84,7 +86,9 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
   Future<PlayerAchievement?> _getPlayerAchievementById(
     String achievementId,
   ) async {
-    final achievements = await _achievementService.getPlayerAchievements(_userId);
+    final achievements = await _achievementService.getPlayerAchievements(
+      _userId,
+    );
     for (final achievement in achievements) {
       if (achievement.achievementId == achievementId) return achievement;
     }
@@ -101,9 +105,14 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
   }
 
   /// Get achievements by category
-  Future<List<PlayerAchievement>> getAchievementsByCategory(AchievementCategory category) async {
+  Future<List<PlayerAchievement>> getAchievementsByCategory(
+    AchievementCategory category,
+  ) async {
     try {
-      return await _achievementService.getAchievementsByCategory(_userId, category);
+      return await _achievementService.getAchievementsByCategory(
+        _userId,
+        category,
+      );
     } catch (e) {
       return [];
     }
@@ -223,65 +232,59 @@ class AchievementViewModel extends StateNotifier<AchievementState> {
   }
 }
 
-/// Riverpod provider for achievement service
-final achievementServiceProvider = Provider<AchievementService>((ref) {
-  throw UnimplementedError(
-    'achievementServiceProvider must be provided by the application',
-  );
-});
-
 /// Riverpod provider for achievement view model
-final achievementViewModelProvider = StateNotifierProvider.family.autoDispose<
-    AchievementViewModel,
-    AchievementState,
-    String>((ref, userId) {
-  final achievementService = ref.watch(achievementServiceProvider);
-  final analyticsIntegration = ref.watch(achievementAnalyticsIntegrationProvider);
-  return AchievementViewModel(
-    achievementService,
-    userId,
-    analyticsIntegration: analyticsIntegration,
-  );
-});
+final achievementViewModelProvider = StateNotifierProvider.family
+    .autoDispose<AchievementViewModel, AchievementState, String>((ref, userId) {
+      final achievementService = ref.watch(achievementServiceProvider);
+      final analyticsIntegration = ref.watch(
+        achievementAnalyticsIntegrationProvider,
+      );
+      return AchievementViewModel(
+        achievementService,
+        userId,
+        analyticsIntegration: analyticsIntegration,
+      );
+    });
 
 /// Provider to get all achievements with progress
-final achievementsWithProgressProvider =
-    FutureProvider.family.autoDispose<
-        List<(Achievement, PlayerAchievement?)>,
-        (String, AchievementCategory)>((ref, args) async {
-  final (userId, category) = args;
-  final achievementService = ref.watch(achievementServiceProvider);
-  final catalogAchievements = AchievementsCatalog.getByCategory(category);
-  final result = <(Achievement, PlayerAchievement?)>[];
+final achievementsWithProgressProvider = FutureProvider.family
+    .autoDispose<
+      List<(Achievement, PlayerAchievement?)>,
+      (String, AchievementCategory)
+    >((ref, args) async {
+      final (userId, category) = args;
+      final achievementService = ref.watch(achievementServiceProvider);
+      final catalogAchievements = AchievementsCatalog.getByCategory(category);
+      final result = <(Achievement, PlayerAchievement?)>[];
 
-  final playerAchievements = await achievementService.getPlayerAchievements(userId);
+      final playerAchievements = await achievementService.getPlayerAchievements(
+        userId,
+      );
 
-  for (final achievement in catalogAchievements) {
-    PlayerAchievement? playerAchievement;
-    for (final pa in playerAchievements) {
-      if (pa.achievementId == achievement.achievementId) {
-        playerAchievement = pa;
-        break;
+      for (final achievement in catalogAchievements) {
+        PlayerAchievement? playerAchievement;
+        for (final pa in playerAchievements) {
+          if (pa.achievementId == achievement.achievementId) {
+            playerAchievement = pa;
+            break;
+          }
+        }
+        result.add((achievement, playerAchievement));
       }
-    }
-    result.add((achievement, playerAchievement));
-  }
 
-  return result;
-});
+      return result;
+    });
 
 /// Provider to get completion percentage
-final achievementCompletionProvider = FutureProvider.family.autoDispose<double, String>(
-  (ref, userId) async {
-    final achievementService = ref.watch(achievementServiceProvider);
-    return achievementService.getCompletionPercentage(userId);
-  },
-);
+final achievementCompletionProvider = FutureProvider.family
+    .autoDispose<double, String>((ref, userId) async {
+      final achievementService = ref.watch(achievementServiceProvider);
+      return achievementService.getCompletionPercentage(userId);
+    });
 
 /// Provider to get unlock count
-final achievementUnlockCountProvider = FutureProvider.family.autoDispose<int, String>(
-  (ref, userId) async {
-    final achievementService = ref.watch(achievementServiceProvider);
-    return achievementService.getUnlockCount(userId);
-  },
-);
+final achievementUnlockCountProvider = FutureProvider.family
+    .autoDispose<int, String>((ref, userId) async {
+      final achievementService = ref.watch(achievementServiceProvider);
+      return achievementService.getUnlockCount(userId);
+    });

@@ -1,5 +1,6 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
@@ -17,6 +18,7 @@ void main() {
     late FirestoreService firestoreService;
     late AnalyticsService analyticsService;
     late AchievementService achievementService;
+    late AchievementRewardService rewardService;
     late AchievementTriggerDetector triggerDetector;
 
     setUp(() {
@@ -24,8 +26,12 @@ void main() {
       firestoreService = FirestoreService.forFirestore(fakeDb);
       analyticsService = AnalyticsService();
       achievementService = AchievementService(firestoreService);
+      rewardService = AchievementRewardService(
+        firestoreService: firestoreService,
+      );
       triggerDetector = AchievementTriggerDetector(
         achievementService: achievementService,
+        rewardService: rewardService,
       );
     });
 
@@ -83,55 +89,64 @@ void main() {
         );
       });
 
-      test('full funnel: onboarding start → aha moment → analytics logging',
-          () async {
-        const userId = 'user123';
+      test(
+        'full funnel: onboarding start → aha moment → analytics logging',
+        () async {
+          const userId = 'user123';
 
-        // 1. Onboarding
-        await analyticsService.logOnboardingStart(userId);
+          // 1. Onboarding
+          await analyticsService.logOnboardingStart(userId);
 
-        // 2. Tutorial
-        await analyticsService.logTutorialComplete(userId);
+          // 2. Tutorial
+          await analyticsService.logTutorialComplete(userId);
 
-        // 3. First Battle
-        await analyticsService.logFirstBattleEnter(userId);
+          // 3. First Battle
+          await analyticsService.logFirstBattleEnter(userId);
 
-        // 4. Aha Moment (First Kill)
-        final unlocked = await triggerDetector.checkKillTriggers(userId, 1, 1);
-        expect(unlocked.map((a) => a.achievementId), contains('aha_moment'));
+          // 4. Aha Moment (First Kill)
+          final unlocked = await triggerDetector.checkKillTriggers(
+            userId,
+            1,
+            1,
+          );
+          expect(unlocked.map((a) => a.achievementId), contains('aha_moment'));
 
-        // Log time to Aha Moment
-        await analyticsService.logTimeToAhaMoment(userId, 30);
+          // Log time to Aha Moment
+          await analyticsService.logTimeToAhaMoment(userId, 30);
 
-        // 5. Battle Win unlocks Rising Star
-        final battleWinUnlocked = await triggerDetector
-            .checkBattleCompletionTriggers(
-          userId,
-          won: true,
-          kills: 1,
-          deaths: 0,
-          assists: 0,
-          damageDealt: 100,
-          totalBattles: 1,
-          winCount: 1,
-        );
-        await analyticsService.logFirstBattleWin(userId);
+          // 5. Battle Win unlocks Rising Star (within the first 5 seasons at
+          // Silver tier or better - the fixed condition).
+          final battleWinUnlocked = await triggerDetector
+              .checkBattleCompletionTriggers(
+                userId,
+                won: true,
+                kills: 1,
+                deaths: 0,
+                assists: 0,
+                damageDealt: 100,
+                totalBattles: 1,
+                winCount: 1,
+                seasonsParticipated: 1,
+                currentTier: 'Silver',
+              );
+          await analyticsService.logFirstBattleWin(userId);
 
-        // Verify achievements accumulated
-        final allUnlockedIds = <String>{
-          ...unlocked.map((a) => a.achievementId),
-          ...battleWinUnlocked.map((a) => a.achievementId),
-        };
-        expect(allUnlockedIds, containsAll(['aha_moment', 'rising_star']));
+          // Verify achievements accumulated
+          final allUnlockedIds = <String>{
+            ...unlocked.map((a) => a.achievementId),
+            ...battleWinUnlocked.map((a) => a.achievementId),
+          };
+          expect(allUnlockedIds, containsAll(['aha_moment', 'rising_star']));
 
-        final persisted = await achievementService.getUnlockedAchievements(
-          userId,
-        );
-        expect(
-          persisted.map((a) => a.achievementId),
-          containsAll(['aha_moment', 'rising_star']),
-        );
-      });
+          final persisted = await achievementService.getUnlockedAchievements(
+            userId,
+          );
+          expect(
+            persisted.map((a) => a.achievementId),
+            containsAll(['aha_moment', 'rising_star']),
+          );
+        },
+      );
     });
 
     group('Analytics Funnel Event Sequencing', () {
@@ -156,8 +171,7 @@ void main() {
         );
       });
 
-      test('multiple users can proceed through funnel independently',
-          () async {
+      test('multiple users can proceed through funnel independently', () async {
         final userIds = ['user_a', 'user_b', 'user_c'];
 
         for (final userId in userIds) {
@@ -197,8 +211,11 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
 
         // Progression 3: Aha Moment
-        final killUnlocks =
-            await triggerDetector.checkKillTriggers(userId, 1, 1);
+        final killUnlocks = await triggerDetector.checkKillTriggers(
+          userId,
+          1,
+          1,
+        );
         unlockedAchievements.addAll(killUnlocks.map((a) => a.achievementId));
 
         await analyticsService.logTimeToAhaMoment(userId, 45);
@@ -206,8 +223,9 @@ void main() {
 
         // Verify consistency
         expect(unlockedAchievements, contains('aha_moment'));
-        final persisted =
-            await achievementService.getUnlockedAchievements(userId);
+        final persisted = await achievementService.getUnlockedAchievements(
+          userId,
+        );
         expect(
           persisted.map((a) => a.achievementId),
           containsAll(unlockedAchievements),
@@ -226,8 +244,9 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
 
         // Achievement should still be present
-        final persisted =
-            await achievementService.getUnlockedAchievements(userId);
+        final persisted = await achievementService.getUnlockedAchievements(
+          userId,
+        );
         expect(persisted.map((a) => a.achievementId), contains('aha_moment'));
       });
     });
@@ -246,14 +265,10 @@ void main() {
         await analyticsService.logTimeToAhaMoment(userId, 30);
 
         // Log Day 1 active
-        await expectLater(
-          analyticsService.logDay1Active(userId),
-          completes,
-        );
+        await expectLater(analyticsService.logDay1Active(userId), completes);
       });
 
-      test('Day 7 and Day 30 retention events can follow onboarding',
-          () async {
+      test('Day 7 and Day 30 retention events can follow onboarding', () async {
         const userId = 'retention_user';
 
         await analyticsService.logOnboardingStart(userId);
@@ -288,8 +303,7 @@ void main() {
         await analyticsService.logFirstBattleEnter(userId);
       });
 
-      test('different users assigned to different purchase cohorts',
-          () async {
+      test('different users assigned to different purchase cohorts', () async {
         await analyticsService.setCohortProperties(
           'user_d1payer',
           installCohort: '2026-09-01',
