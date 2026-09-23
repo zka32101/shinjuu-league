@@ -3,7 +3,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
+import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/monetization_service.dart';
+import 'package:shinjuu_league/services/purchase_cohort_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
@@ -20,17 +23,17 @@ class BattlePassScreen extends ConsumerStatefulWidget {
 class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
   bool _isPurchasing = false;
 
-  Future<void> _purchase(String userId) async {
+  Future<void> _purchase(User user) async {
+    final userId = user.uid;
     setState(() => _isPurchasing = true);
 
     final purchasesService = ref.read(purchasesServiceProvider);
     final analyticsService = ref.read(analyticsServiceProvider);
+    final monetizationService = ref.read(monetizationServiceProvider);
 
     final offerings = await purchasesService.getOfferings();
     final package = offerings?.current?.availablePackages
-        .where(
-          (p) => p.storeProduct.identifier == AppConfig.battlePassProductId,
-        )
+        .where((p) => p.storeProduct.identifier == ProductIds.battlePassMonthly)
         .firstOrNull;
 
     if (package == null) {
@@ -45,7 +48,7 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
     // Log purchase start
     await analyticsService.logPurchaseStart(
       userId,
-      AppConfig.battlePassProductId,
+      ProductIds.battlePassMonthly,
     );
 
     final outcome = await purchasesService.purchasePackage(package);
@@ -55,6 +58,7 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
 
     if (outcome.isSuccess) {
       final now = DateTime.now();
+      final priceYen = monetizationService.getBattlePassPriceYen().toDouble();
       final battlePass = BattlePass(
         seasonId: AppConfig.currentSeasonId,
         userId: userId,
@@ -66,22 +70,26 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
         endDate: now.add(const Duration(days: 90)),
       );
       await ref.read(firestoreServiceProvider).saveBattlePass(battlePass);
-      await analyticsService.logBattlePassPurchased(
-        userId,
-        AppConfig.battlePassPrice,
-      );
+      await analyticsService.logBattlePassPurchased(userId, priceYen);
       // Log detailed purchase completion
       await analyticsService.logPurchaseComplete(
         userId,
         'battlepass',
-        AppConfig.battlePassPrice,
+        priceYen,
       );
-      // Update user cohort to D1Payer after successful purchase
-      await ref.read(firestoreServiceProvider).updateUserPurchaseCohort(
-        userId,
-        'D1Payer',
+      // Advance the user's real purchase cohort (F2P -> D1/D7/D30Payer ->
+      // Whale on repeat purchases), not a hardcoded 'D1Payer'.
+      final nextCohort = PurchaseCohortService.nextCohortAfterPurchase(
+        currentCohort:
+            user.cohortProperties?.purchaseCohort ?? PurchaseCohortService.f2p,
+        installDate: user.createdAt,
+        now: now,
       );
+      await ref
+          .read(firestoreServiceProvider)
+          .updateUserPurchaseCohort(userId, nextCohort);
       ref.invalidate(battlePassProvider);
+      ref.invalidate(userViewModelProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -90,12 +98,12 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
     } else if (outcome.isCancelled) {
       await analyticsService.logPurchaseCancelled(
         userId,
-        AppConfig.battlePassProductId,
+        ProductIds.battlePassMonthly,
       );
     } else if (outcome.isFailure) {
       await analyticsService.logPurchaseFailed(
         userId,
-        AppConfig.battlePassProductId,
+        ProductIds.battlePassMonthly,
         outcome.errorMessage ?? '不明なエラー',
       );
       if (!mounted) return;
@@ -109,6 +117,9 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userViewModelProvider);
     final battlePassAsync = ref.watch(battlePassProvider);
+    final battlePassPriceYen = ref
+        .watch(monetizationServiceProvider)
+        .getBattlePassPriceYen();
 
     return Scaffold(
       appBar: AppBar(title: const Text('バトルパス')),
@@ -199,7 +210,7 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
                   if (!isPremium) ...[
                     const SizedBox(height: 8),
                     Text(
-                      '¥${AppConfig.battlePassPrice.toStringAsFixed(0)} で全報酬を解放（性能差は一切ありません）',
+                      '¥$battlePassPriceYen で全報酬を解放（性能差は一切ありません）',
                       textAlign: TextAlign.center,
                       style: const TextStyle(color: Colors.grey, fontSize: 12),
                     ),
@@ -208,7 +219,7 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
                       label: 'プレミアムパスを購入',
                       icon: Icons.workspace_premium,
                       isLoading: _isPurchasing,
-                      onPressed: () => _purchase(user.uid),
+                      onPressed: () => _purchase(user),
                     ),
                   ],
                 ],
