@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart' show Timestamp;
 import 'package:shinjuu_league/data/models/achievement.dart';
 import 'package:shinjuu_league/data/models/progression_stats.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
@@ -23,7 +24,10 @@ class AchievementService {
     for (final achievement in AchievementsCatalog.all) {
       if (!achievement.isAvailable) continue;
 
-      final checkResult = _checkAchievementCondition(achievement, progressionStats);
+      final checkResult = _checkAchievementCondition(
+        achievement,
+        progressionStats,
+      );
 
       if (checkResult.isMetOrProgressed) {
         var playerAch = playerAchievements
@@ -44,7 +48,8 @@ class AchievementService {
                     target: achievement.maxProgress,
                   )
                 : null,
-            isHidden: !achievement.isProgressBased && checkResult.progressValue == 0,
+            isHidden:
+                !achievement.isProgressBased && checkResult.progressValue == 0,
           );
         } else if (achievement.isProgressBased) {
           playerAch = playerAch.copyWith(
@@ -60,7 +65,8 @@ class AchievementService {
           playerAch,
         );
 
-        if (!unlockedIds.contains(achievement.achievementId) && playerAch.isUnlocked) {
+        if (!unlockedIds.contains(achievement.achievementId) &&
+            playerAch.isUnlocked) {
           unlockEvents.add(
             AchievementUnlockEvent(
               userId: userId,
@@ -76,33 +82,82 @@ class AchievementService {
     return unlockEvents;
   }
 
-  /// Get all player achievements
+  /// Get all player achievements.
+  ///
+  /// Real bug fixed here: this used to do
+  /// `docs.map((doc) => PlayerAchievement.fromJson(doc))`, which THROWS
+  /// for every doc actually written by FirestoreService.markAchievementUnlocked()
+  /// (the shape every real unlock path - AchievementRewardService.processUnlock(),
+  /// used by both the kill-detection and battle-trigger-detection systems -
+  /// writes: {achievementId, name?, unlockedAt: Timestamp, isHidden}).
+  /// PlayerAchievement.fromJson() requires a `userId` key (absent from that
+  /// shape) and parses `unlockedAt` with `DateTime.parse()` (which cannot
+  /// handle a Firestore Timestamp). Any real player with even one unlocked
+  /// achievement would crash this method the instant it was called - which
+  /// is exactly why nothing had ever successfully built an achievements
+  /// list screen against it.
   Future<List<PlayerAchievement>> getPlayerAchievements(String userId) async {
-    final docs = await _firestoreService.getCollection('users/$userId/achievements');
-    return docs.map((doc) => PlayerAchievement.fromJson(doc)).toList();
+    final docs = await _firestoreService.getCollection(
+      'users/$userId/achievements',
+    );
+    return docs
+        .map((doc) {
+          final achievementId = doc['achievementId'] as String?;
+          if (achievementId == null) return null;
+          return PlayerAchievement(
+            userId: userId,
+            achievementId: achievementId,
+            unlockedAt: _parseUnlockedAt(doc['unlockedAt']),
+            // Every doc in this collection represents a genuine unlock (see
+            // markAchievementUnlocked's callers) - progress is never
+            // persisted here, so PlayerAchievement.isUnlocked (progress ==
+            // null) is always correctly true for anything this returns.
+            progress: null,
+            isHidden: doc['isHidden'] as bool? ?? false,
+          );
+        })
+        .whereType<PlayerAchievement>()
+        .toList();
   }
 
-  /// Get specific achievement progress
-  Future<AchievementProgress?> getProgress(String userId, String achievementId) async {
-    final doc = await _firestoreService.get('users/$userId/achievements/$achievementId');
-    if (doc == null) return null;
-    final playerAch = PlayerAchievement.fromJson(doc);
-    return playerAch.progress;
+  /// Parses the `unlockedAt` value written by markAchievementUnlocked,
+  /// which is a Firestore Timestamp once the server resolves
+  /// FieldValue.serverTimestamp() (or, briefly right after a local write
+  /// before the server round-trip completes, null).
+  DateTime _parseUnlockedAt(dynamic value) {
+    if (value is Timestamp) return value.toDate();
+    if (value is String) return DateTime.tryParse(value) ?? DateTime.now();
+    return DateTime.now();
   }
 
-  /// Manually unlock achievement
+  /// Get specific achievement progress. Always null: a document only ever
+  /// exists here once an achievement is genuinely unlocked (see
+  /// getPlayerAchievements's doc comment), and progress toward a
+  /// not-yet-unlocked achievement is computed transiently from live game
+  /// state (skill tree, season history) rather than persisted anywhere.
+  Future<AchievementProgress?> getProgress(
+    String userId,
+    String achievementId,
+  ) async => null;
+
+  /// Manually unlock achievement (no reward granted - callers that should
+  /// also grant currency/badges/cosmetics use AchievementRewardService.processUnlock
+  /// instead, which calls this same underlying write). Delegates to
+  /// FirestoreService.markAchievementUnlocked() so every unlock in the app
+  /// writes the same document shape - this used to independently write a
+  /// full PlayerAchievement.toJson() (including a userId field and an
+  /// ISO-string unlockedAt), a different, incompatible shape that
+  /// getPlayerAchievements() could not parse.
   Future<void> unlockAchievement(String userId, String achievementId) async {
     final achievement = AchievementsCatalog.getById(achievementId);
-    if (achievement == null) throw Exception('Achievement not found: $achievementId');
+    if (achievement == null)
+      throw Exception('Achievement not found: $achievementId');
 
-    final playerAch = PlayerAchievement(
-      userId: userId,
-      achievementId: achievementId,
-      unlockedAt: DateTime.now(),
-      progress: null,
+    await _firestoreService.markAchievementUnlocked(
+      userId,
+      achievementId,
+      achievementName: achievement.name,
     );
-
-    await _firestoreService.set('users/$userId/achievements/$achievementId', playerAch);
   }
 
   /// Get unlocked achievements only
@@ -117,12 +172,10 @@ class AchievementService {
     AchievementCategory category,
   ) async {
     final all = await getPlayerAchievements(userId);
-    return all
-        .where((a) {
-          final achievement = AchievementsCatalog.getById(a.achievementId);
-          return achievement?.category == category;
-        })
-        .toList();
+    return all.where((a) {
+      final achievement = AchievementsCatalog.getById(a.achievementId);
+      return achievement?.category == category;
+    }).toList();
   }
 
   /// Get achievement unlock count
@@ -151,9 +204,13 @@ class AchievementService {
   ) {
     switch (achievement.achievementId) {
       case 'rising_star':
-        final isMet = stats.allTimeStats.totalSeasonsPlayed <= 5 &&
+        final isMet =
+            stats.allTimeStats.totalSeasonsPlayed <= 5 &&
             stats.currentSeason?.finalTier != 'Bronze';
-        return _AchievementCheckResult(isMetOrProgressed: isMet, progressValue: isMet ? 1 : 0);
+        return _AchievementCheckResult(
+          isMetOrProgressed: isMet,
+          progressValue: isMet ? 1 : 0,
+        );
 
       case 'stat_master':
         final maxPointsInTree = stats.currentSeason?.pointsAllocated ?? 0;
@@ -193,13 +250,22 @@ class AchievementService {
             streak = 0;
           }
         }
-        return _AchievementCheckResult(isMetOrProgressed: streak > 0, progressValue: streak);
+        return _AchievementCheckResult(
+          isMetOrProgressed: streak > 0,
+          progressValue: streak,
+        );
 
       case 'collector':
-        return _AchievementCheckResult(isMetOrProgressed: false, progressValue: 0);
+        return _AchievementCheckResult(
+          isMetOrProgressed: false,
+          progressValue: 0,
+        );
 
       default:
-        return _AchievementCheckResult(isMetOrProgressed: false, progressValue: 0);
+        return _AchievementCheckResult(
+          isMetOrProgressed: false,
+          progressValue: 0,
+        );
     }
   }
 }
@@ -207,5 +273,8 @@ class AchievementService {
 class _AchievementCheckResult {
   final bool isMetOrProgressed;
   final int progressValue;
-  _AchievementCheckResult({required this.isMetOrProgressed, required this.progressValue});
+  _AchievementCheckResult({
+    required this.isMetOrProgressed,
+    required this.progressValue,
+  });
 }

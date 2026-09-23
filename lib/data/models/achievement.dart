@@ -5,11 +5,11 @@ part 'achievement.g.dart';
 
 /// Achievement category for organization
 enum AchievementCategory {
-  progression,    // Tier milestones (reach Silver, Gold, etc)
-  milestone,      // All trees maxed, 100% completion, etc
-  skill,          // Allocate points in tree, etc
-  seasonal,       // Win streak, perfect allocation, etc
-  special,        // Limited-time, event-based achievements
+  progression, // Tier milestones (reach Silver, Gold, etc)
+  milestone, // All trees maxed, 100% completion, etc
+  skill, // Allocate points in tree, etc
+  seasonal, // Win streak, perfect allocation, etc
+  special, // Limited-time, event-based achievements
 }
 
 /// Reward tier for achievement
@@ -23,9 +23,9 @@ enum AchievementCategory {
 /// rather than reconciled into one, since call sites for both already exist
 /// throughout the codebase.
 enum AchievementRewardTier {
-  bronze,   // 50 currency + 1 badge
-  silver,   // 100 currency + 1 badge + cosmetic
-  gold,     // 250 currency + 2 badges + cosmetic
+  bronze, // 50 currency + 1 badge
+  silver, // 100 currency + 1 badge + cosmetic
+  gold, // 250 currency + 2 badges + cosmetic
   platinum, // 500 currency + 3 badges + cosmetics
   common,
   uncommon,
@@ -47,10 +47,11 @@ class Achievement with _$Achievement {
     required String description,
     required String iconUrl,
     required AchievementRewardTier rewardTier,
-    required int maxProgress,             // Max progress for progress-based
-    @Default(false) bool isProgressBased, // False = instant unlock, True = cumulative
-    @Default(false) bool isHidden,        // Hidden until progress > 0
-    DateTime? unlockedAfter,              // Time-gate (null = available now)
+    required int maxProgress, // Max progress for progress-based
+    @Default(false)
+    bool isProgressBased, // False = instant unlock, True = cumulative
+    @Default(false) bool isHidden, // Hidden until progress > 0
+    DateTime? unlockedAfter, // Time-gate (null = available now)
   }) = _Achievement;
 
   factory Achievement.fromJson(Map<String, dynamic> json) =>
@@ -124,8 +125,9 @@ class PlayerAchievement with _$PlayerAchievement {
     required String userId,
     required String achievementId,
     required DateTime unlockedAt,
-    AchievementProgress? progress,      // Null = instant unlock, Present = progress-based
-    @Default(false) bool isHidden,      // Still hidden if 0% progress
+    AchievementProgress?
+    progress, // Null = instant unlock, Present = progress-based
+    @Default(false) bool isHidden, // Still hidden if 0% progress
   }) = _PlayerAchievement;
 
   factory PlayerAchievement.fromJson(Map<String, dynamic> json) =>
@@ -149,8 +151,8 @@ class AchievementProgress with _$AchievementProgress {
   const AchievementProgress._();
 
   const factory AchievementProgress({
-    required int current,      // Current progress value
-    required int target,       // Target/max value
+    required int current, // Current progress value
+    required int target, // Target/max value
   }) = _AchievementProgress;
 
   factory AchievementProgress.fromJson(Map<String, dynamic> json) =>
@@ -170,7 +172,8 @@ class AchievementUnlockEvent with _$AchievementUnlockEvent {
     required String userId,
     required Achievement achievement,
     required DateTime unlockedAt,
-    @Default(true) bool isNewUnlock,   // True if first time, False if already unlocked
+    @Default(true)
+    bool isNewUnlock, // True if first time, False if already unlocked
   }) = _AchievementUnlockEvent;
 
   factory AchievementUnlockEvent.fromJson(Map<String, dynamic> json) =>
@@ -222,25 +225,33 @@ class AchievementsCatalog {
     isProgressBased: false,
   );
 
+  // maxProgress は SkillTree の実際の上限 (1ツリー最大5ティア、CLAUDE.md の
+  // 「スキルツリー(3ツリー×15ポイント)」設計) に合わせてある。以前は50が
+  // 設定されており、1ツリーの実際の上限(5)を大きく超えていたため、この
+  // 実績は理論上絶対に解除不可能だった。
   static const Achievement statMaster = Achievement(
     achievementId: 'stat_master',
     category: AchievementCategory.skill,
     name: 'ステータスマスター',
-    description: '1つのツリーに50+ポイント配置',
+    description: '1つのツリーを最大(5ティア)まで習得',
     iconUrl: 'assets/achievements/stat_master.png',
     rewardTier: AchievementRewardTier.silver,
-    maxProgress: 50,
+    maxProgress: 5,
     isProgressBased: true,
   );
 
+  // maxProgress は AchievementTriggerDetector.checkProgressTriggers() が
+  // 実際に検証する指標（3ツリーすべてに1ポイント以上配置した数、最大3）に
+  // 合わせてある。以前の説明文「15+ポイント配置」は実際のチェック内容
+  // （ポイント数ではなくツリーの多様性）と一致していなかった。
   static const Achievement balancedFighter = Achievement(
     achievementId: 'balanced_fighter',
     category: AchievementCategory.skill,
     name: 'バランスの取れた戦士',
-    description: 'すべての3つのツリーに15+ポイント配置',
+    description: 'すべての3つのツリーにポイントを配置',
     iconUrl: 'assets/achievements/balanced_fighter.png',
     rewardTier: AchievementRewardTier.silver,
-    maxProgress: 15,
+    maxProgress: 3,
     isProgressBased: true,
   );
 

@@ -18,11 +18,13 @@ import 'package:shinjuu_league/data/models/skill_catalog.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
+import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/elo_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/skill_tree_service.dart';
 import 'package:shinjuu_league/services/battle_skill_progression_coordinator.dart';
 import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
@@ -176,18 +178,23 @@ class BattleViewModel extends StateNotifier<BattleState> {
     AnalyticsService? analyticsService,
     SkillTreeService? skillTreeService,
     AchievementService? achievementService,
+    AchievementRewardService? achievementRewardService,
+    RankingService? rankingService,
     ItemService? itemService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _analyticsService = analyticsService ?? AnalyticsService(),
        _skillTreeService = skillTreeService ?? SkillTreeService(),
        _itemService = itemService ?? ItemService(),
-       _achievementService =
-           achievementService ??
-           AchievementService(firestoreService ?? FirestoreService()),
+       _rankingService = rankingService ?? RankingService(),
        _triggerDetector = AchievementTriggerDetector(
          achievementService:
              achievementService ??
              AchievementService(firestoreService ?? FirestoreService()),
+         rewardService:
+             achievementRewardService ??
+             AchievementRewardService(
+               firestoreService: firestoreService ?? FirestoreService(),
+             ),
        ),
        super(BattleState.initial()) {
     _skillProgressionAnalytics = SkillProgressionAnalyticsService(
@@ -199,7 +206,7 @@ class BattleViewModel extends StateNotifier<BattleState> {
   final AnalyticsService _analyticsService;
   final SkillTreeService _skillTreeService;
   final ItemService _itemService;
-  final AchievementService _achievementService;
+  final RankingService _rankingService;
   final AchievementTriggerDetector _triggerDetector;
   late final SkillProgressionAnalyticsService _skillProgressionAnalytics;
 
@@ -719,16 +726,38 @@ class BattleViewModel extends StateNotifier<BattleState> {
       final totalBattles = 1; // This will be updated by UserViewModel
       final winCount = finishedBattle.result == BattleResult.win ? 1 : 0;
 
-      // Get player's current stats for progress-based achievements.
-      // TODO: statPoints/pathDiversity/seasonsParticipated/consistentSeasons/
-      // currentTier aren't tracked on User yet (no season/skill-tree fields
-      // there today) — use safe defaults until that data is wired up.
-      await _firestoreService.getUserById(_selfUserId);
-      const statPoints = 0;
-      const pathDiversity = 0;
-      const seasonsParticipated = 0;
-      const consistentSeasons = 0;
-      const currentTier = 'Bronze';
+      // Get player's current stats for progress-based achievements. These
+      // used to be hard-coded to 0/'Bronze' with a TODO admitting the data
+      // wasn't wired up - meaning stat_master/balanced_fighter/
+      // season_warrior/consistency could never unlock in practice no
+      // matter what a player actually did. Now sourced from the real skill
+      // tree (statPoints/pathDiversity) and season history
+      // (seasonsParticipated/consistentSeasons/currentTier).
+      final skillTree = await _skillTreeService.getSkillTree(_selfUserId);
+      final statPoints = skillTree == null
+          ? 0
+          : skillTree.trees
+                .map((branch) => branch.allocatedTiers)
+                .reduce((a, b) => a > b ? a : b);
+      final pathDiversity =
+          skillTree?.trees
+              .where((branch) => branch.allocatedTiers > 0)
+              .length ??
+          0;
+
+      final seasonHistory = await _rankingService.getSeasonHistory(_selfUserId);
+      final seasonsParticipated = seasonHistory.length;
+      final currentTier = seasonHistory.isEmpty
+          ? 'Bronze'
+          : seasonHistory.last.peakTier;
+
+      // Trailing streak of Gold+ seasons, counted back from the most
+      // recent season (seasonHistory is oldest-to-newest).
+      var consistentSeasons = 0;
+      for (final season in seasonHistory.reversed) {
+        if (!tierAtLeast(season.peakTier, 'Gold')) break;
+        consistentSeasons++;
+      }
 
       // Check all achievement triggers
       final unlockedAchievements = await _triggerDetector

@@ -1,6 +1,7 @@
 import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/achievement.dart';
+import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/achievement_trigger_detector.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
@@ -19,6 +20,7 @@ void main() {
     late FakeFirebaseFirestore fakeDb;
     late FirestoreService firestoreService;
     late AchievementService achievementService;
+    late AchievementRewardService rewardService;
     late AchievementTriggerDetector triggerDetector;
     late PushNotificationService notificationService;
     late AnalyticsService analyticsService;
@@ -29,27 +31,32 @@ void main() {
       fakeDb = FakeFirebaseFirestore();
       firestoreService = FirestoreService.forFirestore(fakeDb);
       achievementService = AchievementService(firestoreService);
+      rewardService = AchievementRewardService(
+        firestoreService: firestoreService,
+      );
       triggerDetector = AchievementTriggerDetector(
         achievementService: achievementService,
+        rewardService: rewardService,
       );
       notificationService = PushNotificationService();
       analyticsService = AnalyticsService();
     });
 
     group('Achievement Unlock Notification Flow', () {
-      test('aha_moment achievement triggers notification topic subscription',
-          () async {
-        await notificationService.init();
+      test(
+        'aha_moment achievement triggers notification topic subscription',
+        () async {
+          await notificationService.init();
 
-        // Subscribe to achievement notifications
-        await expectLater(
-          notificationService.subscribeToTopic(_achievementUnlockedTopic),
-          completes,
-        );
-      });
+          // Subscribe to achievement notifications
+          await expectLater(
+            notificationService.subscribeToTopic(_achievementUnlockedTopic),
+            completes,
+          );
+        },
+      );
 
-      test('killing an enemy unlocks aha_moment and emits analytics',
-          () async {
+      test('killing an enemy unlocks aha_moment and emits analytics', () async {
         final unlocked = await triggerDetector.checkKillTriggers(userId, 1, 1);
 
         expect(unlocked.map((a) => a.achievementId), contains('aha_moment'));
@@ -68,7 +75,9 @@ void main() {
       test('multiple achievements can unlock in sequence', () async {
         final allUnlocked = <Achievement>[];
 
-        allUnlocked.addAll(await triggerDetector.checkKillTriggers(userId, 1, 1));
+        allUnlocked.addAll(
+          await triggerDetector.checkKillTriggers(userId, 1, 1),
+        );
         allUnlocked.addAll(
           await triggerDetector.checkBattleCompletionTriggers(
             userId,
@@ -79,6 +88,8 @@ void main() {
             damageDealt: 100,
             totalBattles: 1,
             winCount: 1,
+            seasonsParticipated: 1,
+            currentTier: 'Silver',
           ),
         );
 
@@ -118,36 +129,42 @@ void main() {
         expect(_achievementUnlockedTopic, isA<String>());
       });
 
-      test('achievement unlock -> notification -> analytics pipeline completes',
-          () async {
-        // 1. Unlock achievement
-        final unlocked = await triggerDetector.checkKillTriggers(userId, 1, 1);
-        expect(unlocked, isNotEmpty);
-
-        // 2. Prepare notification
-        await notificationService.init();
-        await notificationService.subscribeToTopic(_achievementUnlockedTopic);
-
-        // 3. Log to analytics
-        for (final achievement in unlocked) {
-          await expectLater(
-            analyticsService.logAchievementUnlocked(
-              userId,
-              achievement.achievementId,
-              achievement.rewardTier.name,
-            ),
-            completes,
+      test(
+        'achievement unlock -> notification -> analytics pipeline completes',
+        () async {
+          // 1. Unlock achievement
+          final unlocked = await triggerDetector.checkKillTriggers(
+            userId,
+            1,
+            1,
           );
-        }
+          expect(unlocked, isNotEmpty);
 
-        // Verify state consistency
-        final playerAchievements =
-            await achievementService.getUnlockedAchievements(userId);
-        expect(
-          playerAchievements.map((a) => a.achievementId),
-          contains('aha_moment'),
-        );
-      });
+          // 2. Prepare notification
+          await notificationService.init();
+          await notificationService.subscribeToTopic(_achievementUnlockedTopic);
+
+          // 3. Log to analytics
+          for (final achievement in unlocked) {
+            await expectLater(
+              analyticsService.logAchievementUnlocked(
+                userId,
+                achievement.achievementId,
+                achievement.rewardTier.name,
+              ),
+              completes,
+            );
+          }
+
+          // Verify state consistency
+          final playerAchievements = await achievementService
+              .getUnlockedAchievements(userId);
+          expect(
+            playerAchievements.map((a) => a.achievementId),
+            contains('aha_moment'),
+          );
+        },
+      );
     });
 
     group('Singleton State Across Services', () {
@@ -161,31 +178,33 @@ void main() {
         expect(identical(analytics1, analytics2), isTrue);
       });
 
-      test('achievement unlock state persists across service instances backed by the same Firestore',
-          () async {
-        // First instance unlocks
-        await triggerDetector.checkKillTriggers(userId, 1, 1);
+      test(
+        'achievement unlock state persists across service instances backed by the same Firestore',
+        () async {
+          // First instance unlocks
+          await triggerDetector.checkKillTriggers(userId, 1, 1);
 
-        // A second AchievementService instance backed by the SAME
-        // (fake) Firestore sees the persisted state
-        final achievementService2 = AchievementService(firestoreService);
-        final unlockedAgain =
-            await achievementService2.getUnlockedAchievements(userId);
-        expect(
-          unlockedAgain.map((a) => a.achievementId),
-          contains('aha_moment'),
-        );
+          // A second AchievementService instance backed by the SAME
+          // (fake) Firestore sees the persisted state
+          final achievementService2 = AchievementService(firestoreService);
+          final unlockedAgain = await achievementService2
+              .getUnlockedAchievements(userId);
+          expect(
+            unlockedAgain.map((a) => a.achievementId),
+            contains('aha_moment'),
+          );
 
-        // Analytics can be called independently
-        await expectLater(
-          analyticsService.logAchievementUnlocked(
-            userId,
-            'aha_moment',
-            'common',
-          ),
-          completes,
-        );
-      });
+          // Analytics can be called independently
+          await expectLater(
+            analyticsService.logAchievementUnlocked(
+              userId,
+              'aha_moment',
+              'common',
+            ),
+            completes,
+          );
+        },
+      );
     });
 
     group('Error Handling Across Services', () {
@@ -204,13 +223,15 @@ void main() {
         await expectLater(notificationService.init(), completes);
       });
 
-      test('achievement trigger detection works without notification service',
-          () async {
-        await expectLater(
-          triggerDetector.checkKillTriggers(userId, 1, 1),
-          completes,
-        );
-      });
+      test(
+        'achievement trigger detection works without notification service',
+        () async {
+          await expectLater(
+            triggerDetector.checkKillTriggers(userId, 1, 1),
+            completes,
+          );
+        },
+      );
     });
 
     group('Notification Payload Construction', () {
@@ -232,21 +253,23 @@ void main() {
         expect(payload['achievement_id'], equals(achievement.achievementId));
       });
 
-      test('payload round-trips through a Map (JSON-serializable shape)',
-          () async {
-        final original = <String, dynamic>{
-          'type': 'achievement_unlock',
-          'achievement_id': 'aha_moment',
-          'reward_tier': 'common',
-        };
+      test(
+        'payload round-trips through a Map (JSON-serializable shape)',
+        () async {
+          final original = <String, dynamic>{
+            'type': 'achievement_unlock',
+            'achievement_id': 'aha_moment',
+            'reward_tier': 'common',
+          };
 
-        // Simulate a JSON round-trip (encode/decode would use the same
-        // plain-Map shape since all values here are already JSON-safe).
-        final restored = Map<String, dynamic>.from(original);
+          // Simulate a JSON round-trip (encode/decode would use the same
+          // plain-Map shape since all values here are already JSON-safe).
+          final restored = Map<String, dynamic>.from(original);
 
-        expect(restored['type'], equals(original['type']));
-        expect(restored['achievement_id'], equals('aha_moment'));
-      });
+          expect(restored['type'], equals(original['type']));
+          expect(restored['achievement_id'], equals('aha_moment'));
+        },
+      );
     });
   });
 }
