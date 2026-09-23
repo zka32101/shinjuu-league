@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/data/models/admin_role.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/web_admin_dashboard_service.dart';
@@ -21,26 +23,20 @@ class AdminDashboardScreen extends ConsumerStatefulWidget {
 }
 
 class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
-  late WebAdminDashboardService _dashboardService;
   DashboardSnapshot? _currentSnapshot;
   bool _isLoading = true;
   String? _error;
 
+  // Owned by webAdminDashboardServiceProvider (autoDispose) - disposed there
+  // when no admin screen is watching it anymore, not by this widget.
+  WebAdminDashboardService get _dashboardService =>
+      ref.read(webAdminDashboardServiceProvider);
+
   @override
   void initState() {
     super.initState();
-    // TODO: Inject WebAdminDashboardService from Riverpod provider
-    _dashboardService = WebAdminDashboardService(
-      apiService: null as dynamic, // Placeholder
-    );
     _loadDashboard();
     _dashboardService.startPolling();
-  }
-
-  @override
-  void dispose() {
-    _dashboardService.dispose();
-    super.dispose();
   }
 
   Future<void> _loadDashboard() async {
@@ -68,6 +64,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     return Consumer(
       builder: (context, ref, child) {
         final adminAccessState = ref.watch(adminAccessViewModelProvider);
+        // Keeps webAdminDashboardServiceProvider (autoDispose) alive for as
+        // long as this screen is on-screen; _dashboardService itself reads
+        // it via ref.read() since initState()/callbacks can't use ref.watch.
+        ref.watch(webAdminDashboardServiceProvider);
 
         return Scaffold(
           appBar: AppBar(
@@ -78,9 +78,10 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           body: adminAccessState.when(
             data: (state) {
               // Check if user has permission to view dashboard
-              final canViewDashboard = ref
-                  .read(adminAccessViewModelProvider.notifier)
-                  .hasPermission(AdminPermission.viewFeatureFlags) &&
+              final canViewDashboard =
+                  ref
+                      .read(adminAccessViewModelProvider.notifier)
+                      .hasPermission(AdminPermission.viewFeatureFlags) &&
                   ref
                       .read(adminAccessViewModelProvider.notifier)
                       .hasPermission(AdminPermission.viewDifficulty);
@@ -117,8 +118,8 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
               return _isLoading
                   ? const Center(child: CircularProgressIndicator())
                   : _error != null
-                      ? _buildErrorState()
-                      : _buildDashboard();
+                  ? _buildErrorState()
+                  : _buildDashboard();
             },
             loading: () => const Center(child: CircularProgressIndicator()),
             error: (error, stack) => Center(
@@ -159,10 +160,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             style: const TextStyle(fontSize: 16),
           ),
           const SizedBox(height: 24),
-          CustomButton(
-            label: 'Retry',
-            onPressed: _loadDashboard,
-          ),
+          CustomButton(label: 'Retry', onPressed: _loadDashboard),
         ],
       ),
     );
@@ -184,6 +182,11 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Admin Tools Section - links to the other admin screens. These
+          // used to have no entry point from this dashboard at all.
+          _buildAdminToolsSection(),
+          const SizedBox(height: 24),
+
           // Statistics Section
           _buildStatisticsCard(stats),
           const SizedBox(height: 24),
@@ -200,6 +203,46 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           _buildRecentChangesSection(changes),
           const SizedBox(height: 32),
         ],
+      ),
+    );
+  }
+
+  Widget _buildAdminToolsSection() {
+    final tools = <(String, IconData, String)>[
+      ('機能フラグ', Icons.flag, AppRoutes.adminFeatureFlags),
+      ('実験', Icons.science, AppRoutes.adminExperiments),
+      ('難易度調整', Icons.tune, AppRoutes.adminDifficultyTuning),
+      ('監査ログ', Icons.receipt_long, AppRoutes.adminAuditLog),
+      ('スナップショット', Icons.camera_alt, AppRoutes.adminSnapshots),
+      ('ロール管理', Icons.admin_panel_settings, AppRoutes.adminRoles),
+      ('分析', Icons.analytics, AppRoutes.adminAnalytics),
+    ];
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Admin Tools',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                for (final (label, icon, route) in tools)
+                  ActionChip(
+                    avatar: Icon(icon, size: 18),
+                    label: Text(label),
+                    onPressed: () => context.push(route),
+                  ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -224,7 +267,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
             _buildStatRow(
               'Enabled Features',
               '${stats['features']?['enabled']?.toString() ?? '0'} '
-              '(${(stats['features']?['enabledPercentage'] as num?)?.toStringAsFixed(1) ?? '0'}%)',
+                  '(${(stats['features']?['enabledPercentage'] as num?)?.toStringAsFixed(1) ?? '0'}%)',
             ),
             const SizedBox(height: 8),
             _buildStatRow(
@@ -259,10 +302,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
         Text(label, style: const TextStyle(fontSize: 14)),
         Text(
           value,
-          style: const TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-          ),
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
         ),
       ],
     );
@@ -341,10 +381,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
   Widget _buildPresetButton(String label, String preset) {
     return SizedBox(
       width: 80,
-      child: CustomButton(
-        label: label,
-        onPressed: () => _applyPreset(preset),
-      ),
+      child: CustomButton(label: label, onPressed: () => _applyPreset(preset)),
     );
   }
 
@@ -472,10 +509,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
           const SizedBox(width: 8),
           Text(
             '${feature['rolloutPercentage']?.toString() ?? '0'}%',
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-            ),
+            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
           ),
         ],
       ),
@@ -539,11 +573,13 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
                 ),
               ),
               Text(
-                _formatTime(DateTime.parse(change['timestamp']?.toString() ?? DateTime.now().toIso8601String())),
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: Colors.grey,
+                _formatTime(
+                  DateTime.parse(
+                    change['timestamp']?.toString() ??
+                        DateTime.now().toIso8601String(),
+                  ),
                 ),
+                style: const TextStyle(fontSize: 12, color: Colors.grey),
               ),
             ],
           ),
@@ -569,16 +605,16 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
     try {
       final result = await _dashboardService.applyDifficultyPreset(preset);
       if (result && mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Applied $preset preset')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Applied $preset preset')));
         _loadDashboard();
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed to apply preset: $e')),
-        );
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Failed to apply preset: $e')));
       }
     }
   }

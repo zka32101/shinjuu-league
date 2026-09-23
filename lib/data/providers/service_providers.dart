@@ -1,5 +1,6 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battlepass_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
@@ -8,10 +9,14 @@ import 'package:shinjuu_league/services/achievement_toast_notification_service.d
 import 'package:shinjuu_league/services/achievement_detector_service.dart';
 import 'package:shinjuu_league/services/achievement_reward_service.dart';
 import 'package:shinjuu_league/services/achievement_integration_service.dart';
+import 'package:shinjuu_league/services/ab_test_coordinator.dart';
+import 'package:shinjuu_league/services/admin_api_service.dart';
 import 'package:shinjuu_league/services/analytics_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
+import 'package:shinjuu_league/services/config_admin_service.dart';
+import 'package:shinjuu_league/services/feature_flags_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
@@ -26,6 +31,8 @@ import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/admin_role_service.dart';
 import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/services/admin_analytics_service.dart';
+import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
+import 'package:shinjuu_league/services/web_admin_dashboard_service.dart';
 import 'package:shinjuu_league/viewmodels/admin_analytics_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/battle_viewmodel.dart';
 import 'package:shinjuu_league/viewmodels/friend_viewmodel.dart';
@@ -219,4 +226,59 @@ final adminAnalyticsViewModelProvider =
       return AdminAnalyticsViewModel(
         analyticsService: ref.watch(adminAnalyticsServiceProvider),
       );
+    });
+
+// Phase 32: Admin Config Dashboard (feature flags / experiments / difficulty
+// tuning / audit log / snapshots). Every screen in this group was previously
+// constructed with `dashboardService: null as dynamic, // Placeholder`
+// directly in app_routes.dart - this chain was never actually wired up, so
+// opening any of these screens threw immediately. Built here from the same
+// no-Firebase-required, in-memory services other config/skill-progression
+// code already defaults to (see FeatureFlagsService/SkillProgressionConfig).
+final skillProgressionConfigProvider = Provider<SkillProgressionConfig>((ref) {
+  return SkillProgressionConfig();
+});
+
+final featureFlagsServiceProvider = Provider<FeatureFlagsService>((ref) {
+  return FeatureFlagsService(config: ref.watch(skillProgressionConfigProvider));
+});
+
+final skillProgressionAnalyticsServiceProvider =
+    Provider<SkillProgressionAnalyticsService>((ref) {
+      return SkillProgressionAnalyticsService(
+        analyticsService: ref.watch(analyticsServiceProvider),
+        progressionConfig: ref.watch(skillProgressionConfigProvider),
+      );
+    });
+
+final abTestCoordinatorProvider = Provider<ABTestCoordinator>((ref) {
+  return ABTestCoordinator(
+    featureFlags: ref.watch(featureFlagsServiceProvider),
+    analytics: ref.watch(skillProgressionAnalyticsServiceProvider),
+  );
+});
+
+final configAdminServiceProvider = Provider<ConfigAdminService>((ref) {
+  return ConfigAdminService(
+    progressionConfig: ref.watch(skillProgressionConfigProvider),
+    featureFlags: ref.watch(featureFlagsServiceProvider),
+    coordinator: ref.watch(abTestCoordinatorProvider),
+  );
+});
+
+final adminApiServiceProvider = Provider<AdminApiService>((ref) {
+  return AdminApiService(adminService: ref.watch(configAdminServiceProvider));
+});
+
+/// autoDispose so the 5-second polling timer stops once no admin screen is
+/// watching it anymore, instead of running for the rest of the app session.
+final webAdminDashboardServiceProvider =
+    Provider.autoDispose<WebAdminDashboardService>((ref) {
+      final service = WebAdminDashboardService(
+        apiService: ref.watch(adminApiServiceProvider),
+        auditLogger: ref.watch(auditLoggerServiceProvider),
+        authService: ref.watch(authServiceProvider),
+      );
+      ref.onDispose(service.dispose);
+      return service;
     });

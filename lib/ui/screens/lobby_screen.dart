@@ -33,6 +33,8 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userViewModelProvider);
+    final isAdmin =
+        ref.watch(adminAccessViewModelProvider).valueOrNull?.isAdmin ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -78,6 +80,12 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             tooltip: 'スキルツリー',
             onPressed: () => context.push(AppRoutes.skillTreeProgression),
           ),
+          if (isAdmin)
+            IconButton(
+              icon: const Icon(Icons.admin_panel_settings),
+              tooltip: '管理画面',
+              onPressed: () => context.push(AppRoutes.adminDashboard),
+            ),
         ],
       ),
       body: userAsync.when(
