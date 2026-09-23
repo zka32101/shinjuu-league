@@ -15,12 +15,12 @@ import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 /// Override it with a fake so widget tests never require
 /// Firebase.initializeApp().
 ProviderContainer _fakeFirestoreContainer() => ProviderContainer(
-      overrides: [
-        firestoreServiceProvider.overrideWithValue(
-          FirestoreService.forFirestore(FakeFirebaseFirestore()),
-        ),
-      ],
-    );
+  overrides: [
+    firestoreServiceProvider.overrideWithValue(
+      FirestoreService.forFirestore(FakeFirebaseFirestore()),
+    ),
+  ],
+);
 
 void main() {
   group('QuestsScreen', () {
@@ -29,7 +29,7 @@ void main() {
       return UncontrolledProviderScope(
         container: container,
         child: MaterialApp(
-          home: const QuestsScreen(),
+          home: const QuestsScreen(userIdOverride: 'test_user'),
           theme: ThemeData(brightness: Brightness.light),
           darkTheme: ThemeData(brightness: Brightness.dark),
         ),
@@ -43,6 +43,23 @@ void main() {
       expect(find.text('クエスト'), findsOneWidget);
     });
 
+    testWidgets('shows a login prompt with no resolvable user', (
+      WidgetTester tester,
+    ) async {
+      // No userIdOverride, and AuthService()/FirebaseAuth throws without
+      // Firebase.initializeApp() (not run in this test) - the screen must
+      // degrade to this message rather than crash.
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: _fakeFirestoreContainer(),
+          child: const MaterialApp(home: QuestsScreen()),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text('ログインが必要です'), findsOneWidget);
+    });
+
     testWidgets('renders loading state', (WidgetTester tester) async {
       final container = _fakeFirestoreContainer();
 
@@ -50,7 +67,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -62,18 +79,19 @@ void main() {
       // (the fake Firestore backing this container has no seeded quest
       // data, so "アクティブなクエストなし" is the expected steady state here,
       // not a ListView).
-      final hasLoadingIndicator =
-          find.byType(CircularProgressIndicator).evaluate().isNotEmpty;
+      final hasLoadingIndicator = find
+          .byType(CircularProgressIndicator)
+          .evaluate()
+          .isNotEmpty;
       final hasListView = find.byType(ListView).evaluate().isNotEmpty;
-      final hasEmptyState =
-          find.textContaining('クエスト').evaluate().isNotEmpty;
+      final hasEmptyState = find.textContaining('クエスト').evaluate().isNotEmpty;
       expect(hasLoadingIndicator || hasListView || hasEmptyState, isTrue);
     });
 
     testWidgets('renders TabBar with 4 tabs', (WidgetTester tester) async {
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: _MockQuestService(),
               userId: 'test_user',
@@ -86,7 +104,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -112,7 +130,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -125,7 +143,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -136,10 +154,12 @@ void main() {
       expect(find.byType(Card), findsWidgets);
     });
 
-    testWidgets('shows empty state when no quests', (WidgetTester tester) async {
+    testWidgets('shows empty state when no quests', (
+      WidgetTester tester,
+    ) async {
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: _MockQuestService(),
               userId: 'test_user',
@@ -152,7 +172,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -160,10 +180,7 @@ void main() {
       await tester.pumpAndSettle();
 
       // Should show "アクティブなクエストなし" or similar
-      expect(
-        find.textContaining('クエスト'),
-        findsWidgets,
-      );
+      expect(find.textContaining('クエスト'), findsWidgets);
     });
 
     testWidgets('displays quest reward preview', (WidgetTester tester) async {
@@ -174,7 +191,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -187,7 +204,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -198,7 +215,9 @@ void main() {
       expect(find.textContaining('💰'), findsWidgets);
     });
 
-    testWidgets('shows progress bar for active quest', (WidgetTester tester) async {
+    testWidgets('shows progress bar for active quest', (
+      WidgetTester tester,
+    ) async {
       final mockService = _MockQuestService();
       mockService._allQuests = [
         _createPlayerQuest('daily_win_1', 'Win 3 battles'),
@@ -206,7 +225,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -219,7 +238,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -230,7 +249,9 @@ void main() {
       expect(find.byType(LinearProgressIndicator), findsWidgets);
     });
 
-    testWidgets('shows claim button for completed quest', (WidgetTester tester) async {
+    testWidgets('shows claim button for completed quest', (
+      WidgetTester tester,
+    ) async {
       final mockService = _MockQuestService();
       mockService._allQuests = [
         _createPlayerQuest(
@@ -243,7 +264,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -256,7 +277,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -272,7 +293,9 @@ void main() {
       expect(find.text('報酬を受け取る'), findsWidgets);
     });
 
-    testWidgets('displays claimed badge for rewarded quest', (WidgetTester tester) async {
+    testWidgets('displays claimed badge for rewarded quest', (
+      WidgetTester tester,
+    ) async {
       final mockService = _MockQuestService();
       mockService._allQuests = [
         _createPlayerQuest(
@@ -285,7 +308,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -298,7 +321,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -322,7 +345,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -335,7 +358,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -346,13 +369,15 @@ void main() {
       expect(find.text('普通'), findsWidgets);
     });
 
-    testWidgets('error state displays retry button', (WidgetTester tester) async {
+    testWidgets('error state displays retry button', (
+      WidgetTester tester,
+    ) async {
       final mockService = _MockQuestService();
       mockService._shouldThrowError = true;
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -365,7 +390,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -374,13 +399,12 @@ void main() {
 
       // After error, should show error message and retry button
       // Note: The exact error handling depends on implementation
-      expect(
-        find.byType(Center),
-        findsWidgets,
-      );
+      expect(find.byType(Center), findsWidgets);
     });
 
-    testWidgets('tab switching displays correct quests', (WidgetTester tester) async {
+    testWidgets('tab switching displays correct quests', (
+      WidgetTester tester,
+    ) async {
       final mockService = _MockQuestService();
       mockService._allQuests = [
         _createPlayerQuest('daily_win_1', 'Win 3 battles'),
@@ -389,7 +413,7 @@ void main() {
 
       final container = ProviderContainer(
         overrides: [
-          questViewModelProvider.overrideWith((ref) {
+          questViewModelProvider('test_user').overrideWith((ref) {
             return QuestViewModel(
               questService: mockService,
               userId: 'test_user',
@@ -402,7 +426,7 @@ void main() {
         UncontrolledProviderScope(
           container: container,
           child: MaterialApp(
-            home: const QuestsScreen(),
+            home: const QuestsScreen(userIdOverride: 'test_user'),
           ),
         ),
       );
@@ -435,17 +459,14 @@ class _MockQuestService extends Mock implements QuestService {
     QuestFrequency frequency,
   ) async {
     if (_shouldThrowError) throw Exception('Mock error');
-    return _allQuests
-        .where((q) => q.isActive)
-        .where((q) {
-          if (frequency == QuestFrequency.daily) {
-            return q.questId.startsWith('daily_');
-          } else if (frequency == QuestFrequency.weekly) {
-            return q.questId.startsWith('weekly_');
-          }
-          return true;
-        })
-        .toList();
+    return _allQuests.where((q) => q.isActive).where((q) {
+      if (frequency == QuestFrequency.daily) {
+        return q.questId.startsWith('daily_');
+      } else if (frequency == QuestFrequency.weekly) {
+        return q.questId.startsWith('weekly_');
+      }
+      return true;
+    }).toList();
   }
 
   @override

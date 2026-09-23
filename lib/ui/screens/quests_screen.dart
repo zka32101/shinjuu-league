@@ -1,12 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
+import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/viewmodels/quest_viewmodel.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 
 class QuestsScreen extends ConsumerStatefulWidget {
-  const QuestsScreen({Key? key}) : super(key: key);
+  const QuestsScreen({Key? key, this.userIdOverride}) : super(key: key);
+
+  /// Test-only seam: supplies the user ID directly instead of resolving it
+  /// from AuthService()/FirebaseAuth (which requires Firebase.initializeApp()
+  /// to have run - not something most widget tests in this suite do).
+  final String? userIdOverride;
 
   @override
   ConsumerState<QuestsScreen> createState() => _QuestsScreenState();
@@ -16,6 +22,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   int _selectedTabIndex = 0;
+  String? _userId;
 
   @override
   void initState() {
@@ -25,10 +32,27 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
       setState(() => _selectedTabIndex = _tabController.index);
     });
 
-    // Load quests on screen enter
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(questViewModelProvider.notifier).loadQuests();
-    });
+    final userId = widget.userIdOverride ?? _resolveCurrentUserId();
+    _userId = userId;
+    if (userId != null) {
+      // Load quests on screen enter
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref.read(questViewModelProvider(userId).notifier).loadQuests();
+      });
+    }
+  }
+
+  /// FirebaseAuth.instance throws (rather than returning null) when
+  /// Firebase.initializeApp() hasn't run - true of most widget tests in
+  /// this suite. Falling back to null here (rendered as "ログインが必要です")
+  /// keeps that a graceful, testable state instead of a crash.
+  String? _resolveCurrentUserId() {
+    try {
+      return AuthService().currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
@@ -39,81 +63,105 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
 
   @override
   Widget build(BuildContext context) {
-    final questState = ref.watch(questViewModelProvider);
+    final userId = _userId;
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
+
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('クエスト'),
+          centerTitle: true,
+          elevation: 0,
+          backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+          foregroundColor: isDarkMode
+              ? AppColors.lightText
+              : AppColors.darkText,
+        ),
+        body: const Center(child: Text('ログインが必要です')),
+      );
+    }
+
+    final questState = ref.watch(questViewModelProvider(userId));
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('クエスト'),
         centerTitle: true,
         elevation: 0,
-        backgroundColor:
-            isDarkMode ? AppColors.darkBg : AppColors.lightBg,
-        foregroundColor:
-            isDarkMode ? AppColors.lightText : AppColors.darkText,
+        backgroundColor: isDarkMode ? AppColors.darkBg : AppColors.lightBg,
+        foregroundColor: isDarkMode ? AppColors.lightText : AppColors.darkText,
       ),
       body: questState.isLoading
           ? const Center(child: CircularProgressIndicator())
           : questState.error != null
-              ? _buildErrorView(questState.error!)
-              : Column(
-                  children: [
-                    // Tab bar
-                    Container(
-                      color: isDarkMode ? AppColors.darkCard : AppColors.lightCard,
-                      child: TabBar(
-                        controller: _tabController,
-                        indicatorColor: AppColors.gold,
-                        indicatorWeight: 3,
-                        labelColor: AppColors.gold,
-                        unselectedLabelColor:
-                            isDarkMode ? AppColors.mutedText : AppColors.darkText,
-                        tabs: const [
-                          Tab(text: '日次'),
-                          Tab(text: '週次'),
-                          Tab(text: 'シーズン'),
-                          Tab(text: '完了'),
-                        ],
-                      ),
-                    ),
-                    // Tab content
-                    Expanded(
-                      child: TabBarView(
-                        controller: _tabController,
-                        children: [
-                          _buildQuestList(
-                            questState.activeQuests
-                                .where((q) => q.questId.startsWith('daily_'))
-                                .toList(),
-                            isDarkMode,
-                          ),
-                          _buildQuestList(
-                            questState.activeQuests
-                                .where((q) => q.questId.startsWith('weekly_'))
-                                .toList(),
-                            isDarkMode,
-                          ),
-                          _buildQuestList(
-                            questState.activeQuests
-                                .where((q) => q.questId.startsWith('seasonal_'))
-                                .toList(),
-                            isDarkMode,
-                          ),
-                          _buildQuestList(
-                            questState.completedQuests,
-                            isDarkMode,
-                            isCompleted: true,
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+          ? _buildErrorView(userId, questState.error!)
+          : Column(
+              children: [
+                // Tab bar
+                Container(
+                  color: isDarkMode ? AppColors.darkCard : AppColors.lightCard,
+                  child: TabBar(
+                    controller: _tabController,
+                    indicatorColor: AppColors.gold,
+                    indicatorWeight: 3,
+                    labelColor: AppColors.gold,
+                    unselectedLabelColor: isDarkMode
+                        ? AppColors.mutedText
+                        : AppColors.darkText,
+                    tabs: const [
+                      Tab(text: '日次'),
+                      Tab(text: '週次'),
+                      Tab(text: 'シーズン'),
+                      Tab(text: '完了'),
+                    ],
+                  ),
                 ),
+                // Tab content
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      _buildQuestList(
+                        userId,
+                        questState.activeQuests
+                            .where((q) => q.questId.startsWith('daily_'))
+                            .toList(),
+                        isDarkMode,
+                      ),
+                      _buildQuestList(
+                        userId,
+                        questState.activeQuests
+                            .where((q) => q.questId.startsWith('weekly_'))
+                            .toList(),
+                        isDarkMode,
+                      ),
+                      _buildQuestList(
+                        userId,
+                        questState.activeQuests
+                            .where((q) => q.questId.startsWith('seasonal_'))
+                            .toList(),
+                        isDarkMode,
+                      ),
+                      _buildQuestList(
+                        userId,
+                        questState.completedQuests,
+                        isDarkMode,
+                        isCompleted: true,
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
     );
   }
 
-  Widget _buildQuestList(List<PlayerQuest> quests, bool isDarkMode,
-      {bool isCompleted = false}) {
+  Widget _buildQuestList(
+    String userId,
+    List<PlayerQuest> quests,
+    bool isDarkMode, {
+    bool isCompleted = false,
+  }) {
     if (quests.isEmpty) {
       return Center(
         child: Text(
@@ -138,21 +186,18 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           catalogQuest: catalogQuest,
           isDarkMode: isDarkMode,
           onProgressUpdate: () => _handleProgressUpdate(quest.questId),
-          onClaimReward: () => _handleClaimReward(quest.questId),
+          onClaimReward: () => _handleClaimReward(userId, quest.questId),
         );
       },
     );
   }
 
-  Widget _buildErrorView(String error) {
+  Widget _buildErrorView(String userId, String error) {
     return Center(
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
-            'エラーが発生しました',
-            style: Theme.of(context).textTheme.headlineSmall,
-          ),
+          Text('エラーが発生しました', style: Theme.of(context).textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(
             error,
@@ -163,7 +208,7 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
           CustomButton(
             label: '再試行',
             onPressed: () {
-              ref.read(questViewModelProvider.notifier).refresh();
+              ref.read(questViewModelProvider(userId).notifier).refresh();
             },
           ),
         ],
@@ -182,15 +227,17 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
     );
   }
 
-  Future<void> _handleClaimReward(String questId) async {
-    final reward =
-        await ref.read(questViewModelProvider.notifier).claimQuestReward(questId);
+  Future<void> _handleClaimReward(String userId, String questId) async {
+    final reward = await ref
+        .read(questViewModelProvider(userId).notifier)
+        .claimQuestReward(questId);
 
     if (reward != null) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-              '報酬獲得: ${reward.currency}通貨 + ${reward.achievementBadges}バッジ'),
+            '報酬獲得: ${reward.currency}通貨 + ${reward.achievementBadges}バッジ',
+          ),
           duration: const Duration(seconds: 3),
           backgroundColor: AppColors.gold,
         ),
@@ -229,10 +276,13 @@ class _QuestCard extends ConsumerWidget {
 
     final progress = playerQuest.conditions.isEmpty
         ? 0
-        : ((playerQuest.conditions
-                    .fold<int>(0, (sum, c) => sum + c.progressPercentage) /
-                playerQuest.conditions.length) as double)
-            .toInt();
+        : ((playerQuest.conditions.fold<int>(
+                        0,
+                        (sum, c) => sum + c.progressPercentage,
+                      ) /
+                      playerQuest.conditions.length)
+                  as double)
+              .toInt();
 
     final cardBg = isDarkMode ? AppColors.darkCard : AppColors.lightCard;
     final textColor = isDarkMode ? AppColors.lightText : AppColors.darkText;
@@ -316,7 +366,9 @@ class _QuestCard extends ConsumerWidget {
                   '進捗: $progress%',
                   style: TextStyle(
                     fontSize: 12,
-                    color: isDarkMode ? AppColors.mutedText : AppColors.darkText,
+                    color: isDarkMode
+                        ? AppColors.mutedText
+                        : AppColors.darkText,
                   ),
                 ),
                 if (playerQuest.timeRemaining != null)
@@ -324,7 +376,9 @@ class _QuestCard extends ConsumerWidget {
                     '残り: ${_formatTimeRemaining(playerQuest.timeRemaining!)}',
                     style: TextStyle(
                       fontSize: 12,
-                      color: isDarkMode ? AppColors.mutedText : AppColors.darkText,
+                      color: isDarkMode
+                          ? AppColors.mutedText
+                          : AppColors.darkText,
                     ),
                   ),
               ],
@@ -339,10 +393,7 @@ class _QuestCard extends ConsumerWidget {
             if (playerQuest.canClaimReward)
               SizedBox(
                 width: double.infinity,
-                child: CustomButton(
-                  label: '報酬を受け取る',
-                  onPressed: onClaimReward,
-                ),
+                child: CustomButton(label: '報酬を受け取る', onPressed: onClaimReward),
               )
             else if (playerQuest.isRewarded)
               Container(
@@ -377,9 +428,7 @@ class _QuestCard extends ConsumerWidget {
         backgroundColor: isDarkMode
             ? AppColors.darkBg.withOpacity(0.5)
             : AppColors.lightBg.withOpacity(0.5),
-        valueColor: AlwaysStoppedAnimation<Color>(
-          _getProgressColor(progress),
-        ),
+        valueColor: AlwaysStoppedAnimation<Color>(_getProgressColor(progress)),
       ),
     );
   }
@@ -394,10 +443,7 @@ class _QuestCard extends ConsumerWidget {
             ? AppColors.darkBg.withOpacity(0.3)
             : AppColors.lightCard.withOpacity(0.5),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(
-          color: AppColors.gold.withOpacity(0.3),
-          width: 1,
-        ),
+        border: Border.all(color: AppColors.gold.withOpacity(0.3), width: 1),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
@@ -418,10 +464,7 @@ class _QuestCard extends ConsumerWidget {
   Widget _buildRewardItem(String emoji, String value, Color textColor) {
     return Column(
       children: [
-        Text(
-          emoji,
-          style: const TextStyle(fontSize: 16),
-        ),
+        Text(emoji, style: const TextStyle(fontSize: 16)),
         const SizedBox(height: 2),
         Text(
           value,

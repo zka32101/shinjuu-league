@@ -45,12 +45,10 @@ class QuestViewModel extends StateNotifier<QuestState> {
   final QuestService _questService;
   final String _userId;
 
-  QuestViewModel({
-    required QuestService questService,
-    required String userId,
-  })  : _questService = questService,
-        _userId = userId,
-        super(QuestState());
+  QuestViewModel({required QuestService questService, required String userId})
+    : _questService = questService,
+      _userId = userId,
+      super(QuestState());
 
   /// Load all quests for user
   Future<void> loadQuests() async {
@@ -82,10 +80,7 @@ class QuestViewModel extends StateNotifier<QuestState> {
 
       final quests = await _questService.getActiveQuests(_userId, frequency);
 
-      state = state.copyWith(
-        activeQuests: quests,
-        isLoading: false,
-      );
+      state = state.copyWith(activeQuests: quests, isLoading: false);
     } catch (e) {
       state = state.copyWith(
         isLoading: false,
@@ -135,10 +130,11 @@ class QuestViewModel extends StateNotifier<QuestState> {
 
         // If completed, move to completed
         final newCompleted = updated.isCompleted
-            ? [...state.completedQuests, updated]
-                .where((q) => q.questId != questId)
-                .toList() +
-                [updated]
+            ? [
+                    ...state.completedQuests,
+                    updated,
+                  ].where((q) => q.questId != questId).toList() +
+                  [updated]
             : state.completedQuests;
 
         // allQuests is a separate field from activeQuests/completedQuests
@@ -179,13 +175,16 @@ class QuestViewModel extends StateNotifier<QuestState> {
             q.questId == questId ? q.copyWith(isRewarded: true) : q;
 
         final updatedActive = state.activeQuests.map(markRewarded).toList();
-        final updatedCompleted = state.completedQuests.map(markRewarded).toList();
+        final updatedCompleted = state.completedQuests
+            .map(markRewarded)
+            .toList();
         final updatedAll = state.allQuests.map(markRewarded).toList();
 
         // Update totals
         final newTotals = {
           'currency': (state.rewardTotals['currency'] ?? 0) + reward.currency,
-          'badges': (state.rewardTotals['badges'] ?? 0) + reward.achievementBadges,
+          'badges':
+              (state.rewardTotals['badges'] ?? 0) + reward.achievementBadges,
         };
 
         state = state.copyWith(
@@ -239,41 +238,17 @@ class QuestViewModel extends StateNotifier<QuestState> {
   }
 }
 
-/// Riverpod provider for QuestViewModel (autoDispose per user session)
-final questViewModelProvider =
-    StateNotifierProvider.autoDispose<QuestViewModel, QuestState>((ref) {
-  // This will need userId from auth provider
-  // For now, use placeholder - should be injected from AuthService
-  const userId = 'placeholder_user_id';
-
-  final questService = ref.watch(questServiceProvider);
-  return QuestViewModel(
-    questService: questService,
-    userId: userId,
-  );
-});
-
-/// Provider to get active quests only
-final activeQuestsProvider = Provider.autoDispose<List<PlayerQuest>>((ref) {
-  final state = ref.watch(questViewModelProvider);
-  return state.activeQuests;
-});
-
-/// Provider to get completed quests only
-final completedQuestsProvider = Provider.autoDispose<List<PlayerQuest>>((ref) {
-  final state = ref.watch(questViewModelProvider);
-  return state.completedQuests;
-});
-
-/// Provider to get claimable quests (completed but not rewarded)
-final claimableQuestsProvider = Provider.autoDispose<List<PlayerQuest>>((ref) {
-  final state = ref.watch(questViewModelProvider);
-  return state.allQuests.where((q) => q.canClaimReward).toList();
-});
-
-/// Provider to get reward totals from this session
-final questRewardTotalsProvider =
-    Provider.autoDispose<Map<String, int>>((ref) {
-  final state = ref.watch(questViewModelProvider);
-  return state.rewardTotals;
-});
+/// Riverpod provider for QuestViewModel, keyed by the real signed-in user's
+/// ID (mirrors achievementViewModelProvider's family-over-userId pattern).
+/// This used to construct with a hardcoded 'placeholder_user_id' and read
+/// the current user from `ref.watch(userViewModelProvider)` internally -
+/// both wrong (every quest read/write went to a Firestore doc no real
+/// player's data ever lived in) and, for the second attempt, impossible to
+/// build in a widget test without Firebase.initializeApp() (userViewModelProvider
+/// eagerly touches FirebaseAuth). The caller now resolves and passes the
+/// user ID instead (see QuestsScreen._resolveCurrentUserId()).
+final questViewModelProvider = StateNotifierProvider.family
+    .autoDispose<QuestViewModel, QuestState, String>((ref, userId) {
+      final questService = ref.watch(questServiceProvider);
+      return QuestViewModel(questService: questService, userId: userId);
+    });

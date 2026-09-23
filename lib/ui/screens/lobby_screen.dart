@@ -68,6 +68,16 @@ class _LobbyScreenState extends ConsumerState<LobbyScreen> {
             tooltip: '成果',
             onPressed: () => context.push(AppRoutes.achievements),
           ),
+          IconButton(
+            icon: const Icon(Icons.checklist),
+            tooltip: 'クエスト',
+            onPressed: () => context.push(AppRoutes.quests),
+          ),
+          IconButton(
+            icon: const Icon(Icons.account_tree),
+            tooltip: 'スキルツリー',
+            onPressed: () => context.push(AppRoutes.skillTreeProgression),
+          ),
         ],
       ),
       body: userAsync.when(
