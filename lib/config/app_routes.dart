@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/match_result_model.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/ui/screens/battle_screen.dart';
 import 'package:shinjuu_league/ui/screens/battlepass_screen.dart';
 import 'package:shinjuu_league/ui/screens/evolution_select_screen.dart';
@@ -207,13 +209,13 @@ final appRouter = GoRouter(
     GoRoute(
       path: AppRoutes.adminDifficultyTuning,
       pageBuilder: (context, state) {
-        // Note: In a real app, dashboardService would be injected via Riverpod
-        // For now, using a placeholder that must be initialized in the screen
         return _buildPage(
           context,
           state,
-          AdminDifficultyTuningScreen(
-            dashboardService: null as dynamic, // Placeholder
+          Consumer(
+            builder: (context, ref, _) => AdminDifficultyTuningScreen(
+              dashboardService: ref.watch(webAdminDashboardServiceProvider),
+            ),
           ),
         );
       },
@@ -224,8 +226,10 @@ final appRouter = GoRouter(
         return _buildPage(
           context,
           state,
-          AdminFeatureFlagsScreen(
-            dashboardService: null as dynamic, // Placeholder
+          Consumer(
+            builder: (context, ref, _) => AdminFeatureFlagsScreen(
+              dashboardService: ref.watch(webAdminDashboardServiceProvider),
+            ),
           ),
         );
       },
@@ -236,8 +240,10 @@ final appRouter = GoRouter(
         return _buildPage(
           context,
           state,
-          AdminExperimentsScreen(
-            dashboardService: null as dynamic, // Placeholder
+          Consumer(
+            builder: (context, ref, _) => AdminExperimentsScreen(
+              dashboardService: ref.watch(webAdminDashboardServiceProvider),
+            ),
           ),
         );
       },
@@ -248,8 +254,10 @@ final appRouter = GoRouter(
         return _buildPage(
           context,
           state,
-          AdminAuditLogScreen(
-            dashboardService: null as dynamic, // Placeholder
+          Consumer(
+            builder: (context, ref, _) => AdminAuditLogScreen(
+              dashboardService: ref.watch(webAdminDashboardServiceProvider),
+            ),
           ),
         );
       },
@@ -260,8 +268,10 @@ final appRouter = GoRouter(
         return _buildPage(
           context,
           state,
-          AdminSnapshotsScreen(
-            dashboardService: null as dynamic, // Placeholder
+          Consumer(
+            builder: (context, ref, _) => AdminSnapshotsScreen(
+              dashboardService: ref.watch(webAdminDashboardServiceProvider),
+            ),
           ),
         );
       },
