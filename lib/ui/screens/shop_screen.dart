@@ -1,8 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/monetization_service.dart';
+import 'package:shinjuu_league/services/purchase_cohort_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
@@ -25,15 +27,17 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   bool _isPurchasing = false;
   final _random = Random();
 
-  Future<void> _pullGacha(String userId, List<String> ownedSkinIds) async {
+  Future<void> _pullGacha(User user) async {
+    final userId = user.uid;
     setState(() => _isPurchasing = true);
 
     final purchasesService = ref.read(purchasesServiceProvider);
     final analyticsService = ref.read(analyticsServiceProvider);
+    final monetizationService = ref.read(monetizationServiceProvider);
 
     final offerings = await purchasesService.getOfferings();
     final package = offerings?.current?.availablePackages
-        .where((p) => p.storeProduct.identifier == AppConfig.skinGachaProductId)
+        .where((p) => p.storeProduct.identifier == ProductIds.skinGacha1x)
         .firstOrNull;
 
     if (package == null) {
@@ -46,10 +50,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     }
 
     // Log purchase start
-    await analyticsService.logPurchaseStart(
-      userId,
-      AppConfig.skinGachaProductId,
-    );
+    await analyticsService.logPurchaseStart(userId, ProductIds.skinGacha1x);
 
     final outcome = await purchasesService.purchasePackage(package);
 
@@ -58,22 +59,31 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
 
     if (outcome.isSuccess) {
       final (skinId, skinName) = _skinPool[_random.nextInt(_skinPool.length)];
-      final updatedSkins = [...ownedSkinIds, skinId];
+      final updatedSkins = [...user.ownedSkinIds, skinId];
+      final priceYen = monetizationService.getSkinGachaPriceYen().toDouble();
 
       final userViewModel = ref.read(userViewModelProvider.notifier);
       await userViewModel.updateOwnedSkins(updatedSkins);
-      await analyticsService.logSkinPurchased(userId, skinId, AppConfig.skinPrice);
+      await analyticsService.logSkinPurchased(userId, skinId, priceYen);
       // Log detailed purchase completion
       await analyticsService.logPurchaseComplete(
         userId,
         'skin_gacha',
-        AppConfig.skinPrice,
+        priceYen,
       );
-      // Update user cohort to D1Payer after successful purchase
-      await ref.read(firestoreServiceProvider).updateUserPurchaseCohort(
-        userId,
-        'D1Payer',
+      // Advance the user's real purchase cohort (F2P -> D1/D7/D30Payer ->
+      // Whale on repeat purchases), not a hardcoded 'D1Payer'.
+      final now = DateTime.now();
+      final nextCohort = PurchaseCohortService.nextCohortAfterPurchase(
+        currentCohort:
+            user.cohortProperties?.purchaseCohort ?? PurchaseCohortService.f2p,
+        installDate: user.createdAt,
+        now: now,
       );
+      await ref
+          .read(firestoreServiceProvider)
+          .updateUserPurchaseCohort(userId, nextCohort);
+      ref.invalidate(userViewModelProvider);
 
       if (!mounted) return;
       ScaffoldMessenger.of(
@@ -82,12 +92,12 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     } else if (outcome.isCancelled) {
       await analyticsService.logPurchaseCancelled(
         userId,
-        AppConfig.skinGachaProductId,
+        ProductIds.skinGacha1x,
       );
     } else if (outcome.isFailure) {
       await analyticsService.logPurchaseFailed(
         userId,
-        AppConfig.skinGachaProductId,
+        ProductIds.skinGacha1x,
         outcome.errorMessage ?? '不明なエラー',
       );
       if (!mounted) return;
@@ -100,6 +110,9 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
   @override
   Widget build(BuildContext context) {
     final userAsync = ref.watch(userViewModelProvider);
+    final skinGachaPriceYen = ref
+        .watch(monetizationServiceProvider)
+        .getSkinGachaPriceYen();
 
     return Scaffold(
       appBar: AppBar(title: const Text('スキンショップ')),
@@ -180,7 +193,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    '¥${AppConfig.skinPrice.toStringAsFixed(0)} でガチャを1回引く',
+                    '¥$skinGachaPriceYen でガチャを1回引く',
                     textAlign: TextAlign.center,
                     style: const TextStyle(color: Colors.grey, fontSize: 12),
                   ),
@@ -189,7 +202,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                     label: 'ガチャを引く',
                     icon: Icons.casino,
                     isLoading: _isPurchasing,
-                    onPressed: () => _pullGacha(user.uid, user.ownedSkinIds),
+                    onPressed: () => _pullGacha(user),
                   ),
                 ],
               ),

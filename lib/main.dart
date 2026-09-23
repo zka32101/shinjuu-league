@@ -8,6 +8,7 @@ import 'package:shinjuu_league/config/app_routes.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/services/achievement_service.dart';
 import 'package:shinjuu_league/services/asset_service.dart';
+import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
 import 'package:shinjuu_league/services/remote_config_service.dart';
@@ -20,6 +21,10 @@ void main() async {
 
   // Firebase Remote Config を初期化（ABテスト・機能フラグ）
   await RemoteConfigService().init();
+
+  // 課金基盤を初期化（RevenueCat設定込み）。APIキー未設定時は内部で
+  // 安全にスキップされ、購入系メソッドは全て準備中フォールバックを返す
+  await MonetizationService().init();
 
   // 資産（Lottie・SE・BGM）をプリロード
   // 実ファイルが無い場合でも安全に続行

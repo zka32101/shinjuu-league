@@ -1,19 +1,27 @@
 import 'package:purchases_flutter/purchases_flutter.dart';
+import 'package:shinjuu_league/config/app_config.dart';
 import 'package:shinjuu_league/config/feature_flags.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
 
 /// 商品 ID の定義（App Store & Google Play に登録する際に使用）
+///
+/// バトルパス・スキンガチャ単発は実際の購入画面
+/// (battlepass_screen.dart / shop_screen.dart) が使う唯一の権威データである
+/// [AppConfig] の ID を参照する（以前は reverse-DNS 形式の別IDを独自定義して
+/// おり、実購入経路とここが指す商品が食い違っていた）。
 abstract class ProductIds {
   // バトルパス
-  static const battlePassMonthly = 'com.petitworksapps.shinjukuleague.battlepass.monthly';
+  static const battlePassMonthly = AppConfig.battlePassProductId;
 
   // スキンガチャ
-  static const skinGacha1x = 'com.petitworksapps.shinjukuleague.skin.gacha.1x';
-  static const skinGacha10x = 'com.petitworksapps.shinjukuleague.skin.gacha.10x';
+  static const skinGacha1x = AppConfig.skinGachaProductId;
+  // 未実装（どの購入経路からも使われていない）。将来ストアへ登録する際は
+  // ここに実際の商品IDを設定する
+  static const skinGacha10x = 'skin_gacha_10x';
 
-  // ブーストパック（将来の追加機能）
-  static const boostPackSmall = 'com.petitworksapps.shinjukuleague.boost.small';
-  static const boostPackLarge = 'com.petitworksapps.shinjukuleague.boost.large';
+  // ブーストパック（将来の追加機能・未実装）
+  static const boostPackSmall = 'boost_pack_small';
+  static const boostPackLarge = 'boost_pack_large';
 }
 
 /// 購入可能な商品の定義
@@ -32,8 +40,7 @@ enum MonetizationProduct {
 /// 統一的な課金管理インターフェース
 /// RemoteConfig の価格戦略と RevenueCat の実装を統合
 class MonetizationService {
-  static final MonetizationService _instance =
-      MonetizationService._internal();
+  static final MonetizationService _instance = MonetizationService._internal();
 
   factory MonetizationService() => _instance;
   MonetizationService._internal();
@@ -86,9 +93,7 @@ class MonetizationService {
 
   /// 特定の商品を購入
   /// 返り値: PurchaseOutcome（success/cancelled/failure）
-  Future<PurchaseOutcome> purchaseProduct(
-    MonetizationProduct product,
-  ) async {
+  Future<PurchaseOutcome> purchaseProduct(MonetizationProduct product) async {
     if (!isEnabled) {
       return PurchaseOutcome.failure('課金機能は現在利用できません');
     }
@@ -112,9 +117,7 @@ class MonetizationService {
       }
 
       if (targetPackage == null) {
-        return PurchaseOutcome.failure(
-          '商品 ${product.id} が見つかりません',
-        );
+        return PurchaseOutcome.failure('商品 ${product.id} が見つかりません');
       }
 
       return await _purchases.purchasePackage(targetPackage);
