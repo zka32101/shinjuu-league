@@ -1,8 +1,17 @@
 plugins {
     id("com.android.application")
     id("com.google.gms.google-services")
+    id("com.google.firebase.crashlytics")
     // The Flutter Gradle Plugin must be applied after the Android and Kotlin Gradle plugins.
     id("dev.flutter.flutter-gradle-plugin")
+}
+
+// The mapping-file upload needs Groovy XML classes (groovy.util.XmlSlurper)
+// that this Gradle version no longer ships, so it fails the release build.
+tasks.whenTaskAdded {
+    if (name.startsWith("uploadCrashlyticsMappingFile")) {
+        enabled = false
+    }
 }
 
 android {
@@ -21,7 +30,7 @@ android {
         applicationId = "com.petitworksapps.shinjukuleague"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
-        minSdk = 21
+        minSdk = flutter.minSdkVersion
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
@@ -32,6 +41,10 @@ android {
             // TODO: Add your own signing config for the release build.
             // Signing with the debug keys for now, so `flutter run --release` works.
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
 }
