@@ -37,10 +37,17 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
   void initState() {
     super.initState();
 
-    // スキルリストを初期化（デフォルト神獣を使用）
-    // 注：プレイヤーの選択中の神獣はMatchResultから取得するか、
-    // BattleViewModelで既に設定されている状態で使用
-    final mechaId = defaultMechaId;
+    // widget.match.allParticipants からログイン中ユーザーの参加者を探し、
+    // 実際に選んだ神獣のスキルを表示する。以前はここが常に defaultMechaId
+    // 固定で、かつそのIDがスキルデータのキーと食い違っていたため、進化選択
+    // 画面の直後・全プレイヤーで必ず例外が発生しバトル開始画面が固まって
+    // いた（getSkillsForMecha側のフォールバックで空リストは返らなくなった
+    // ため、この throw 自体はもう発生しないはずだが、安全策として残す）。
+    final selfUserId = ref.read(userViewModelProvider).value?.uid;
+    final selfParticipant = widget.match.allParticipants
+        .where((p) => p.userId == selfUserId)
+        .firstOrNull;
+    final mechaId = selfParticipant?.mechaId ?? defaultMechaId;
     availableSkills = SkillSystemService.getSkillsForMecha(mechaId);
 
     if (availableSkills.length >= 3) {
@@ -93,6 +100,12 @@ class _SkillBuildScreenState extends ConsumerState<SkillBuildScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // EvolutionSelectScreen と同じ理由で ref.watch して battleViewModelProvider
+    // (autoDispose) の購読を維持する。ここでも read だけだと、この画面から
+    // BattleScreen へ遷移する間にプロバイダが破棄され、prepareBattle() が
+    // セットした engine が失われてしまう。
+    ref.watch(battleViewModelProvider);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
