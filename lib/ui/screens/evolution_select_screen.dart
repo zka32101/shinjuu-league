@@ -32,8 +32,18 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) async {
-      await _prepare();
-      if (!_prepareCompleter.isCompleted) _prepareCompleter.complete();
+      // _select() awaits _prepareCompleter.future before it can navigate
+      // away from this screen (see its doc comment). If _prepare() were to
+      // throw here without this catch, the completer would never resolve
+      // and the countdown timeout / card taps would silently hang forever
+      // instead of starting the match.
+      try {
+        await _prepare();
+      } catch (e) {
+        // Fall through - completing below still lets the match start.
+      } finally {
+        if (!_prepareCompleter.isCompleted) _prepareCompleter.complete();
+      }
     });
     _countdownTimer = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -75,6 +85,15 @@ class _EvolutionSelectScreenState extends ConsumerState<EvolutionSelectScreen> {
 
   @override
   Widget build(BuildContext context) {
+    // battleViewModelProvider は autoDispose で、リスナーが0になると
+    // prepareBattle() が設定した engine ごと破棄されてしまう。この画面と
+    // 次のSkillBuildScreenがどちらも ref.read しかしていなかったため、
+    // 画面遷移の間にプロバイダが破棄→再生成され、BattleScreen が
+    // engine: null の別インスタンスを見て永久ローディングになっていた
+    // （試合開始不能バグ）。ここで ref.watch して購読を維持することで、
+    // pushReplacement の前後でプロバイダが生き続けるようにする。
+    ref.watch(battleViewModelProvider);
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('試合前進化選択'),

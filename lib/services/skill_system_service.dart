@@ -1,3 +1,4 @@
+import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
 import 'package:shinjuu_league/data/models/mecha_model.dart';
@@ -70,6 +71,78 @@ class SkillSystemService {
         cooldownSeconds: 9.0,
       ),
     ],
+    // 上記2件は mecha_catalog.dart が汎用IDから神獣名ベースのID
+    // （mecha_east_flame / mecha_west_frost 等）へ移行した際に取り残された
+    // 旧IDのまま。SkillBuildScreenは実際に選ばれた神獣のIDでこのマップを
+    // 引くため、キーの不一致でどの神獣でも「Mecha must have at least 3
+    // skills」が必ず発生し、対戦を一切開始できなくなっていた。カタログの
+    // 実際のIDでも同じスキル内容を引けるようにエイリアスを追加する
+    // （既存の 'mecha_east_01'/'mecha_west_01' キーは test/skill_system_test.dart
+    // 等が直接参照しているため残す）。
+    'mecha_east_flame': [
+      SkillDefinition(
+        skillId: 'skill_east_flame_q',
+        name: '焔撃',
+        mechaId: 'mecha_east_flame',
+        type: SkillType.offensive,
+        description: '敵単体に炎を発射。ダメージを与える',
+        baseCost: 40,
+        baseDamageMultiplier: 1.5,
+        cooldownSeconds: 4.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_east_flame_w',
+        name: '炎の壁',
+        mechaId: 'mecha_east_flame',
+        type: SkillType.defensive,
+        description: '自分の周囲に炎の壁を展開。防御力UP',
+        baseCost: 50,
+        baseDamageMultiplier: 1.0,
+        cooldownSeconds: 6.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_east_flame_e',
+        name: '熱波拡散',
+        mechaId: 'mecha_east_flame',
+        type: SkillType.utility,
+        description: '周囲の敵全員にダメージ。範囲攻撃',
+        baseCost: 60,
+        baseDamageMultiplier: 2.0,
+        cooldownSeconds: 8.0,
+      ),
+    ],
+    'mecha_west_frost': [
+      SkillDefinition(
+        skillId: 'skill_west_frost_q',
+        name: 'フロストボルト',
+        mechaId: 'mecha_west_frost',
+        type: SkillType.offensive,
+        description: '敵を凍らせる。移動速度低下効果',
+        baseCost: 40,
+        baseDamageMultiplier: 1.3,
+        cooldownSeconds: 4.5,
+      ),
+      SkillDefinition(
+        skillId: 'skill_west_frost_w',
+        name: '氷盾',
+        mechaId: 'mecha_west_frost',
+        type: SkillType.defensive,
+        description: '防御UPと一時的なシールド',
+        baseCost: 45,
+        baseDamageMultiplier: 1.0,
+        cooldownSeconds: 6.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_west_frost_e',
+        name: '極寒地帯',
+        mechaId: 'mecha_west_frost',
+        type: SkillType.utility,
+        description: '範囲内の敵の攻撃力低下',
+        baseCost: 70,
+        baseDamageMultiplier: 0.8,
+        cooldownSeconds: 9.0,
+      ),
+    ],
   };
 
   /// アイテムカタログ
@@ -119,9 +192,21 @@ class SkillSystemService {
     ),
   ];
 
-  /// 神獣のスキル一覧を取得
+  /// 神獣のスキル一覧を取得。
+  /// mecha_east_thunder/stone や mecha_west_storm/gold 等、まだ専用スキルが
+  /// 用意されていない神獣が選ばれた場合は、同じ origin（EAST/WEST）の
+  /// 既定神獣のスキルセットへフォールバックする。ここで空リストを返すと
+  /// SkillBuildScreen.initState が例外を投げてバトル開始画面が固まって
+  /// しまうため（3スキル未満は許容しない仕様）、専用キットが揃うまでの
+  /// 暫定措置として必ず3スキル返すことを優先する。
   static List<SkillDefinition> getSkillsForMecha(String mechaId) {
-    return _mechaSkills[mechaId] ?? [];
+    final direct = _mechaSkills[mechaId];
+    if (direct != null && direct.isNotEmpty) return direct;
+
+    final fallbackId = mechaById(mechaId).origin == 'WEST'
+        ? 'mecha_west_frost'
+        : 'mecha_east_flame';
+    return _mechaSkills[fallbackId] ?? [];
   }
 
   /// スキルIDからスキル定義を取得

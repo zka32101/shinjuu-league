@@ -343,8 +343,24 @@ class BattleViewModel extends StateNotifier<BattleState> {
     // skillProgressionStates が空のままになってしまう）
     _updateSkillProgressionUI();
 
-    await _firestoreService.createBattle(battle);
-    await _analyticsService.logBattleStart(selfUserId, match.mode.name);
+    // state.engine is already set above, so the battle is fully playable
+    // locally at this point. Persistence/analytics failures here (e.g. a
+    // transient network blip, or an anonymous/guest session without
+    // connectivity) must not block the match from starting - the caller
+    // (EvolutionSelectScreen) awaits this method's completion to unblock
+    // its own countdown/selection flow, so letting an exception escape
+    // here would leave that screen stuck forever instead of just missing
+    // this one battle's server record.
+    try {
+      await _firestoreService.createBattle(battle);
+    } catch (e) {
+      // Battle stays playable locally; only the server record is missing.
+    }
+    try {
+      await _analyticsService.logBattleStart(selfUserId, match.mode.name);
+    } catch (e) {
+      // Analytics failures must never block starting the match.
+    }
   }
 
   /// スキルツリーの修正倍率をロードしてエンジンに適用する

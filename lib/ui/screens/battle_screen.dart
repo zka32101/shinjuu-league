@@ -82,8 +82,12 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         ? state.skillProgressionStates[selfId]
         : null;
 
+    // 横画面で画面高さが小さい端末（この試合画面の想定操作向き）でも
+    // Expanded(GameWidget) の取り分を残すため、固定200dpではなく画面高さに
+    // 応じて縮める（最小100dp・最大200dp）。
+    final panelHeight = MediaQuery.of(context).size.height * 0.28;
     return Container(
-      height: 200,
+      height: panelHeight.clamp(100, 200),
       padding: const EdgeInsets.all(12),
       color: Theme.of(context)
           .colorScheme.surfaceContainerHighest
@@ -331,67 +335,108 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
       ),
       body: Column(
         children: [
-          AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: state.ahaMomentReached
-                ? Container(
-                    key: const ValueKey('aha-banner'),
-                    width: double.infinity,
-                    color: Colors.amber,
-                    padding: const EdgeInsets.symmetric(vertical: 8),
-                    child: const Text(
-                      '🎉 初キル達成！',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(fontWeight: FontWeight.bold),
-                    ),
-                  )
-                : const SizedBox.shrink(key: ValueKey('no-banner')),
-          ),
-          // リソース表示：マナ・ゴール・アイテム
-          if (state.skillBuild != null && state.playerResources != null)
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-              child: ResourceHUD(
-                resources: state.playerResources!,
-                elapsedSeconds: state.elapsedSeconds,
-                ownedItemIds: state.playerResources!.ownedItemIds,
-                onItemPurchase: (itemId) {
-                  ref
-                      .read(battleViewModelProvider.notifier)
-                      .attemptPurchaseItem(itemId);
-                },
-              ),
-            ),
-          Stack(
-            alignment: Alignment.center,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                  children: [
-                    _StatChip(label: 'キル', value: '${selfParticipant.kills}'),
-                    _StatChip(label: 'デス', value: '${selfParticipant.deaths}'),
-                    _StatChip(
-                      label: 'アシスト',
-                      value: '${selfParticipant.assists}',
-                    ),
-                    _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
-                  ],
-                ),
-              ),
-              // 自分のキル数が増えるたびにパーティクルバーストを再生（Lottie素材追加までの代替演出）
-              ParticleBurst(
-                trigger: selfParticipant.kills,
-                color: Colors.amber,
-                size: 160,
-              ),
-            ],
-          ),
+          // マナ/ゴール/アイテム・キル統計・初キルバナーは以前 Column 内で
+          // GameWidget の「上」に縦積みされており、横画面（このゲームの
+          // 想定操作向き）だと画面高さがわずか300dp強しかない端末では
+          // それだけで画面をほぼ埋め尽くし、Expanded(GameWidget) に残る
+          // 高さが0近くまで潰れて戦場が実質見えなくなっていた
+          // （ミニマップ/操作クラスタは元々 GameWidget の Stack 内に
+          // Positioned で重ねられており影響を受けていなかった）。
+          // 同じオーバーレイ方式に統一し、GameWidget が常に画面の
+          // 残り全高を使えるようにする。
           Expanded(
             child: Stack(
               children: [
                 GameWidget(game: _game),
+                // 初キル達成バナー（ゲーム画面最上部に重ねる）
+                Positioned(
+                  top: 0,
+                  left: 0,
+                  right: 0,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 300),
+                    child: state.ahaMomentReached
+                        ? Container(
+                            key: const ValueKey('aha-banner'),
+                            width: double.infinity,
+                            color: Colors.amber,
+                            padding: const EdgeInsets.symmetric(vertical: 8),
+                            child: const Text(
+                              '🎉 初キル達成！',
+                              textAlign: TextAlign.center,
+                              style: TextStyle(fontWeight: FontWeight.bold),
+                            ),
+                          )
+                        : const SizedBox.shrink(key: ValueKey('no-banner')),
+                  ),
+                ),
+                // キル/デス/アシスト/スコア（左上に小さく重ねる。従来は横一杯に
+                // spaceEvenly 配置していたが、オーバーレイ化に伴いミニマップ
+                // 等と衝突しないよう左寄せのコンパクト表示に変更）
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withValues(alpha: 0.45),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _StatChip(label: 'キル', value: '${selfParticipant.kills}'),
+                        const SizedBox(width: 10),
+                        _StatChip(label: 'デス', value: '${selfParticipant.deaths}'),
+                        const SizedBox(width: 10),
+                        _StatChip(
+                          label: 'アシスト',
+                          value: '${selfParticipant.assists}',
+                        ),
+                        const SizedBox(width: 10),
+                        _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
+                      ],
+                    ),
+                  ),
+                ),
+                // 自分のキル数が増えるたびにパーティクルバーストを再生（Lottie素材追加までの代替演出）
+                Positioned(
+                  top: 12,
+                  left: 12,
+                  child: ParticleBurst(
+                    trigger: selfParticipant.kills,
+                    color: Colors.amber,
+                    size: 160,
+                  ),
+                ),
+                // リソース表示：マナ・ゴール・アイテム（左下に重ねる。半透明背景で
+                // ゲーム画面上でも視認できるようにする）
+                if (state.skillBuild != null && state.playerResources != null)
+                  Positioned(
+                    left: 12,
+                    bottom: 12,
+                    width: 220,
+                    child: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: ResourceHUD(
+                        resources: state.playerResources!,
+                        elapsedSeconds: state.elapsedSeconds,
+                        ownedItemIds: state.playerResources!.ownedItemIds,
+                        onItemPurchase: (itemId) {
+                          ref
+                              .read(battleViewModelProvider.notifier)
+                              .attemptPurchaseItem(itemId);
+                        },
+                      ),
+                    ),
+                  ),
                 // レベルアップアニメーション（画面上部）
                 if (state.showLevelUpAnimation)
                   Positioned(

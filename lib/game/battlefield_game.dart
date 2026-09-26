@@ -110,7 +110,17 @@ class BattlefieldGame extends FlameGame {
   @override
   Future<void> onLoad() async {
     await _preloadMechaPortraits();
-    add(
+    // FlameGame（このクラス）はデフォルトで自前の CameraComponent + World を
+    // 内部生成するが、Component.add() をそのまま呼ぶと「ゲーム自身の直接の
+    // 子」として追加されるだけで、カメラが実際に変換描画する world の子には
+    // ならない。以前は全ての描画物（地形・キャラ・エフェクト）をこの
+    // 素の add() で追加していたため、camera.viewfinder のズーム/追従が
+    // 一切効かない生の画面座標で描画されており、ワールド原点付近の負の
+    // 座標を持つ要素（キャラトークン等）はキャンバス左上の外側にはみ出して
+    // 実質見えなくなっていた（戦闘は正常進行しているのに神獣が画面上に
+    // 一切表示されないバグの根本原因）。world.add() に統一することで、
+    // カメラのズーム・追従・レーン地形との重なりが正しく機能するようにする。
+    world.add(
       OpenField(
         halfWidth: _playfieldHalfWidth,
         halfHeight: _playfieldHalfHeight,
@@ -119,7 +129,18 @@ class BattlefieldGame extends FlameGame {
     );
     for (var lane = 0; lane < AppConfig.teamsCount; lane++) {
       final color = stage.laneColors[lane % stage.laneColors.length];
-      add(LaneFloor(laneCenterY: _laneCenterYs[lane], color: color));
+      world.add(
+        LaneFloor(laneCenterY: _laneCenterYs[lane], color: color)
+          // MechaToken/JungleMonsterToken の priority は Y座標そのもの
+          // （前後関係の重なり順に使うため、画面上部にいると負の値になる）。
+          // LaneFloor は未設定＝デフォルト0のままだったため、Y座標が負に
+          // なるキャラ（画面上側の参加者）が地面タイルの「下」に描画され、
+          // 実質見えなくなっていた（戦闘は正常に進行しているのに戦場に
+          // キャラが一切見えないバグの直接原因）。実際のプレイフィールドは
+          // 上下±560px程度に収まるため、それより十分小さい値にして
+          // OpenField(-1000)より前・全キャラより必ず後ろに固定する。
+          ..priority = -900,
+      );
     }
     camera.viewfinder.anchor = Anchor.center;
 
@@ -444,7 +465,7 @@ class BattlefieldGame extends FlameGame {
               )
               // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
               ..priority = screenPos.y.round();
-        add(newToken);
+        world.add(newToken);
         if (p.isSelf) _selfToken = newToken;
         return newToken;
       });
@@ -489,7 +510,7 @@ class BattlefieldGame extends FlameGame {
           lane: m.lane,
           basePosition: screenPos,
         )..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
-        add(newToken);
+        world.add(newToken);
         return newToken;
       });
       token.setAlive(m.isAlive);
@@ -509,11 +530,11 @@ class BattlefieldGame extends FlameGame {
     final killer = _tokens[killerId];
     final monster = _monsterTokens[monsterId];
     if (monster != null) {
-      add(KillBurst(worldPosition: monster.position.clone()));
+      world.add(KillBurst(worldPosition: monster.position.clone()));
     }
     if (killer != null) {
       killer.triggerKillFlash();
-      add(
+      world.add(
         BuffIndicator(
           buffType: BuffType.atkBoost,
           duration: 1.4,
@@ -554,7 +575,7 @@ class BattlefieldGame extends FlameGame {
 
     // スキルタイプが指定されていればSkillVisualEffectを使用、なければSkillBurst（後方互換性）
     if (skillType != null) {
-      add(
+      world.add(
         SkillVisualEffect(
           position: self.position.clone(),
           skillType: skillType,
@@ -562,7 +583,7 @@ class BattlefieldGame extends FlameGame {
         ),
       );
     } else {
-      add(
+      world.add(
         SkillBurst(worldPosition: self.position.clone(), radius: _skillRadius),
       );
     }
@@ -578,13 +599,13 @@ class BattlefieldGame extends FlameGame {
     if (attacker != null && victim != null) {
       final knockbackDir = victim.position - attacker.position;
       victim.triggerHitFlash(knockbackDirection: knockbackDir);
-      add(
+      world.add(
         ImpactLine(
           from: attacker.position.clone(),
           to: victim.position.clone(),
         ),
       );
-      add(KillBurst(worldPosition: victim.position.clone()));
+      world.add(KillBurst(worldPosition: victim.position.clone()));
     } else {
       victim?.triggerHitFlash();
     }
@@ -602,7 +623,7 @@ class BattlefieldGame extends FlameGame {
 
     // ダメージ数値は被弾者の上部に表示
     final damagePos = victim.position + Vector2(0, -victim.size.y / 2 - 10);
-    add(
+    world.add(
       DamageNumber(
         position: damagePos,
         damage: damage,
@@ -613,7 +634,7 @@ class BattlefieldGame extends FlameGame {
 
     // クリティカルヒット時は追加の視覚演出
     if (isCritical) {
-      add(CriticalBurst(position: victim.position.clone()));
+      world.add(CriticalBurst(position: victim.position.clone()));
     }
   }
 
@@ -625,7 +646,7 @@ class BattlefieldGame extends FlameGame {
   }) {
     final attacker = _tokens[attackerId];
     if (attacker != null) {
-      add(
+      world.add(
         BuffIndicator(
           buffType: buffType,
           duration: duration,
@@ -643,7 +664,7 @@ class BattlefieldGame extends FlameGame {
   }) {
     final victim = _tokens[victimId];
     if (victim != null) {
-      add(
+      world.add(
         BuffIndicator(
           buffType: debuffType,
           duration: duration,
@@ -661,7 +682,7 @@ class BattlefieldGame extends FlameGame {
     final self = _selfToken;
     if (self == null) return;
 
-    add(
+    world.add(
       SkillAreaIndicator(
         position: self.position.clone(),
         radius: _skillRadius,

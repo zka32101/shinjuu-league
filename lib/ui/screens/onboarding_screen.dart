@@ -78,6 +78,15 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       );
       await firestoreService.createUser(newUser);
 
+      // userViewModelProvider was created earlier (on app start, before
+      // this sign-in), when AuthService().currentUser was still null - its
+      // UserViewModel._init() saw that and settled state to
+      // AsyncValue.data(null) once and for all, since it never re-checks
+      // currentUser afterwards. Without invalidating it here, the lobby
+      // would show "ユーザー情報が見つかりません" forever despite the user
+      // now existing in both Firebase Auth and Firestore.
+      ref.invalidate(userViewModelProvider);
+
       if (!mounted) return;
       context.go(AppRoutes.lobby);
     } catch (e) {
