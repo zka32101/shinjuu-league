@@ -1,11 +1,25 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
+import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/scheduled_report_service.dart';
 import 'package:shinjuu_league/viewmodels/report_schedule_viewmodel.dart';
 
 /// Screen for managing scheduled reports
+///
+/// Previously this screen's body was a static "No scheduled reports"
+/// placeholder regardless of real state - initState()'s load call and the
+/// create dialog's submit handler were both left as commented-out TODOs,
+/// so no report was ever actually loaded, created, edited, deleted or
+/// executed from here. All of that is wired to the real
+/// ReportScheduleViewModel now.
 class ScheduledReportsScreen extends ConsumerStatefulWidget {
-  const ScheduledReportsScreen({Key? key}) : super(key: key);
+  const ScheduledReportsScreen({super.key, this.userIdOverride});
+
+  /// Test-only seam: supplies the user ID directly instead of resolving it
+  /// from AuthService()/FirebaseAuth (which requires Firebase.initializeApp()
+  /// to have run - not something most widget tests in this suite do).
+  final String? userIdOverride;
 
   @override
   ConsumerState<ScheduledReportsScreen> createState() =>
@@ -14,77 +28,213 @@ class ScheduledReportsScreen extends ConsumerStatefulWidget {
 
 class _ScheduledReportsScreenState
     extends ConsumerState<ScheduledReportsScreen> {
+  String? _userId;
+
   @override
   void initState() {
     super.initState();
-    // TODO: Load scheduled reports for current user
-    // ref.read(reportScheduleViewModelProvider.notifier).loadScheduledReports(userId);
+    final userId = widget.userIdOverride ?? _resolveCurrentUserId();
+    _userId = userId;
+    if (userId != null) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        ref
+            .read(reportScheduleViewModelProvider(userId).notifier)
+            .loadScheduledReports(userId);
+      });
+    }
+  }
+
+  /// FirebaseAuth.instance throws (rather than returning null) when
+  /// Firebase.initializeApp() hasn't run - true of most widget tests in
+  /// this suite. Falling back to null here (rendered as "ログインが必要です")
+  /// keeps that a graceful, testable state instead of a crash.
+  String? _resolveCurrentUserId() {
+    try {
+      return AuthService().currentUser?.uid;
+    } catch (_) {
+      return null;
+    }
   }
 
   @override
   Widget build(BuildContext context) {
-    // final reportState = ref.watch(reportScheduleViewModelProvider);
+    final userId = _userId;
+
+    if (userId == null) {
+      return Scaffold(
+        appBar: AppBar(
+          title: const Text('Scheduled Reports'),
+          centerTitle: true,
+        ),
+        body: const Center(child: Text('ログインが必要です')),
+      );
+    }
+
+    final reportState = ref.watch(reportScheduleViewModelProvider(userId));
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Scheduled Reports'),
-        centerTitle: true,
-      ),
-      body: _buildBody(context),
+      appBar: AppBar(title: const Text('Scheduled Reports'), centerTitle: true),
+      body: _buildBody(context, userId, reportState),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showCreateReportDialog,
+        onPressed: () => _showCreateReportDialog(userId),
         tooltip: 'Create Scheduled Report',
         child: const Icon(Icons.add),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
-    // TODO: Replace with actual state when provider is set up
-    return Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.schedule,
-            size: 64,
-            color: Colors.grey[400],
-          ),
-          const SizedBox(height: 16),
-          Text(
-            'No scheduled reports',
-            style: TextStyle(
-              fontSize: 18,
-              color: Colors.grey[600],
+  Widget _buildBody(
+    BuildContext context,
+    String userId,
+    ReportScheduleState reportState,
+  ) {
+    if (reportState.isLoading && reportState.scheduledReports.isEmpty) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (reportState.error != null) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.error_outline, size: 48, color: Colors.red[400]),
+            const SizedBox(height: 16),
+            Text('エラー: ${reportState.error}', textAlign: TextAlign.center),
+            const SizedBox(height: 16),
+            ElevatedButton(
+              onPressed: () => ref
+                  .read(reportScheduleViewModelProvider(userId).notifier)
+                  .loadScheduledReports(userId),
+              child: const Text('再試行'),
             ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Create one to get started',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.grey[500],
+          ],
+        ),
+      );
+    }
+
+    if (reportState.scheduledReports.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(Icons.schedule, size: 64, color: Colors.grey[400]),
+            const SizedBox(height: 16),
+            Text(
+              'No scheduled reports',
+              style: TextStyle(fontSize: 18, color: Colors.grey[600]),
             ),
-          ),
-          const SizedBox(height: 24),
-          ElevatedButton.icon(
-            onPressed: _showCreateReportDialog,
-            icon: const Icon(Icons.add),
-            label: const Text('Create Report'),
-          ),
-        ],
+            const SizedBox(height: 8),
+            Text(
+              'Create one to get started',
+              style: TextStyle(fontSize: 14, color: Colors.grey[500]),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => _showCreateReportDialog(userId),
+              icon: const Icon(Icons.add),
+              label: const Text('Create Report'),
+            ),
+          ],
+        ),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(16),
+      itemCount: reportState.scheduledReports.length,
+      itemBuilder: (context, index) {
+        final report = reportState.scheduledReports[index];
+        return ScheduledReportCard(
+          report: report,
+          onEdit: () => _showEditReportDialog(userId, report),
+          onDelete: () => _handleDelete(userId, report),
+          onExecute: () => _handleExecute(userId, report),
+        );
+      },
+    );
+  }
+
+  void _showCreateReportDialog(String userId) {
+    showDialog(
+      context: context,
+      builder: (dialogContext) => _CreateReportDialog(
+        onSubmit: (name, format, selectedFields, frequency, recipients) async {
+          final success = await ref
+              .read(reportScheduleViewModelProvider(userId).notifier)
+              .createScheduledReport(
+                name: name,
+                format: format,
+                selectedFields: selectedFields,
+                frequency: frequency,
+                recipientEmails: recipients,
+              );
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text(success ? 'レポートを作成しました' : 'レポートの作成に失敗しました')),
+          );
+        },
       ),
     );
   }
 
-  void _showCreateReportDialog() {
+  void _showEditReportDialog(String userId, ScheduledReport report) {
     showDialog(
       context: context,
-      builder: (context) => _CreateReportDialog(
-        onSubmit: (name, format, selectedFields, frequency, recipients) {
-          // TODO: Submit to view model
+      builder: (dialogContext) => _EditReportDialog(
+        report: report,
+        onSubmit: (frequency, recipients) async {
+          final notifier = ref.read(
+            reportScheduleViewModelProvider(userId).notifier,
+          );
+          final frequencyOk = frequency == report.frequency
+              ? true
+              : await notifier.updateScheduleFrequency(report.id, frequency);
+          final recipientsOk = await notifier.updateRecipientEmails(
+            report.id,
+            recipients,
+          );
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                frequencyOk && recipientsOk ? 'レポートを更新しました' : '更新に失敗しました',
+              ),
+            ),
+          );
         },
       ),
+    );
+  }
+
+  Future<void> _handleDelete(String userId, ScheduledReport report) async {
+    final success = await ref
+        .read(reportScheduleViewModelProvider(userId).notifier)
+        .deleteScheduledReport(report.id);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? 'レポートを削除しました' : '削除に失敗しました')),
+    );
+  }
+
+  Future<void> _handleExecute(String userId, ScheduledReport report) async {
+    // Reports export audit log data (see _CreateReportDialog's default
+    // selectedFields, which match AuditLoggerService's entry shape). A
+    // manual "Execute" pulls the same real entries a scheduled run would.
+    final auditLogger = ref.read(auditLoggerServiceProvider);
+    final entries = await auditLogger.getAuditLog(limit: 500);
+    final fileSizeBytes = auditLogger.exportAuditLogAsCSV(entries).length;
+
+    final success = await ref
+        .read(reportScheduleViewModelProvider(userId).notifier)
+        .executeReportManually(report.id, entries, fileSizeBytes);
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? 'レポートを実行しました' : '実行に失敗しました')),
     );
   }
 }
@@ -97,12 +247,10 @@ class _CreateReportDialog extends StatefulWidget {
     List<String> selectedFields,
     ReportFrequency frequency,
     List<String> recipients,
-  ) onSubmit;
+  )
+  onSubmit;
 
-  const _CreateReportDialog({
-    required this.onSubmit,
-    Key? key,
-  }) : super(key: key);
+  const _CreateReportDialog({required this.onSubmit});
 
   @override
   State<_CreateReportDialog> createState() => _CreateReportDialogState();
@@ -165,10 +313,18 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
             const SizedBox(height: 8),
             SegmentedButton<ReportExportFormat>(
               segments: const [
-                ButtonSegment(label: Text('CSV'), value: ReportExportFormat.csv),
                 ButtonSegment(
-                    label: Text('JSON'), value: ReportExportFormat.json),
-                ButtonSegment(label: Text('Text'), value: ReportExportFormat.text),
+                  label: Text('CSV'),
+                  value: ReportExportFormat.csv,
+                ),
+                ButtonSegment(
+                  label: Text('JSON'),
+                  value: ReportExportFormat.json,
+                ),
+                ButtonSegment(
+                  label: Text('Text'),
+                  value: ReportExportFormat.text,
+                ),
               ],
               selected: {_selectedFormat},
               onSelectionChanged: (selection) {
@@ -185,11 +341,18 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
             const SizedBox(height: 8),
             SegmentedButton<ReportFrequency>(
               segments: const [
-                ButtonSegment(label: Text('Daily'), value: ReportFrequency.daily),
                 ButtonSegment(
-                    label: Text('Weekly'), value: ReportFrequency.weekly),
+                  label: Text('Daily'),
+                  value: ReportFrequency.daily,
+                ),
                 ButtonSegment(
-                    label: Text('Monthly'), value: ReportFrequency.monthly),
+                  label: Text('Weekly'),
+                  value: ReportFrequency.weekly,
+                ),
+                ButtonSegment(
+                  label: Text('Monthly'),
+                  value: ReportFrequency.monthly,
+                ),
               ],
               selected: {_selectedFrequency},
               onSelectionChanged: (selection) {
@@ -201,10 +364,10 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
             // Recipient emails
             TextField(
               controller: _recipientsController,
-              decoration: InputDecoration(
+              decoration: const InputDecoration(
                 labelText: 'Recipient Emails',
                 hintText: 'email1@example.com, email2@example.com',
-                border: const OutlineInputBorder(),
+                border: OutlineInputBorder(),
                 helperText: 'Separate multiple emails with commas',
               ),
               maxLines: 2,
@@ -217,10 +380,7 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
           onPressed: () => Navigator.pop(context),
           child: const Text('Cancel'),
         ),
-        ElevatedButton(
-          onPressed: _submitForm,
-          child: const Text('Create'),
-        ),
+        ElevatedButton(onPressed: _submitForm, child: const Text('Create')),
       ],
     );
   }
@@ -258,6 +418,107 @@ class _CreateReportDialogState extends State<_CreateReportDialog> {
   }
 }
 
+/// Dialog for editing an existing scheduled report's frequency and
+/// recipients - the only two fields ReportScheduleViewModel supports
+/// updating (see updateScheduleFrequency/updateRecipientEmails).
+class _EditReportDialog extends StatefulWidget {
+  final ScheduledReport report;
+  final Function(ReportFrequency frequency, List<String> recipients) onSubmit;
+
+  const _EditReportDialog({required this.report, required this.onSubmit});
+
+  @override
+  State<_EditReportDialog> createState() => _EditReportDialogState();
+}
+
+class _EditReportDialogState extends State<_EditReportDialog> {
+  late TextEditingController _recipientsController;
+  late ReportFrequency _selectedFrequency;
+
+  @override
+  void initState() {
+    super.initState();
+    _recipientsController = TextEditingController(
+      text: widget.report.recipientEmails.join(', '),
+    );
+    _selectedFrequency = widget.report.frequency;
+  }
+
+  @override
+  void dispose() {
+    _recipientsController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return AlertDialog(
+      title: Text('Edit "${widget.report.name}"'),
+      content: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Report Frequency',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            SegmentedButton<ReportFrequency>(
+              segments: const [
+                ButtonSegment(
+                  label: Text('Daily'),
+                  value: ReportFrequency.daily,
+                ),
+                ButtonSegment(
+                  label: Text('Weekly'),
+                  value: ReportFrequency.weekly,
+                ),
+                ButtonSegment(
+                  label: Text('Monthly'),
+                  value: ReportFrequency.monthly,
+                ),
+              ],
+              selected: {_selectedFrequency},
+              onSelectionChanged: (selection) {
+                setState(() => _selectedFrequency = selection.first);
+              },
+            ),
+            const SizedBox(height: 16),
+            TextField(
+              controller: _recipientsController,
+              decoration: const InputDecoration(
+                labelText: 'Recipient Emails',
+                border: OutlineInputBorder(),
+                helperText: 'Separate multiple emails with commas',
+              ),
+              maxLines: 2,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancel'),
+        ),
+        ElevatedButton(
+          onPressed: () {
+            final emails = _recipientsController.text
+                .split(',')
+                .map((e) => e.trim())
+                .where((e) => e.isNotEmpty)
+                .toList();
+            widget.onSubmit(_selectedFrequency, emails);
+            Navigator.pop(context);
+          },
+          child: const Text('Save'),
+        ),
+      ],
+    );
+  }
+}
+
 /// Widget displaying a single scheduled report card
 class ScheduledReportCard extends StatelessWidget {
   final ScheduledReport report;
@@ -270,8 +531,8 @@ class ScheduledReportCard extends StatelessWidget {
     required this.onEdit,
     required this.onDelete,
     required this.onExecute,
-    Key? key,
-  }) : super(key: key);
+    super.key,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -299,18 +560,15 @@ class ScheduledReportCard extends StatelessWidget {
                       const SizedBox(height: 4),
                       Text(
                         ScheduledReportService.getFormatLabel(report.format),
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Colors.grey[600],
-                        ),
+                        style: TextStyle(fontSize: 12, color: Colors.grey[600]),
                       ),
                     ],
                   ),
                 ),
                 Chip(
-                  label: Text(ScheduledReportService.getFrequencyLabel(
-                    report.frequency,
-                  )),
+                  label: Text(
+                    ScheduledReportService.getFrequencyLabel(report.frequency),
+                  ),
                   backgroundColor: _getFrequencyColor(report.frequency),
                   labelStyle: const TextStyle(color: Colors.white),
                 ),
@@ -374,9 +632,7 @@ class ScheduledReportCard extends StatelessWidget {
                   onPressed: onDelete,
                   icon: const Icon(Icons.delete, size: 18),
                   label: const Text('Delete'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                  ),
+                  style: TextButton.styleFrom(foregroundColor: Colors.red),
                 ),
               ],
             ),

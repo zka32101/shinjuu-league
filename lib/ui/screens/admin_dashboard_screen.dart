@@ -216,6 +216,7 @@ class _AdminDashboardScreenState extends ConsumerState<AdminDashboardScreen> {
       ('スナップショット', Icons.camera_alt, AppRoutes.adminSnapshots),
       ('ロール管理', Icons.admin_panel_settings, AppRoutes.adminRoles),
       ('分析', Icons.analytics, AppRoutes.adminAnalytics),
+      ('スケジュールレポート', Icons.schedule_send, AppRoutes.scheduledReports),
     ];
 
     return Card(
