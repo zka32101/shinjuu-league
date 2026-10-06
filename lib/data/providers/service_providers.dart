@@ -25,6 +25,7 @@ import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
 import 'package:shinjuu_league/services/purchases_service.dart';
 import 'package:shinjuu_league/services/push_notification_service.dart';
+import 'package:shinjuu_league/services/scheduled_report_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
@@ -187,6 +188,14 @@ final achievementRewardServiceProvider = Provider<AchievementRewardService>((
 // Phase 11: Daily Quests & Mission System
 final questServiceProvider = Provider<QuestService>((ref) {
   return QuestService(firestoreService: ref.watch(firestoreServiceProvider));
+});
+
+// Scheduled admin reports (export/email). ScheduledReportService takes a
+// raw FirebaseFirestore? (not the FirestoreService wrapper other services
+// here use), so this has no firestoreServiceProvider dependency to watch -
+// tests override it directly with ScheduledReportService(firestore: ...).
+final scheduledReportServiceProvider = Provider<ScheduledReportService>((ref) {
+  return ScheduledReportService();
 });
 
 // Phase 33: Admin Role-Based Access Control

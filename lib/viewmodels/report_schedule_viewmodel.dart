@@ -1,4 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/services/scheduled_report_service.dart';
 
 /// State for report scheduling
@@ -59,9 +60,9 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
   ReportScheduleViewModel({
     required ScheduledReportService reportService,
     String? userId,
-  })  : _reportService = reportService,
-        _currentUserId = userId,
-        super(const ReportScheduleState());
+  }) : _reportService = reportService,
+       _currentUserId = userId,
+       super(const ReportScheduleState());
 
   /// Load all scheduled reports for current user
   Future<void> loadScheduledReports(String userId) async {
@@ -71,15 +72,9 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
       final reports = await _reportService.getScheduledReports(userId);
 
-      state = state.copyWith(
-        scheduledReports: reports,
-        isLoading: false,
-      );
+      state = state.copyWith(scheduledReports: reports, isLoading: false);
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -118,10 +113,7 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -144,10 +136,7 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
       state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -170,10 +159,7 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
       state = state.copyWith(isLoading: false);
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -185,21 +171,20 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
       await _reportService.deleteScheduledReport(reportId);
 
-      final updatedReports =
-          state.scheduledReports.where((r) => r.id != reportId).toList();
+      final updatedReports = state.scheduledReports
+          .where((r) => r.id != reportId)
+          .toList();
       state = state.copyWith(
         scheduledReports: updatedReports,
-        selectedReportId:
-            state.selectedReportId == reportId ? null : state.selectedReportId,
+        selectedReportId: state.selectedReportId == reportId
+            ? null
+            : state.selectedReportId,
         isLoading: false,
       );
 
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -217,10 +202,7 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
         isLoading: false,
       );
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
     }
   }
 
@@ -247,10 +229,7 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
       return true;
     } catch (e) {
-      state = state.copyWith(
-        isLoading: false,
-        error: e.toString(),
-      );
+      state = state.copyWith(isLoading: false, error: e.toString());
       return false;
     }
   }
@@ -267,8 +246,9 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
   /// Get success rate for report
   double getSuccessRate(String reportId) {
-    final records =
-        state.executionHistory.where((r) => r.reportId == reportId).toList();
+    final records = state.executionHistory
+        .where((r) => r.reportId == reportId)
+        .toList();
     if (records.isEmpty) return 0.0;
 
     final successCount = records.where((r) => r.success).length;
@@ -277,8 +257,9 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
   /// Get last execution time for report
   DateTime? getLastExecutionTime(String reportId) {
-    final records =
-        state.executionHistory.where((r) => r.reportId == reportId).toList();
+    final records = state.executionHistory
+        .where((r) => r.reportId == reportId)
+        .toList();
     if (records.isEmpty) return null;
 
     records.sort((a, b) => b.executedAt.compareTo(a.executedAt));
@@ -287,15 +268,17 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
   /// Get total data exported for report
   int getTotalDataExported(String reportId) {
-    final records =
-        state.executionHistory.where((r) => r.reportId == reportId).toList();
+    final records = state.executionHistory
+        .where((r) => r.reportId == reportId)
+        .toList();
     return records.fold<int>(0, (sum, r) => sum + r.recordCount);
   }
 
   /// Get average file size for report
   double getAverageFileSize(String reportId) {
-    final records =
-        state.executionHistory.where((r) => r.reportId == reportId).toList();
+    final records = state.executionHistory
+        .where((r) => r.reportId == reportId)
+        .toList();
     if (records.isEmpty) return 0.0;
 
     final totalSize = records.fold<int>(0, (sum, r) => sum + r.fileSizeBytes);
@@ -304,8 +287,10 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
 
   /// Get next execution time for report
   DateTime? getNextExecutionTime(String reportId) {
-    final report =
-        state.scheduledReports.firstWhere((r) => r.id == reportId, orElse: () => null as dynamic);
+    final report = state.scheduledReports.firstWhere(
+      (r) => r.id == reportId,
+      orElse: () => null as dynamic,
+    );
     return (report as ScheduledReport?)?.nextExecutionAt;
   }
 
@@ -317,3 +302,19 @@ class ReportScheduleViewModel extends StateNotifier<ReportScheduleState> {
     return DateTime.now().isAfter(nextExecution);
   }
 }
+
+/// Riverpod provider for ReportScheduleViewModel, keyed by the real
+/// signed-in user's ID (mirrors questViewModelProvider's family-over-userId
+/// pattern) - this screen used to be entirely disconnected from this
+/// ViewModel (initState()'s load call and the create dialog's submit were
+/// both left as commented-out TODOs), so no provider for it existed yet.
+final reportScheduleViewModelProvider = StateNotifierProvider.family
+    .autoDispose<ReportScheduleViewModel, ReportScheduleState, String>((
+      ref,
+      userId,
+    ) {
+      return ReportScheduleViewModel(
+        reportService: ref.watch(scheduledReportServiceProvider),
+        userId: userId,
+      );
+    });

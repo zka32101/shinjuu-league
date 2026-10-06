@@ -31,6 +31,7 @@ import 'package:shinjuu_league/ui/screens/admin_audit_log_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_snapshots_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_roles_screen.dart';
 import 'package:shinjuu_league/ui/screens/admin_analytics_screen.dart';
+import 'package:shinjuu_league/ui/screens/scheduled_reports_screen.dart';
 
 abstract class AppRoutes {
   static const splash = '/';
@@ -60,6 +61,7 @@ abstract class AppRoutes {
   static const adminSnapshots = '/admin-snapshots';
   static const adminRoles = '/admin-roles';
   static const adminAnalytics = '/admin-analytics';
+  static const scheduledReports = '/scheduled-reports';
 }
 
 /// フェード + わずかな上方向スライドで統一した画面遷移
@@ -286,6 +288,12 @@ final appRouter = GoRouter(
       path: AppRoutes.adminAnalytics,
       pageBuilder: (context, state) {
         return _buildPage(context, state, const AdminAnalyticsScreen());
+      },
+    ),
+    GoRoute(
+      path: AppRoutes.scheduledReports,
+      pageBuilder: (context, state) {
+        return _buildPage(context, state, const ScheduledReportsScreen());
       },
     ),
   ],
