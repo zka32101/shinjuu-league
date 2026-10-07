@@ -37,11 +37,17 @@ void main() async {
   await PushNotificationService().init();
 
   // 未捕捉例外は全てCrashlyticsへ送る（エラーバウンダリ）
-  FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
-  PlatformDispatcher.instance.onError = (error, stack) {
-    FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
-    return true;
-  };
+  // firebase_crashlytics はAndroid/iOS/macOSのみ対応（プラグイン自体がwebを
+  // 登録していない）。kIsWebチェックなしでFirebaseCrashlytics.instanceに
+  // アクセスすると、ここでweb起動が即座にクラッシュしていた
+  // （runApp()に到達する前の、永久に白画面になる失敗モード）。
+  if (!kIsWeb) {
+    FlutterError.onError = FirebaseCrashlytics.instance.recordFlutterFatalError;
+    PlatformDispatcher.instance.onError = (error, stack) {
+      FirebaseCrashlytics.instance.recordError(error, stack, fatal: true);
+      return true;
+    };
+  }
 
   runApp(const ProviderScope(child: ShinJuuLeagueApp()));
 }
