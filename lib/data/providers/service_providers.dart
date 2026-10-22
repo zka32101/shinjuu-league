@@ -20,6 +20,7 @@ import 'package:shinjuu_league/services/feature_flags_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
+import 'package:shinjuu_league/services/progression_analytics_service.dart';
 import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/services/matchmaking_service.dart';
 import 'package:shinjuu_league/services/monetization_service.dart';
@@ -29,6 +30,7 @@ import 'package:shinjuu_league/services/scheduled_report_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/replay_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
+import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 import 'package:shinjuu_league/services/admin_role_service.dart';
 import 'package:shinjuu_league/services/audit_logger_service.dart';
 import 'package:shinjuu_league/services/admin_analytics_service.dart';
@@ -143,6 +145,22 @@ final seasonServiceProvider = Provider<SeasonService>((ref) {
 
 final rankingServiceProvider = Provider<RankingService>((ref) {
   return RankingService();
+});
+
+final skillTreeResetServiceProvider = Provider<SkillTreeResetService>((ref) {
+  return SkillTreeResetService(ref.watch(firestoreServiceProvider));
+});
+
+// Previously this threw UnimplementedError - no override was ever supplied
+// anywhere in the app, so ProgressionAnalyticsViewModel/the screens that
+// consume it would have crashed immediately on the first watch. Wired here
+// the same way every other Firestore-backed service in this file is.
+final progressionAnalyticsServiceProvider =
+    Provider<ProgressionAnalyticsService>((ref) {
+  return ProgressionAnalyticsService(
+    ref.watch(firestoreServiceProvider),
+    ref.watch(skillTreeResetServiceProvider),
+  );
 });
 
 // Phase 8: Item System

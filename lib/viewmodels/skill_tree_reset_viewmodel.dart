@@ -1,6 +1,8 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart'
+    show skillTreeResetServiceProvider;
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
 /// State for skill tree reset operations
@@ -216,13 +218,6 @@ class SkillTreeResetViewModel extends StateNotifier<SkillTreeResetState> {
     return '➡️   安定';
   }
 }
-
-/// Riverpod provider for skill tree reset service
-final skillTreeResetServiceProvider = Provider<SkillTreeResetService>((ref) {
-  throw UnimplementedError(
-    'skillTreeResetServiceProvider must be provided by the application',
-  );
-});
 
 /// Riverpod provider for skill tree reset view model
 final skillTreeResetViewModelProvider = StateNotifierProvider.family.autoDispose<

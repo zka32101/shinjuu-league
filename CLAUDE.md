@@ -897,6 +897,25 @@ assets/animations/
 
 **既知のTODO**: レベルアップ時の祝賀演出（既存のバトル内スキル進行レベルアップ`CharacterLevelDisplay`とは別物、アカウントレベル用の演出は未実装）。`User.level`を参照する他画面（プロフィール等）での表示強化は今後。
 
+### プログレッション分析画面の新設 + 未配線プロバイダ2件の修復（2026-10-22, Sonnet実装）
+
+同日のExplore調査で見つかった最後の候補。これまでの3件（アイテムショップ/スキルツリーリセット/クエストXP）とは性質が違い、「見た目はあるが配線だけ忘れている」ではなく「配線先の画面自体がそもそも存在しない」状態だった。`ProgressionAnalyticsViewModel`/`ProgressionAnalyticsService`（シーズン統計・Tier予測・ELO推移の計算ロジック）は実装済みで動く状態だったが：
+- `progressionAnalyticsServiceProvider`が常に`UnimplementedError`を投げるダミーのまま放置（アプリ側のどこにも実装のオーバーライドがなかった）
+- このデータを表示するUI画面自体がリポジトリに一つも存在しなかった（テストも皆無）
+- 調査で`skillTreeResetServiceProvider`（`skill_tree_reset_viewmodel.dart`）にも全く同じ構造の未配線問題があることが判明。こちらも修正対象に含めた
+
+ユーザーに「新規画面を一から設計・実装する規模になるがどうするか」を確認し、実装を選択。
+
+- [lib/data/providers/service_providers.dart](lib/data/providers/service_providers.dart): `skillTreeResetServiceProvider`・`progressionAnalyticsServiceProvider`を実装を伴う形で新設（他のFirestore系サービスと同じ`Provider<T>((ref) => ...)`パターン）。元々これらは`skill_tree_reset_viewmodel.dart`/`progression_analytics_viewmodel.dart`内にUnimplementedErrorのダミーとして定義されていたため、**重複宣言を避けるためダミー定義を削除し、各viewmodelファイルから`service_providers.dart`の実プロバイダをimportする片方向の依存**に整理（service_providers.dart側はviewmodelファイルをimportしないため循環参照は発生しない）。
+- [lib/ui/screens/progression_analytics_screen.dart](lib/ui/screens/progression_analytics_screen.dart)（新規）: `AchievementsScreen`と同じ`userIdOverride`テストシームパターンを踏襲。サマリーカード（現在/最高Tier・通算勝率・試合数・トレンド絵文字）、今シーズンのELO推移（外部グラフライブラリに依存しない自前の`CustomPainter`スパークライン）、次Tier予測カード、シーズン履歴リストの4ブロック構成。
+- [lib/config/app_routes.dart](lib/config/app_routes.dart): `AppRoutes.progressionAnalytics`ルート追加。
+- [lib/ui/screens/lobby_screen.dart](lib/ui/screens/lobby_screen.dart): ロビー画面のAppBarアクションに「進行状況」アイコンボタンを追加しルートへリンク（過去の`AchievementsScreen`修正時と同じ「作っただけでナビゲーションに繋がず孤立」を未然に防ぐ）。
+- [test/ui/screens/progression_analytics_screen_test.dart](test/ui/screens/progression_analytics_screen_test.dart)（新規、4テスト）: 未ログイン時のフォールバック、シーズン未プレイ時の空状態、実データ表示、Tier予測カード表示を検証。`FakeProgressionAnalyticsService`で`progressionAnalyticsServiceProvider`をオーバーライド。
+
+フルスイート2276件（既存2272件+新規4件）全通過。`flutter analyze`はプロジェクト全体でエラー0件（既存の軽微なinfo/warningのみ、今回の変更由来のものなし）。
+
+**既知のTODO**: `getSeasonComparison`（2シーズン比較機能）はサービス層に実装済みだがUI側は未着手。シーズン履歴が1件のみの場合の比較導線は今後。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

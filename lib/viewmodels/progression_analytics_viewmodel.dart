@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shinjuu_league/data/models/progression_stats.dart';
+import 'package:shinjuu_league/data/providers/service_providers.dart'
+    show progressionAnalyticsServiceProvider;
 import 'package:shinjuu_league/services/progression_analytics_service.dart';
 
 /// State for progression analytics
@@ -174,14 +176,6 @@ class ProgressionAnalyticsViewModel extends StateNotifier<ProgressionAnalyticsSt
     state = state.copyWith(error: null);
   }
 }
-
-/// Riverpod provider for progression analytics service
-final progressionAnalyticsServiceProvider =
-    Provider<ProgressionAnalyticsService>((ref) {
-  throw UnimplementedError(
-    'progressionAnalyticsServiceProvider must be provided by the application',
-  );
-});
 
 /// Riverpod provider for progression analytics view model
 final progressionAnalyticsViewModelProvider =

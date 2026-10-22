@@ -20,6 +20,7 @@ import 'package:shinjuu_league/ui/screens/skill_build_screen.dart';
 import 'package:shinjuu_league/ui/screens/skill_tree_progression_screen.dart';
 import 'package:shinjuu_league/ui/screens/splash_screen.dart';
 import 'package:shinjuu_league/ui/screens/achievements_screen.dart';
+import 'package:shinjuu_league/ui/screens/progression_analytics_screen.dart';
 import 'package:shinjuu_league/ui/screens/quests_screen.dart';
 import 'package:shinjuu_league/ui/screens/ranking_history_screen.dart';
 import 'package:shinjuu_league/ui/screens/season_rewards_route_screen.dart';
@@ -50,6 +51,7 @@ abstract class AppRoutes {
   static const inventory = '/inventory';
   static const skillTreeProgression = '/skill-tree-progression';
   static const achievements = '/achievements';
+  static const progressionAnalytics = '/progression-analytics';
   static const quests = '/quests';
   static const rankingHistory = '/ranking-history';
   static const seasonRewards = '/season-rewards';
@@ -187,6 +189,11 @@ final appRouter = GoRouter(
       path: AppRoutes.achievements,
       pageBuilder: (context, state) =>
           _buildPage(context, state, const AchievementsScreen()),
+    ),
+    GoRoute(
+      path: AppRoutes.progressionAnalytics,
+      pageBuilder: (context, state) =>
+          _buildPage(context, state, const ProgressionAnalyticsScreen()),
     ),
     GoRoute(
       path: AppRoutes.quests,
