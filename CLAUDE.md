@@ -856,6 +856,19 @@ assets/animations/
 - CurrentSeasonViewModel（取得） → SeasonRewardsScreen（表示）
 - PromotionDetectorService（検知） → ResultScreenWithPromotion（祝賀/警告演出）
 
+### バトル中アイテムショップの修復（2026-10-22, Sonnet実装）
+
+ユーザーから「次の機能案」の依頼を受け、Exploreエージェントによる全体調査で発見。バトル画面に常時表示される`ResourceHUD`（マナ/ゴールド/アイテムスロット）の「+」ボタンが**見た目だけで完全に無反応**だった。バックエンド（`BattleViewModel.attemptPurchaseItem` → `BattleEngineService.purchaseItem`、`SkillSystemService.getItemDefinition`）は既に動作する状態で揃っていたが、UI側の2関数が空実装のまま放置されていた：
+
+- [lib/ui/widgets/resource_hud.dart](lib/ui/widgets/resource_hud.dart)
+  - `_getItemDefinition()`: 常に`null`を返す → `SkillSystemService.getItemDefinition(itemId)`を実際に呼ぶよう修正。所持アイテムが灰色の「？」チップのままだったのを解消し、実際の頭文字・レアリティ色・Tooltip（名前+説明）が表示されるように
+  - `_showItemShop()`: 空実装（TODOコメントのみ）→ `showModalBottomSheet`で`SkillSystemService.getAllItems()`の全アイテムを一覧表示するショップを新設。所持ゴールド表示、各アイテムのレアリティ色枠、所持済み/購入不可（ゴールド不足）の無効化表示、タップで`onItemPurchase`コールバックを発火しシートを閉じる
+
+**修正時に見つけた実装バグ**: 当初のシート実装は`ConstrainedBox(maxHeight: 360)`で`ListView`を固定高さに収めていたが、ヘッダー分の高さを考慮していなかったため、画面の小さい端末（および`flutter test`のデフォルトテストビューポート）で`RenderFlex overflowed`エラーが発生していた。`MediaQuery`ベースの可変高さ（画面高さの60%）+`Flexible`でのスクロール領域確保に修正。Widgetテストでこの不具合を実際に検出・修正できたため、レイアウトも含め確実に動作する状態にしてからコミットした。
+
+- [test/ui/widgets/resource_hud_test.dart](test/ui/widgets/resource_hud_test.dart) （新規、5テスト）: 実アイテムデータの表示検証、ショップの開閉、カタログ全件表示（`ListView`の遅延描画に対応し`scrollUntilVisible`でスクロールしながら検証）、購入成立、ゴールド不足時の購入拒否、所持済みアイテムの再購入拒否
+- フルスイート2256件（既存2251件+新規5件）全通過
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

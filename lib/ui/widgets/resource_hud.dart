@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shinjuu_league/config/theme.dart';
 import 'package:shinjuu_league/data/models/resource_model.dart';
+import 'package:shinjuu_league/services/skill_system_service.dart';
 
 /// ゲーム中のマナ・ゴール・ステータス表示HUD
 class ResourceHUD extends StatelessWidget {
@@ -31,7 +32,7 @@ class ResourceHUD extends StatelessWidget {
         const SizedBox(height: 12),
 
         // アイテムスロット
-        _buildItemSlots(),
+        _buildItemSlots(context),
       ],
     );
   }
@@ -80,8 +81,8 @@ class ResourceHUD extends StatelessWidget {
                 manaPercent > 0.5
                     ? Colors.blue
                     : manaPercent > 0.25
-                        ? Colors.orange
-                        : Colors.red,
+                    ? Colors.orange
+                    : Colors.red,
               ),
             ),
           ),
@@ -107,10 +108,7 @@ class ResourceHUD extends StatelessWidget {
               SizedBox(width: 6),
               Text(
                 'ゴール',
-                style: TextStyle(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
+                style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
               ),
             ],
           ),
@@ -127,7 +125,7 @@ class ResourceHUD extends StatelessWidget {
     );
   }
 
-  Widget _buildItemSlots() {
+  Widget _buildItemSlots(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
@@ -156,8 +154,7 @@ class ResourceHUD extends StatelessWidget {
                 ...ownedItemIds.asMap().entries.map((entry) {
                   final idx = entry.key;
                   final itemId = entry.value;
-                  final item =
-                      _getItemDefinition(itemId);
+                  final item = _getItemDefinition(itemId);
 
                   return Padding(
                     padding: EdgeInsets.only(
@@ -172,7 +169,7 @@ class ResourceHUD extends StatelessWidget {
                   Padding(
                     padding: const EdgeInsets.only(left: 8),
                     child: GestureDetector(
-                      onTap: () => _showItemShop(null),
+                      onTap: () => _showItemShop(context),
                       child: Container(
                         width: 56,
                         decoration: BoxDecoration(
@@ -184,10 +181,7 @@ class ResourceHUD extends StatelessWidget {
                           ),
                         ),
                         child: const Center(
-                          child: Icon(
-                            Icons.add,
-                            color: AppColors.accentBlue,
-                          ),
+                          child: Icon(Icons.add, color: AppColors.accentBlue),
                         ),
                       ),
                     ),
@@ -208,12 +202,7 @@ class ResourceHUD extends StatelessWidget {
           color: Colors.grey.withValues(alpha: 0.2),
           borderRadius: BorderRadius.circular(6),
         ),
-        child: const Center(
-          child: Text(
-            '?',
-            style: TextStyle(fontSize: 24),
-          ),
-        ),
+        child: const Center(child: Text('?', style: TextStyle(fontSize: 24))),
       );
     }
 
@@ -221,9 +210,7 @@ class ResourceHUD extends StatelessWidget {
       width: 56,
       decoration: BoxDecoration(
         color: _getRarityColor(item.rarity).withValues(alpha: 0.2),
-        border: Border.all(
-          color: _getRarityColor(item.rarity),
-        ),
+        border: Border.all(color: _getRarityColor(item.rarity)),
         borderRadius: BorderRadius.circular(6),
       ),
       child: Tooltip(
@@ -242,8 +229,122 @@ class ResourceHUD extends StatelessWidget {
     );
   }
 
-  void _showItemShop(BuildContext? context) {
-    // TODO: アイテムショップモーダル表示
+  void _showItemShop(BuildContext context) {
+    final items = SkillSystemService.getAllItems();
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: AppColors.cardBackground,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (sheetContext) {
+        // 画面高さの60%を上限に、アイテム数が少なければ縮むようMainAxisSize.min
+        // ではなくSizedBoxで上限を固定しつつ、一覧はExpandedでスクロール可能にする。
+        // 以前はListViewをConstrainedBox(maxHeight: 360固定)で囲んでいたため、
+        // 小さい画面（テスト環境含む）でヘッダー分を考慮せずオーバーフローしていた。
+        final maxSheetHeight = MediaQuery.sizeOf(sheetContext).height * 0.6;
+
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(maxHeight: maxSheetHeight),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      const Text(
+                        'アイテムショップ',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                      Text(
+                        '所持ゴール: ${resources.gold}',
+                        style: const TextStyle(
+                          fontSize: 13,
+                          color: Colors.amber,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Flexible(
+                    child: ListView.separated(
+                      shrinkWrap: true,
+                      itemCount: items.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 8),
+                      itemBuilder: (context, index) {
+                        final item = items[index];
+                        final owned = ownedItemIds.contains(item.itemId);
+                        final affordable = resources.canAffordGold(item.cost);
+                        final disabled = owned || !affordable;
+
+                        return ListTile(
+                          tileColor: _getRarityColor(
+                            item.rarity,
+                          ).withValues(alpha: 0.1),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            side: BorderSide(
+                              color: _getRarityColor(item.rarity),
+                            ),
+                          ),
+                          leading: CircleAvatar(
+                            backgroundColor: _getRarityColor(
+                              item.rarity,
+                            ).withValues(alpha: 0.3),
+                            child: Text(
+                              item.name.substring(0, 1),
+                              style: TextStyle(
+                                color: _getRarityColor(item.rarity),
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(
+                            item.name,
+                            style: const TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(item.description),
+                          trailing: owned
+                              ? const Icon(
+                                  Icons.check_circle,
+                                  color: Colors.green,
+                                )
+                              : Text(
+                                  '${item.cost}G',
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: affordable
+                                        ? Colors.amber
+                                        : Colors.grey,
+                                  ),
+                                ),
+                          enabled: !disabled,
+                          onTap: disabled
+                              ? null
+                              : () {
+                                  onItemPurchase(item.itemId);
+                                  Navigator.of(sheetContext).pop();
+                                },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
   }
 
   Color _getRarityColor(ItemRarity rarity) {
@@ -260,7 +361,6 @@ class ResourceHUD extends StatelessWidget {
   }
 
   ItemDefinition? _getItemDefinition(String itemId) {
-    // TODO: SkillSystemService から取得
-    return null;
+    return SkillSystemService.getItemDefinition(itemId);
   }
 }
