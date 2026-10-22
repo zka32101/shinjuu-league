@@ -65,6 +65,28 @@ void main() {
       );
     });
 
+    test('緋凰（東LEGEND）は専用スキル3種を持つ（originフォールバックへ落ちない）', () {
+      final skills = SkillSystemService.getSkillsForMecha('mecha_east_phoenix');
+      expect(skills.length, 3);
+      expect(skills[0].type, SkillType.offensive);
+      expect(skills[1].type, SkillType.defensive);
+      expect(skills[2].type, SkillType.utility);
+      expect(skills.every((s) => s.mechaId == 'mecha_east_phoenix'), true);
+      // 術者寄りのロール通り、他の東神獣よりダメージ倍率が高いことを確認
+      expect(skills[0].baseDamageMultiplier, greaterThan(2.0));
+    });
+
+    test('蒼麟（西EPIC）は専用スキル3種を持つ（originフォールバックへ落ちない）', () {
+      final skills = SkillSystemService.getSkillsForMecha('mecha_west_crystal');
+      expect(skills.length, 3);
+      expect(skills[0].type, SkillType.offensive);
+      expect(skills[1].type, SkillType.defensive);
+      expect(skills[2].type, SkillType.utility);
+      expect(skills.every((s) => s.mechaId == 'mecha_west_crystal'), true);
+      // 支援寄りのロール通り、攻撃スキルのダメージ倍率は控えめ
+      expect(skills[0].baseDamageMultiplier, lessThan(1.5));
+    });
+
     test('アイテム取得', () {
       final items = SkillSystemService.getAllItems();
       expect(items.isNotEmpty, true);

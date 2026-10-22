@@ -143,6 +143,76 @@ class SkillSystemService {
         cooldownSeconds: 9.0,
       ),
     ],
+    // 緋凰（東LEGEND・術者型）専用スキルキット。「火継ぎの頂」の二つ名通り、
+    // 高威力・長射程の範囲攻撃に寄せた構成（baseStats側も atk75/hp100 と
+    // 術者寄りに設計済み、スキルでも同じ役割を一貫させる）。
+    'mecha_east_phoenix': [
+      SkillDefinition(
+        skillId: 'skill_east_phoenix_q',
+        name: '火継ぎの一閃',
+        mechaId: 'mecha_east_phoenix',
+        type: SkillType.offensive,
+        description: '敵単体を貫く大火の一撃。神獣中最高クラスのダメージ',
+        baseCost: 55,
+        baseDamageMultiplier: 2.2,
+        cooldownSeconds: 5.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_east_phoenix_w',
+        name: '不死灰の盾',
+        mechaId: 'mecha_east_phoenix',
+        type: SkillType.defensive,
+        description: '灰の結界で被弾を軽減。低耐久を補う生命線',
+        baseCost: 50,
+        baseDamageMultiplier: 1.0,
+        cooldownSeconds: 7.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_east_phoenix_e',
+        name: '残り火の尾',
+        mechaId: 'mecha_east_phoenix',
+        type: SkillType.utility,
+        description: '尾羽が通過した地点に残り火を残し、滞在する敵に継続ダメージ',
+        baseCost: 65,
+        baseDamageMultiplier: 1.4,
+        cooldownSeconds: 8.0,
+      ),
+    ],
+    // 蒼麟（西EPIC・支援型）専用スキルキット。「月詠の守り」の二つ名通り、
+    // 自分のダメージより味方の生存を優先する構成（baseStats側も hp140/atk45
+    // と高HP・低攻撃の支援寄りに設計済み）。
+    'mecha_west_crystal': [
+      SkillDefinition(
+        skillId: 'skill_west_crystal_q',
+        name: '結晶の軌跡',
+        mechaId: 'mecha_west_crystal',
+        type: SkillType.offensive,
+        description: '移動時に残る氷結晶の軌跡が触れた敵を減速させる',
+        baseCost: 35,
+        baseDamageMultiplier: 0.9,
+        cooldownSeconds: 4.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_west_crystal_w',
+        name: '月詠の加護',
+        mechaId: 'mecha_west_crystal',
+        type: SkillType.defensive,
+        description: '味方単体にシールドを付与し、一時的に被ダメージを軽減',
+        baseCost: 55,
+        baseDamageMultiplier: 1.0,
+        cooldownSeconds: 7.0,
+      ),
+      SkillDefinition(
+        skillId: 'skill_west_crystal_e',
+        name: '静寂の鱗',
+        mechaId: 'mecha_west_crystal',
+        type: SkillType.utility,
+        description: '周囲の味方のHPを少しずつ回復する結晶のオーラを展開',
+        baseCost: 60,
+        baseDamageMultiplier: 0.6,
+        cooldownSeconds: 10.0,
+      ),
+    ],
   };
 
   /// アイテムカタログ
