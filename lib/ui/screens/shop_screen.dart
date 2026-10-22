@@ -8,12 +8,15 @@ import 'package:shinjuu_league/services/purchase_cohort_service.dart';
 import 'package:shinjuu_league/ui/widgets/custom_button.dart';
 import 'package:shinjuu_league/ui/widgets/error_retry_view.dart';
 
-/// 表示用のスキンプール（本物のMecha/スキンカタログはFirestore側の運用データ投入待ち）
+/// 表示用のスキンプール（本物のMecha/スキンカタログはFirestore側の運用データ投入待ち）。
+/// 「東風/古式/祭礼衣装」の世界観方向性（CLAUDE.md参照）に沿った4種で、
+/// 既存神獣（緋焔虎/蒼氷狼/黄金獅子）の衣装替え + 陣営を問わない神秘的な
+/// 「影纏いの装束」で構成。imageUrlは assets/images/skins/ に実配置済み。
 const _skinPool = [
-  ('skin_east_flame', '緋焔の神獣'),
-  ('skin_west_frost', '蒼氷の神獣'),
-  ('skin_gold_dragon', '黄金龍装'),
-  ('skin_shadow', '影纏いの装束'),
+  ('skin_east_flame', '緋焔の祭礼装束', 'assets/images/skins/skin_east_flame.png'),
+  ('skin_west_frost', '蒼氷の古式鎧', 'assets/images/skins/skin_west_frost.png'),
+  ('skin_gold_dragon', '東風の黄金龍装', 'assets/images/skins/skin_gold_dragon.png'),
+  ('skin_shadow', '影纏いの装束', 'assets/images/skins/skin_shadow.png'),
 ];
 
 class ShopScreen extends ConsumerStatefulWidget {
@@ -58,7 +61,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
     setState(() => _isPurchasing = false);
 
     if (outcome.isSuccess) {
-      final (skinId, skinName) = _skinPool[_random.nextInt(_skinPool.length)];
+      final (skinId, skinName, _) = _skinPool[_random.nextInt(_skinPool.length)];
       final updatedSkins = [...user.ownedSkinIds, skinId];
       final priceYen = monetizationService.getSkinGachaPriceYen().toDouble();
 
@@ -160,7 +163,7 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                           ),
                       itemCount: _skinPool.length,
                       itemBuilder: (context, i) {
-                        final (skinId, skinName) = _skinPool[i];
+                        final (skinId, skinName, imageUrl) = _skinPool[i];
                         final owned = user.ownedSkinIds.contains(skinId);
                         return Card(
                           child: Padding(
@@ -168,12 +171,45 @@ class _ShopScreenState extends ConsumerState<ShopScreen> {
                             child: Column(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(
-                                  owned ? Icons.pets : Icons.help_outline,
-                                  size: 48,
-                                  color: owned
-                                      ? Theme.of(context).colorScheme.primary
-                                      : Colors.grey,
+                                Expanded(
+                                  child: owned
+                                      ? Opacity(
+                                          opacity: 1.0,
+                                          child: Image.asset(
+                                            imageUrl,
+                                            errorBuilder:
+                                                (context, error, stackTrace) =>
+                                                    Icon(
+                                                      Icons.pets,
+                                                      size: 48,
+                                                      color: Theme.of(
+                                                        context,
+                                                      ).colorScheme.primary,
+                                                    ),
+                                          ),
+                                        )
+                                      : ColorFiltered(
+                                          colorFilter: const ColorFilter.mode(
+                                            Colors.black54,
+                                            BlendMode.saturation,
+                                          ),
+                                          child: Opacity(
+                                            opacity: 0.35,
+                                            child: Image.asset(
+                                              imageUrl,
+                                              errorBuilder:
+                                                  (
+                                                    context,
+                                                    error,
+                                                    stackTrace,
+                                                  ) => const Icon(
+                                                    Icons.help_outline,
+                                                    size: 48,
+                                                    color: Colors.grey,
+                                                  ),
+                                            ),
+                                          ),
+                                        ),
                                 ),
                                 const SizedBox(height: 8),
                                 Text(
