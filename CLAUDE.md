@@ -878,6 +878,25 @@ assets/animations/
 - [lib/ui/screens/skill_tree_progression_screen.dart](lib/ui/screens/skill_tree_progression_screen.dart): ダイアログの確定ボタンを実際に`viewModel.resetSkillTree()`を呼ぶよう修正。結果に応じたSnackBarで成否をユーザーに明示。
 - [test/skill_tree_service_test.dart](test/skill_tree_service_test.dart)（`resetSkillTree`グループ、3テスト、`FakeFirebaseFirestore`使用）・[test/viewmodels/skill_tree_viewmodel_test.dart](test/viewmodels/skill_tree_viewmodel_test.dart)（`スキルツリーリセット`グループ、3テスト）を追加。フルスイート2262件（既存2256件+新規6件）全通過。
 
+### クエスト報酬XP → アカウントレベリングシステム（2026-10-22, Sonnet実装）
+
+同日3件目のExplore調査由来のバグ修正。クエストカードは達成時に「⭐ 50」のようにXP報酬を見せるのに、`QuestService._applyQuestReward()`は`currency`/`achievementBadges`/`cosmetics`だけ実際に反映し、`// TODO: Apply experience points to level progression`とコメントが残ったまま**XPだけが毎回静かに消滅していた**（`User`モデルに`experience`フィールドがそもそも存在せず、`level`を上げる仕組みもどこにもなかった）。ユーザーに「クエスト報酬のXPはどこまで実装するか」を確認し、最小の永続化だけでなく**フルレベリングシステム**（XP閾値設計・レベル自動アップ）を選択。
+
+- [lib/data/models/user_model.dart](lib/data/models/user_model.dart): `experience`フィールド（`int`, デフォルト0）を追加。`copyWith`/`fromJson`/`toJson`全てに反映。
+- [lib/services/leveling_service.dart](lib/services/leveling_service.dart)（新規）: アカウントレベル進行の唯一の入口となる`LevelingService`。
+  - `xpRequiredForLevel(level) = level * 100`という単純な線形カーブ（レベル1→2は100、2→3は200...）
+  - `addExperience(userId, amount)`: 現在のlevel/experienceを読み、ループで閾値を超える限りレベルアップを繰り返す（**1回のXP加算で複数レベル分一気に上がるケースも正しく処理**、例: 300XP一括付与なら2レベル分）。結果を`LevelUpResult`（新level/新experience/獲得レベル数）として返す
+  - 他Serviceと同じ`forFirestore`テストシームパターンを踏襲
+  - **実装中に見つけたバグ**: 当初`FirestoreService.update()`（生Firestoreの`update`相当）で書き込んでいたが、これは対象ドキュメントが既に存在しないと例外を投げる仕様のため、**ユーザードキュメントがまだ作られていない新規ユーザーで即座に失敗する**実害ある不具合だった。`FirestoreService.db`経由で`set(..., SetOptions(merge: true))`に変更し、新規/既存どちらでも安全かつ他フィールドを破壊しない書き込みに修正（Widgetテストならぬ単体テストで実際に検出・修正）。
+- [lib/services/quest_service.dart](lib/services/quest_service.dart): `_applyQuestReward`のTODOを`_levelingService.addExperience(userId, reward.experiencePoints)`呼び出しに置き換え。`LevelingService`はコンストラクタ注入可能（デフォルトはシングルトン）にして既存の`QuestService(firestoreService: ...)`呼び出し元に影響なし。
+- [lib/ui/screens/quests_screen.dart](lib/ui/screens/quests_screen.dart): 報酬獲得SnackBarにXP表記を追加（`reward.experiencePoints > 0`の場合のみ）。
+- [test/services/leveling_service_test.dart](test/services/leveling_service_test.dart)（新規、8テスト、`FakeFirebaseFirestore`）: 閾値計算・未初期化ユーザー・閾値未満/ちょうど/超過・複数レベル一括・永続化・0以下XPのno-opを検証。
+- [test/services/quest_service_test.dart](test/services/quest_service_test.dart)に2テスト追加（単発XP反映・複数クエストでの累積レベルアップ）。
+
+フルスイート2272件（既存2262件+新規10件）全通過。
+
+**既知のTODO**: レベルアップ時の祝賀演出（既存のバトル内スキル進行レベルアップ`CharacterLevelDisplay`とは別物、アカウントレベル用の演出は未実装）。`User.level`を参照する他画面（プロフィール等）での表示強化は今後。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

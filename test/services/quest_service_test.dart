@@ -1,7 +1,9 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/models/quest_model.dart';
 import 'package:shinjuu_league/services/quest_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/leveling_service.dart';
 
 // Mock FirestoreService for testing
 // `implements` (not `extends`) because FirestoreService's only constructor
@@ -68,12 +70,19 @@ void main() {
   group('QuestService', () {
     late QuestService service;
     late MockFirestoreService firestoreService;
+    late FakeFirebaseFirestore levelingFirestore;
 
     final testUserId = 'user_123';
 
     setUp(() {
       firestoreService = MockFirestoreService();
-      service = QuestService(firestoreService: firestoreService);
+      levelingFirestore = FakeFirebaseFirestore();
+      service = QuestService(
+        firestoreService: firestoreService,
+        levelingService: LevelingService.forFirestore(
+          FirestoreService.forFirestore(levelingFirestore),
+        ),
+      );
     });
 
     tearDown(() {
@@ -206,6 +215,51 @@ void main() {
 
       expect(secondClaim, isNull);
       expect(firestoreService._userCurrency[testUserId], equals(100)); // Only once
+    });
+
+    test('applies experience points to user level progression', () async {
+      // daily_win_1 grants 50 XP. 修正前は _applyQuestReward に
+      // "TODO: Apply experience points to level progression" とだけ書かれており、
+      // クエストカードが見せる XP 報酬が実際には永久に失われていた。
+      await service.startQuest(testUserId, 'daily_win_1');
+      await service.updateQuestProgress(
+        testUserId,
+        'daily_win_1',
+        QuestConditionType.battleCount,
+        3,
+      );
+
+      await service.claimQuestReward(testUserId, 'daily_win_1');
+
+      final doc = await levelingFirestore.collection('users').doc(testUserId).get();
+      expect(doc.data(), isNotNull);
+      expect(doc.data()!['experience'], equals(50));
+      expect(doc.data()!['level'], equals(1)); // 閾値100未満なのでレベルアップなし
+    });
+
+    test('累積XPが閾値を超えるとレベルアップする', () async {
+      // レベル1→2は100XP必要。dailyとdamageクエスト（各50XP）で合計100。
+      await service.startQuest(testUserId, 'daily_win_1');
+      await service.updateQuestProgress(
+        testUserId,
+        'daily_win_1',
+        QuestConditionType.battleCount,
+        3,
+      );
+      await service.claimQuestReward(testUserId, 'daily_win_1');
+
+      await service.startQuest(testUserId, 'daily_damage_1');
+      await service.updateQuestProgress(
+        testUserId,
+        'daily_damage_1',
+        QuestConditionType.damageDealt,
+        500,
+      );
+      await service.claimQuestReward(testUserId, 'daily_damage_1');
+
+      final doc = await levelingFirestore.collection('users').doc(testUserId).get();
+      expect(doc.data()!['level'], equals(2));
+      expect(doc.data()!['experience'], equals(0));
     });
 
     test('applies all reward types (currency, badges, cosmetics)', () async {

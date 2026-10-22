@@ -1,13 +1,18 @@
 import 'dart:async';
 import 'package:shinjuu_league/data/models/quest_model.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/leveling_service.dart';
 
 /// Manages quest lifecycle: initialization, progress tracking, completion, rewards
 class QuestService {
   final FirestoreService _firestoreService;
+  final LevelingService _levelingService;
 
-  QuestService({required FirestoreService firestoreService})
-      : _firestoreService = firestoreService;
+  QuestService({
+    required FirestoreService firestoreService,
+    LevelingService? levelingService,
+  })  : _firestoreService = firestoreService,
+        _levelingService = levelingService ?? LevelingService();
 
   /// Start a quest for a user (initialize PlayerQuest)
   Future<PlayerQuest> startQuest(String userId, String questId) async {
@@ -140,7 +145,9 @@ class QuestService {
         await _firestoreService.addUserCosmetic(userId, cosmetic);
       }
 
-      // TODO: Apply experience points to level progression
+      if (reward.experiencePoints > 0) {
+        await _levelingService.addExperience(userId, reward.experiencePoints);
+      }
     } catch (e) {
       print('Error applying quest reward: $e');
       rethrow;

@@ -6,6 +6,7 @@ class User {
   final String name;
   final int rank;
   final int level;
+  final int experience;
   final double eloRating;
   final double winRate;
   final int totalWins;
@@ -27,6 +28,7 @@ class User {
     required this.name,
     required this.rank,
     required this.level,
+    this.experience = 0,
     required this.eloRating,
     required this.winRate,
     this.totalWins = 0,
@@ -49,6 +51,7 @@ class User {
     String? name,
     int? rank,
     int? level,
+    int? experience,
     double? eloRating,
     double? winRate,
     int? totalWins,
@@ -70,6 +73,7 @@ class User {
       name: name ?? this.name,
       rank: rank ?? this.rank,
       level: level ?? this.level,
+      experience: experience ?? this.experience,
       eloRating: eloRating ?? this.eloRating,
       winRate: winRate ?? this.winRate,
       totalWins: totalWins ?? this.totalWins,
@@ -94,6 +98,7 @@ class User {
       name: json['name'] as String,
       rank: json['rank'] as int? ?? 0,
       level: json['level'] as int? ?? 1,
+      experience: json['experience'] as int? ?? 0,
       eloRating: (json['eloRating'] as num?)?.toDouble() ?? 1000.0,
       winRate: (json['winRate'] as num?)?.toDouble() ?? 0.0,
       totalWins: json['totalWins'] as int? ?? 0,
@@ -130,6 +135,7 @@ class User {
       'name': name,
       'rank': rank,
       'level': level,
+      'experience': experience,
       'eloRating': eloRating,
       'winRate': winRate,
       'totalWins': totalWins,

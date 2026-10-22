@@ -233,10 +233,12 @@ class _QuestsScreenState extends ConsumerState<QuestsScreen>
         .claimQuestReward(questId);
 
     if (reward != null) {
+      final xpSuffix =
+          reward.experiencePoints > 0 ? ' + XP ${reward.experiencePoints}' : '';
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text(
-            '報酬獲得: ${reward.currency}通貨 + ${reward.achievementBadges}バッジ',
+            '報酬獲得: ${reward.currency}通貨 + ${reward.achievementBadges}バッジ$xpSuffix',
           ),
           duration: const Duration(seconds: 3),
           backgroundColor: AppColors.gold,
