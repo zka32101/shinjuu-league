@@ -869,6 +869,15 @@ assets/animations/
 - [test/ui/widgets/resource_hud_test.dart](test/ui/widgets/resource_hud_test.dart) （新規、5テスト）: 実アイテムデータの表示検証、ショップの開閉、カタログ全件表示（`ListView`の遅延描画に対応し`scrollUntilVisible`でスクロールしながら検証）、購入成立、ゴールド不足時の購入拒否、所持済みアイテムの再購入拒否
 - フルスイート2256件（既存2251件+新規5件）全通過
 
+### スキルツリー「リセット」ボタンの修復（2026-10-22, Sonnet実装）
+
+引き続き同日のExplore調査で発見。[lib/ui/screens/skill_tree_progression_screen.dart](lib/ui/screens/skill_tree_progression_screen.dart)の「スキルリセット」確認ダイアログは実在し「リセットしますか？」と聞いてくるのに、確定ボタンの中身が`Navigator.pop(context); // TODO: Reset functionality`のみで、**実際には何もリセットされず静かにダイアログを閉じるだけ**だった。ポイント配分をやり直したいユーザーに対して「できる」と見せかけて実は何もしないという、バグとして実害のあるパターン。
+
+- [lib/services/skill_tree_service.dart](lib/services/skill_tree_service.dart): `resetSkillTree(userId)`を新設。全ツリーのティアを0に戻し、消費済み+未使用ポイントを`availablePoints`へ全額返却してFirestoreに保存する。既存の`SkillTreeResetService`（シーズン遷移時の繰越モード付きリセット、`season_resets`コレクションへ記録）とは別物で、混同しないよう明示的にコメントで区別。
+- [lib/viewmodels/skill_tree_viewmodel.dart](lib/viewmodels/skill_tree_viewmodel.dart): `resetSkillTree()`を追加。サービス呼び出し結果を`state`へ直接反映し、成功/失敗を`bool`で返す。
+- [lib/ui/screens/skill_tree_progression_screen.dart](lib/ui/screens/skill_tree_progression_screen.dart): ダイアログの確定ボタンを実際に`viewModel.resetSkillTree()`を呼ぶよう修正。結果に応じたSnackBarで成否をユーザーに明示。
+- [test/skill_tree_service_test.dart](test/skill_tree_service_test.dart)（`resetSkillTree`グループ、3テスト、`FakeFirebaseFirestore`使用）・[test/viewmodels/skill_tree_viewmodel_test.dart](test/viewmodels/skill_tree_viewmodel_test.dart)（`スキルツリーリセット`グループ、3テスト）を追加。フルスイート2262件（既存2256件+新規6件）全通過。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

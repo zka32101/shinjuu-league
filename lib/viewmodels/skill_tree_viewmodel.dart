@@ -70,6 +70,20 @@ class SkillTreeViewModel extends StateNotifier<AsyncValue<SkillTree>> {
     }
   }
 
+  /// スキルツリーを完全リセット（全ポイントをavailablePointsへ返却）
+  Future<bool> resetSkillTree() async {
+    final userId = _currentUserId;
+    if (userId == null) return false;
+
+    try {
+      final resetTree = await _skillTreeService.resetSkillTree(userId);
+      state = AsyncValue.data(resetTree);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
   /// スキルツリーをリロード
   Future<void> _reloadSkillTree() async {
     final userId = _currentUserId;

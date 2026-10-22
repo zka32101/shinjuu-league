@@ -162,9 +162,21 @@ class _SkillTreeContent extends ConsumerWidget {
             child: const Text('キャンセル'),
           ),
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.pop(context);
-              // TODO: Reset functionality
+              final success = await ref
+                  .read(skillTreeViewModelProvider.notifier)
+                  .resetSkillTree();
+              if (!context.mounted) return;
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                    success
+                        ? 'スキルツリーをリセットしました'
+                        : 'リセットに失敗しました。もう一度お試しください',
+                  ),
+                ),
+              );
             },
             child: const Text('リセット'),
           ),

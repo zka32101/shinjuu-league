@@ -157,6 +157,29 @@ class SkillTreeService {
     };
   }
 
+  /// スキルツリーを完全リセット（全ツリーのティアを0に戻し、消費済みポイントを
+  /// availablePointsへ全額返却する）。シーズン遷移時の繰越ロジックを持つ
+  /// [SkillTreeResetService]とは別物で、ユーザーが任意のタイミングで
+  /// 「配分をやり直したい」場合に使う単純な全額返金リセット。
+  Future<SkillTree> resetSkillTree(String userId) async {
+    final skillTree = await getSkillTree(userId);
+    if (skillTree == null) return SkillTree.create();
+
+    final refundedPoints =
+        skillTree.availablePoints + skillTree.totalAllocatedPoints;
+    final resetTree = SkillTree(
+      trees: List.generate(maxTrees, (_) => SkillTreeBranch()),
+      totalAllocatedPoints: 0,
+      availablePoints: refundedPoints,
+    );
+
+    await _firestoreService.update('users/$userId', {
+      'skillTree': resetTree.toJson(),
+    });
+
+    return resetTree;
+  }
+
   /// レベルアップ時にスキルポイントを付与
   Future<void> awardSkillPointOnLevelUp(String userId) async {
     try {

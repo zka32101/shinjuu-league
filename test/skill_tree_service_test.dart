@@ -1,3 +1,4 @@
+import 'package:fake_cloud_firestore/fake_cloud_firestore.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:mockito/mockito.dart';
 import 'package:shinjuu_league/data/models/skill_model.dart';
@@ -252,6 +253,68 @@ void main() {
         for (int i = 0; i < modifiers.length - 1; i++) {
           expect(modifiers[i], lessThan(modifiers[i + 1]));
         }
+      });
+    });
+
+    group('resetSkillTree', () {
+      // skill_tree_progression_screen.dart の「リセット」ボタンは、修正前は
+      // ダイアログを閉じるだけで何もしない死んだボタンだった。実際に
+      // Firestore へ永続化されるリセットを FakeFirebaseFirestore で検証する。
+      late SkillTreeService realService;
+      late FakeFirebaseFirestore fakeFirestore;
+
+      setUp(() {
+        fakeFirestore = FakeFirebaseFirestore();
+        realService = SkillTreeService.forFirestore(
+          FirestoreService.forFirestore(fakeFirestore),
+        );
+      });
+
+      test('全ティアを0に戻し、消費済みポイントを全額返却する', () async {
+        final tree = SkillTree.create();
+        tree.trees[0].allocatedTiers = 3; // 攻撃に3ポイント
+        tree.trees[1].allocatedTiers = 2; // 防御に2ポイント
+        tree.totalAllocatedPoints = 5;
+        tree.availablePoints = 1; // 未使用ポイントも1残っている
+
+        await fakeFirestore.collection('users').doc('user_1').set({
+          'skillTree': tree.toJson(),
+        });
+
+        final resetTree = await realService.resetSkillTree('user_1');
+
+        expect(resetTree.totalAllocatedPoints, equals(0));
+        for (final branch in resetTree.trees) {
+          expect(branch.allocatedTiers, equals(0));
+        }
+        // 消費済み5 + 未使用1 = 6ポイントが全額返却される
+        expect(resetTree.availablePoints, equals(6));
+      });
+
+      test('リセット結果はFirestoreに永続化される', () async {
+        final tree = SkillTree.create();
+        tree.trees[2].allocatedTiers = 4;
+        tree.totalAllocatedPoints = 4;
+
+        await fakeFirestore.collection('users').doc('user_2').set({
+          'skillTree': tree.toJson(),
+        });
+
+        await realService.resetSkillTree('user_2');
+
+        final doc = await fakeFirestore.collection('users').doc('user_2').get();
+        final savedTree = SkillTree.fromJson(
+          doc.data()!['skillTree'] as Map<String, dynamic>,
+        );
+        expect(savedTree.totalAllocatedPoints, equals(0));
+        expect(savedTree.availablePoints, equals(4));
+      });
+
+      test('既存ツリーが存在しないユーザーには空のツリーを返す', () async {
+        final resetTree = await realService.resetSkillTree('ghost_user');
+
+        expect(resetTree.totalAllocatedPoints, equals(0));
+        expect(resetTree.availablePoints, equals(0));
       });
     });
   });

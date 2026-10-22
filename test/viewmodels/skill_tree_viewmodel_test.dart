@@ -45,6 +45,15 @@ class MockSkillTreeService extends Mock implements SkillTreeService {
       returnValueForMissingStub: <String, dynamic>{},
     ) as Map<String, dynamic>;
   }
+
+  @override
+  Future<SkillTree> resetSkillTree(String? userId) {
+    return super.noSuchMethod(
+      Invocation.method(#resetSkillTree, [userId]),
+      returnValue: Future<SkillTree>.value(SkillTree.create()),
+      returnValueForMissingStub: Future<SkillTree>.value(SkillTree.create()),
+    ) as Future<SkillTree>;
+  }
 }
 
 class MockAuthService extends Mock implements AuthService {}
@@ -377,6 +386,63 @@ void main() {
         expect(stats['total_points'], equals(0));
         expect(stats['allocated_points'], equals(0));
         expect(stats['available_points'], equals(0));
+      });
+    });
+
+    group('スキルツリーリセット', () {
+      // skill_tree_progression_screen.dart の「リセット」ボタンが
+      // ダイアログを閉じるだけの死んだボタンだったバグの修正検証。
+      test('リセット成功時はtrueを返し、サービスの返却値をstateに反映する', () async {
+        final resetTree = SkillTree.create();
+        resetTree.availablePoints = 7;
+
+        when(mockAuthService.currentUser).thenReturn(
+          _createMockUser('test_user'),
+        );
+        when(mockSkillTreeService.resetSkillTree('test_user'))
+            .thenAnswer((_) async => resetTree);
+
+        viewModel = SkillTreeViewModel(
+          skillTreeService: mockSkillTreeService,
+          authService: mockAuthService,
+        );
+
+        final success = await viewModel.resetSkillTree();
+
+        expect(success, isTrue);
+        expect(viewModel.state.value!.availablePoints, equals(7));
+        expect(viewModel.state.value!.totalAllocatedPoints, equals(0));
+      });
+
+      test('未ログイン時はfalseを返し、サービスを呼ばない', () async {
+        when(mockAuthService.currentUser).thenReturn(null);
+
+        viewModel = SkillTreeViewModel(
+          skillTreeService: mockSkillTreeService,
+          authService: mockAuthService,
+        );
+
+        final success = await viewModel.resetSkillTree();
+
+        expect(success, isFalse);
+        verifyNever(mockSkillTreeService.resetSkillTree(any));
+      });
+
+      test('サービスが例外を投げた場合はfalseを返す', () async {
+        when(mockAuthService.currentUser).thenReturn(
+          _createMockUser('test_user'),
+        );
+        when(mockSkillTreeService.resetSkillTree('test_user'))
+            .thenThrow(Exception('firestore error'));
+
+        viewModel = SkillTreeViewModel(
+          skillTreeService: mockSkillTreeService,
+          authService: mockAuthService,
+        );
+
+        final success = await viewModel.resetSkillTree();
+
+        expect(success, isFalse);
       });
     });
   });
