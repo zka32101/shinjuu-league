@@ -65,6 +65,26 @@ final mechaCatalog = <Mecha>[
     skins: const [],
     description: '伝説級の神獣。全ステータスが高水準。',
   ),
+  Mecha(
+    mechaId: 'mecha_east_phoenix',
+    name: '緋凰',
+    rarity: 'LEGEND',
+    origin: 'EAST',
+    baseStats: BaseStats(hp: 100, atk: 75, spd: 45),
+    iconUrl: 'assets/images/mecha/mecha_east_phoenix.png',
+    skins: const [],
+    description: '「火継ぎの頂、緋凰」。盤の守護者の一体。燃え盛る範囲攻撃で戦場を焼き尽くす、東の頂点に立つ神獣。',
+  ),
+  Mecha(
+    mechaId: 'mecha_west_crystal',
+    name: '蒼麟',
+    rarity: 'EPIC',
+    origin: 'WEST',
+    baseStats: BaseStats(hp: 140, atk: 45, spd: 35),
+    iconUrl: 'assets/images/mecha/mecha_west_crystal.png',
+    skins: const [],
+    description: '「月詠の守り、蒼麟」。盤の守護者の一体。結晶の鱗を纏い、傍らの使い手を静かに守り支える西の神獣。',
+  ),
 ];
 
 const defaultMechaId = 'mecha_east_flame';
