@@ -7,8 +7,10 @@ import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
+import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
 class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   UserViewModel({
@@ -16,10 +18,13 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     AuthService? authService,
     RankingService? rankingService,
     SeasonService? seasonService,
+    SkillTreeResetService? skillTreeResetService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _authService = authService ?? AuthService(),
        _rankingService = rankingService ?? RankingService(),
        _seasonService = seasonService ?? SeasonService(),
+       _skillTreeResetService =
+           skillTreeResetService ?? SkillTreeResetService(firestoreService ?? FirestoreService()),
        super(const AsyncValue.loading()) {
     _init();
   }
@@ -28,6 +33,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   final AuthService _authService;
   final RankingService _rankingService;
   final SeasonService _seasonService;
+  final SkillTreeResetService _skillTreeResetService;
   StreamSubscription<User?>? _userSub;
 
   /// Get current user ID for seasonal tracking
@@ -100,10 +106,59 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
         isWin: isWin,
         tierThresholds: activeSeason.tierThresholds,
       );
+
+      await _checkSeasonTransition(userId, activeSeason.seasonId);
     } catch (e) {
       // Season progress recording is non-blocking (logging only)
       print('[UserViewModel] Error updating seasonal progress: $e');
     }
+  }
+
+  /// シーズンが切り替わっていれば、デフォルトの繰越モード（partial、50%引き継ぎ）
+  /// でスキルツリーをリセットする。
+  ///
+  /// 元々 `SkillTreeResetService.resetForNewSeason()` は
+  /// `skillTreeResetViewModelProvider`（UIの導線が存在しない）からしか
+  /// 呼ばれておらず、`users/{userId}/season_snapshots` が全ユーザーで
+  /// 永遠に空になっていた（ProgressionAnalyticsScreenがどのユーザーでも
+  /// 空状態しか表示できない根本原因の片方）。RankingServiceの
+  /// `season_data`（実際にプレイした全シーズンの記録）を正とし、
+  /// まだスキルツリーのスナップショットが無い直近プレイ済みシーズンを
+  /// 検出した時点で、ここから自動的にリセットをトリガーする。
+  Future<void> _checkSeasonTransition(
+    String userId,
+    String activeSeasonId,
+  ) async {
+    // 直前のupdateSeasonalProgress()呼び出しで、アクティブシーズン自身の
+    // season_data が既に作成/更新されている可能性があるため、「最後に
+    // プレイしたシーズン」ではなく「アクティブシーズン以外で、まだ
+    // スナップショットが取られていないプレイ済みシーズン」を遷移対象として
+    // 探す。
+    final playedSeasons = await _rankingService.getSeasonHistory(userId);
+    if (playedSeasons.isEmpty) return;
+
+    final snapshotHistory = await _skillTreeResetService.getSeasonHistory(
+      userId,
+    );
+    final snapshottedSeasonIds = snapshotHistory
+        .map((snapshot) => snapshot.seasonId)
+        .toSet();
+
+    final pendingSeasons = playedSeasons.where(
+      (season) =>
+          season.seasonId != activeSeasonId &&
+          !snapshottedSeasonIds.contains(season.seasonId),
+    );
+    if (pendingSeasons.isEmpty) return; // この遷移は既に処理済み
+
+    final previousSeason = pendingSeasons.last;
+    await _skillTreeResetService.resetForNewSeason(
+      userId,
+      previousSeason.seasonId,
+      activeSeasonId,
+      previousSeason.peakTier,
+      CarryoverMode.partial,
+    );
   }
 
   /// スキンガチャ購入後に所持スキンを反映

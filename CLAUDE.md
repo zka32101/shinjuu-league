@@ -916,6 +916,27 @@ assets/animations/
 
 **既知のTODO**: `getSeasonComparison`（2シーズン比較機能）はサービス層に実装済みだがUI側は未着手。シーズン履歴が1件のみの場合の比較導線は今後。
 
+### プログレッション分析画面の実データ修復（2026-10-23, Sonnet実装）
+
+直前に新設した`ProgressionAnalyticsScreen`を実際に動かして調査した結果、**どのユーザーでも空状態しか表示できない**ことが判明。原因は2つの独立したバグの複合だった。
+
+**バグ1: `season_snapshots`が全ユーザーで永遠に空**
+- `ProgressionAnalyticsService.getProgressionStats()`はシーズン履歴を`SkillTreeResetService.getSeasonHistory()`（`users/{userId}/season_snapshots/{seasonId}`）から取得する設計だったが、このコレクションへの書き込みは`SkillTreeResetService.resetForNewSeason()`の中にしかなく、その呼び出し元は`SkillTreeResetViewModel.executeSeasonReset()`のみ、そしてこのViewModelのプロバイダにはUI導線が一切無かった（キャリーオーバーモード選択UIは実装済みだが、どこからも開けない画面）。結果として、シーズンがいくつ切り替わってもスナップショットは1件も作られていなかった。
+- ユーザーに「この導線をUIとして露出するか、デフォルトの繰越モードで自動トリガーするか」を確認し、**自動トリガー（デフォルト繰越モード）**を選択。
+- [lib/viewmodels/user_viewmodel.dart](lib/viewmodels/user_viewmodel.dart): `applyBattleResult()`内、既存の`RankingService.updateSeasonalProgress()`呼び出しの直後に`_checkSeasonTransition()`を追加。`RankingService.getSeasonHistory()`（`season_data`、実際にプレイした全シーズンの記録で既に正しく populated）を正として、アクティブシーズン以外でまだスキルツリーのスナップショットが取られていないプレイ済みシーズンを検出した時点で`SkillTreeResetService.resetForNewSeason()`を`CarryoverMode.partial`（50%引き継ぎ）で呼び出す。スナップショット済みかどうかで判定するため冪等（同じ遷移を二度処理しない）。デフォルト繰越モードを`partial`にしたのは、`none`（完全リセット）ほど懲罰的でなく`full`（無制限引き継ぎ）ほど緩くもない、既存の`SkillTreeResetService`内コメントが示す「標準」の中間値だから。
+- ユーザードキュメントにまだ`skillTree`が無い場合（新規ユーザー等）は`resetForNewSeason`内部で例外になるが、この呼び出しは既存の季節進行更新と同じ`try/catch`（non-blocking、ログのみ）で包まれているため試合フローは止まらない。
+
+**バグ2: 勝敗・ELOデータが常にハードコードされたゼロ**
+- `ProgressionAnalyticsService._calculateAggregateStats()`/`getProgressionStats()`は`totalGamesPlayed: 0, gamesWon: 0, gamesLost: 0, winRate: 0.0, eloProgression: []`を明示的なTODOコメント付きで埋め込んでいた。実際の勝敗データは**別のFirestoreパス**（`RankingService`が管理する`users/{userId}/season_data/{seasonId}`、`updateSeasonalProgress()`で試合ごとに正しく更新されている）に既に存在していたが、一度も参照されていなかった。
+- [lib/services/progression_analytics_service.dart](lib/services/progression_analytics_service.dart): コンストラクタに`RankingService`を追加注入（デフォルトは`RankingService()`）。`getProgressionStats()`内で`_rankingService.getSeasonHistory(userId)`を取得しseasonIdで突き合わせ、`gamesWon`/`gamesLost`/`totalGamesPlayed`/`winRate`、および開始〜最終レートの2点から`eloProgression`（`EloSnapshot`2件）を実データで構築するように変更。`totalPlayTime`/`seasonRewards`は依然対応する実データソースが存在しないため未変更（新たなTODOを増やすだけなので今回は手を出さない）。
+
+- [test/viewmodels/user_viewmodel_test.dart](test/viewmodels/user_viewmodel_test.dart): 新規`group`2件（自動トリガーでスナップショット+リセット記録が作られる/2回目の試合では再トリガーしない）。
+- [test/progression_analytics_service_test.dart](test/progression_analytics_service_test.dart): `RankingService`呼び出しをFirebase本体に触れさせない`MockRankingService`を追加（既存テストは全てランキング データ無し＝ゼロ扱いのまま通過することを確認）、実データマージを検証する新規テスト1件を追加。
+
+フルスイート2279件（既存2269件+新規10件、既存の13件skipは変更なし）全通過。
+
+**既知のTODO**: `totalPlayTime`（シーズンごとの実プレイ時間）・`seasonRewards`（実際の受領報酬数）は依然プレースホルダー。`ProgressionAnalyticsService.getSeasonComparison()`内の`SkillTreeResetServiceExt`拡張（プライベートメソッドへの一時的アクセス回避实装、`_getSeasonSnapshot`が常に`null`を返すプレースホルダー）も未着手（`getSeasonComparison`自体はUIから呼ばれていないため実害はまだ無いが、UI化する際は要修正）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

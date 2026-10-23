@@ -5,6 +5,7 @@ import 'package:shinjuu_league/data/models/skill_model.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/progression_analytics_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
 class MockFirestoreService extends Mock implements FirestoreService {}
@@ -20,16 +21,45 @@ class MockSkillTreeResetService extends Mock implements SkillTreeResetService {
   }
 }
 
+/// RankingService touches FirebaseFirestore.instance lazily on first real
+/// use - this mock keeps getSeasonHistory() from ever reaching it in these
+/// plain (non-Firebase) unit tests, defaulting to "no ranking data yet" so
+/// existing snapshot-only assertions keep their original zero-games
+/// behavior unless a test explicitly stubs richer ranking data.
+class MockRankingService extends Mock implements RankingService {
+  @override
+  Future<List<SeasonHistoryEntry>> getSeasonHistory(
+    String? userId, {
+    dynamic seasonService,
+  }) {
+    return super.noSuchMethod(
+      Invocation.method(#getSeasonHistory, [userId]),
+      returnValue: Future<List<SeasonHistoryEntry>>.value(
+        <SeasonHistoryEntry>[],
+      ),
+      returnValueForMissingStub: Future<List<SeasonHistoryEntry>>.value(
+        <SeasonHistoryEntry>[],
+      ),
+    ) as Future<List<SeasonHistoryEntry>>;
+  }
+}
+
 void main() {
   group('ProgressionAnalyticsService', () {
     late ProgressionAnalyticsService service;
     late MockFirestoreService mockFirestore;
     late MockSkillTreeResetService mockResetService;
+    late MockRankingService mockRankingService;
 
     setUp(() {
       mockFirestore = MockFirestoreService();
       mockResetService = MockSkillTreeResetService();
-      service = ProgressionAnalyticsService(mockFirestore, mockResetService);
+      mockRankingService = MockRankingService();
+      service = ProgressionAnalyticsService(
+        mockFirestore,
+        mockResetService,
+        mockRankingService,
+      );
     });
 
     group('getProgressionStats', () {
@@ -89,6 +119,41 @@ void main() {
 
         expect(stats.allTimeStats.highestTierEver, equals('Gold'));
       });
+
+      test(
+        'merges real win/loss/ELO data from RankingService instead of hardcoded zeros',
+        () async {
+          final snapshot = _createSnapshot('season_1', 'Gold', 4);
+          when(mockResetService.getSeasonHistory('user_123'))
+              .thenAnswer((_) async => [snapshot]);
+          when(mockRankingService.getSeasonHistory('user_123')).thenAnswer(
+            (_) async => [
+              SeasonHistoryEntry(
+                seasonId: 'season_1',
+                seasonName: 'Season 1',
+                startedAt: DateTime(2026, 1, 1),
+                startingRating: 1200,
+                peakRating: 1600,
+                finalRating: 1550,
+                peakTier: 'Gold',
+                seasonWins: 12,
+                seasonLosses: 4,
+              ),
+            ],
+          );
+
+          final stats = await service.getProgressionStats('user_123');
+          final season = stats.currentSeason!;
+
+          expect(season.gamesWon, equals(12));
+          expect(season.gamesLost, equals(4));
+          expect(season.totalGamesPlayed, equals(16));
+          expect(season.winRate, closeTo(12 / 16, 0.0001));
+          expect(season.eloProgression, hasLength(2));
+          expect(season.eloProgression.first.rating, equals(1200.0));
+          expect(season.eloProgression.last.rating, equals(1550.0));
+        },
+      );
 
       test('calculates average tier correctly', () async {
         // Silver(1) + Gold(2) + Platinum(3) = avg 2 (Gold)

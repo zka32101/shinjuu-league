@@ -2,6 +2,7 @@ import 'package:freezed_annotation/freezed_annotation.dart';
 import 'package:shinjuu_league/data/models/progression_stats.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
+import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
 part 'progression_analytics_service.freezed.dart';
@@ -11,6 +12,7 @@ part 'progression_analytics_service.g.dart';
 class ProgressionAnalyticsService {
   final FirestoreService _firestoreService;
   final SkillTreeResetService _resetService;
+  final RankingService _rankingService;
 
   /// Tier progression order
   static const List<String> tierProgression = [
@@ -23,8 +25,9 @@ class ProgressionAnalyticsService {
 
   ProgressionAnalyticsService(
     this._firestoreService,
-    this._resetService,
-  );
+    this._resetService, [
+    RankingService? rankingService,
+  ]) : _rankingService = rankingService ?? RankingService();
 
   /// Get complete progression statistics for a player
   Future<ProgressionStats> getProgressionStats(String userId) async {
@@ -41,21 +44,46 @@ class ProgressionAnalyticsService {
       );
     }
 
+    // 実の勝敗・ELOデータは season_snapshots (skill tree側)ではなく
+    // season_data (RankingService側)にある。seasonIdで突き合わせて反映する。
+    final rankingHistory = await _rankingService.getSeasonHistory(userId);
+    final rankingBySeasonId = {
+      for (final entry in rankingHistory) entry.seasonId: entry,
+    };
+
     // Convert snapshots to SeasonStats
     final seasonStats = allSeasons.map((snapshot) {
+      final ranking = rankingBySeasonId[snapshot.seasonId];
+      final gamesWon = ranking?.seasonWins ?? 0;
+      final gamesLost = ranking?.seasonLosses ?? 0;
+      final totalGames = gamesWon + gamesLost;
+
       return SeasonStats(
         seasonId: snapshot.seasonId,
-        startedAt: snapshot.snapshotAt,
+        startedAt: ranking?.startedAt ?? snapshot.snapshotAt,
         endedAt: snapshot.snapshotAt,
         finalTier: snapshot.finalTier,
-        maxTierReached: snapshot.finalTier,
+        maxTierReached: ranking?.peakTier ?? snapshot.finalTier,
         pointsAllocated: snapshot.totalPointsAllocated,
-        totalGamesPlayed: 0, // TODO: Fetch from battle records
-        gamesWon: 0,
-        gamesLost: 0,
+        totalGamesPlayed: totalGames,
+        gamesWon: gamesWon,
+        gamesLost: gamesLost,
         totalPlayTime: const Duration(hours: 0),
-        winRate: 0.0,
-        eloProgression: [],
+        winRate: totalGames > 0 ? gamesWon / totalGames : 0.0,
+        eloProgression: ranking == null
+            ? []
+            : [
+                EloSnapshot(
+                  recordedAt: ranking.startedAt ?? snapshot.snapshotAt,
+                  rating: ranking.startingRating.toDouble(),
+                  gamesPlayed: 0,
+                ),
+                EloSnapshot(
+                  recordedAt: snapshot.snapshotAt,
+                  rating: ranking.finalRating.toDouble(),
+                  gamesPlayed: totalGames,
+                ),
+              ],
         seasonRewards: 0,
       );
     }).toList();
