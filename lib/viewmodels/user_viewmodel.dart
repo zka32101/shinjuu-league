@@ -9,6 +9,7 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
+import 'package:shinjuu_league/services/season_reward_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 
@@ -19,12 +20,15 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     RankingService? rankingService,
     SeasonService? seasonService,
     SkillTreeResetService? skillTreeResetService,
+    SeasonRewardService? seasonRewardService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _authService = authService ?? AuthService(),
        _rankingService = rankingService ?? RankingService(),
        _seasonService = seasonService ?? SeasonService(),
        _skillTreeResetService =
            skillTreeResetService ?? SkillTreeResetService(firestoreService ?? FirestoreService()),
+       _seasonRewardService =
+           seasonRewardService ?? SeasonRewardService(firestoreService ?? FirestoreService()),
        super(const AsyncValue.loading()) {
     _init();
   }
@@ -34,6 +38,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   final RankingService _rankingService;
   final SeasonService _seasonService;
   final SkillTreeResetService _skillTreeResetService;
+  final SeasonRewardService _seasonRewardService;
   StreamSubscription<User?>? _userSub;
 
   /// Get current user ID for seasonal tracking
@@ -159,6 +164,23 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
       previousSeason.peakTier,
       CarryoverMode.partial,
     );
+
+    // シーズン報酬の配布。SeasonRewardsScreen自体はUI・Firestore読み取り・
+    // claim機能まで完成済みだったが、distributeSeasonRewards()の呼び出し元が
+    // コードベースのどこにも存在せず、常に「報酬なし」表示になっていた
+    // （season_snapshotsが空だった問題と同根）。スナップショット判定と
+    // 同じタイミング・同じ finalTier で呼び出す。報酬配布が失敗しても
+    // （未知のtier名等）スキルツリーのリセット自体は既に完了しているため、
+    // 独立したtry/catchで分離する。
+    try {
+      await _seasonRewardService.distributeSeasonRewards(
+        previousSeason.seasonId,
+        userId,
+        previousSeason.peakTier,
+      );
+    } catch (e) {
+      print('[UserViewModel] Error distributing season rewards: $e');
+    }
   }
 
   /// スキンガチャ購入後に所持スキンを反映

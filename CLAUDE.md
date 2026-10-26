@@ -937,6 +937,20 @@ assets/animations/
 
 **既知のTODO**: `totalPlayTime`（シーズンごとの実プレイ時間）・`seasonRewards`（実際の受領報酬数）は依然プレースホルダー。`ProgressionAnalyticsService.getSeasonComparison()`内の`SkillTreeResetServiceExt`拡張（プライベートメソッドへの一時的アクセス回避实装、`_getSeasonSnapshot`が常に`null`を返すプレースホルダー）も未着手（`getSeasonComparison`自体はUIから呼ばれていないため実害はまだ無いが、UI化する際は要修正）。
 
+### シーズン報酬配布の修復（2026-10-26, Sonnet実装）
+
+直前の2件（season_snapshots自動トリガー・実勝敗データ反映）と同じExplore調査の続きで、もう1件「見た目は完成しているが実は無反応」パターンを発見・修復。
+
+**バグ: `distributeSeasonRewards()`がコードベースのどこからも呼ばれていなかった**
+- ランク画面（[lib/ui/screens/rank_screen.dart](lib/ui/screens/rank_screen.dart)）のギフトアイコン→`AppRoutes.seasonRewards`→`SeasonRewardsRouteScreen`→`SeasonRewardsScreen`/`SeasonRewardViewModel`という導線は実UI・実Firestore読み取り（`getPlayerSeasonRewards`/`getUnclaimedRewards`）・claim機能（`claimRewards`）まで全部完成していたが、配布処理`SeasonRewardService.distributeSeasonRewards(seasonId, userId, finalTier)`（`users/{userId}/season_rewards/{seasonId}`へ書き込み）を呼び出す場所がリポジトリ全体のどこにも存在しなかった。結果として、どのユーザーがどのTierでシーズンを終えても、この画面は常に「報酬なし」を表示していた。
+- `SkillTreeResetService.resetForNewSeason()`（直前の修正で`UserViewModel._checkSeasonTransition()`から自動トリガー済み）は、`distributeSeasonRewards`が必要とする`finalTier`を既に引数として受け取っていたが、それを報酬配布に転送する処理が無かった。
+- [lib/viewmodels/user_viewmodel.dart](lib/viewmodels/user_viewmodel.dart): `_checkSeasonTransition()`内、スキルツリーリセット呼び出しの直後に`SeasonRewardService.distributeSeasonRewards()`を同じ`previousSeason.seasonId`/`previousSeason.peakTier`で呼び出すよう追加。報酬配布の失敗（`SeasonRewardService.tierRewardMap`に無いtier名等）がスキルツリーリセット自体の成功を巻き込まないよう、独立した`try/catch`で分離。
+- [test/viewmodels/user_viewmodel_test.dart](test/viewmodels/user_viewmodel_test.dart): シーズン遷移検出時に`users/{userId}/season_rewards/{seasonId}`へ`finalTier`・未claim状態・報酬リストが書き込まれることを検証するテスト1件を追加。
+
+フルスイート2280件（既存2279件+新規1件）全通過。
+
+**既知のTODO**: `RankingService._defaultTierThresholds()`の最上位Tier名が`'Legend'`なのに対し、`SeasonRewardService.tierRewardMap`/`SkillTreeResetService.tierProgression`は`'Diamond'`を使っており、Tier名の不一致が既存コードに潜在する（カスタムシーズンが`tierThresholds`で独自Tier名を使う限り実害は顕在化しないが、デフォルト値のまま運用すると配布がExceptionでスキップされ続ける）。今回のスコープでは手を広げず、次にTier名を触る回で要調整。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

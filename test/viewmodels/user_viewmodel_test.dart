@@ -8,6 +8,7 @@ import 'package:shinjuu_league/data/models/user_model.dart' as app;
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
+import 'package:shinjuu_league/services/season_reward_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
 import 'package:shinjuu_league/services/skill_tree_reset_service.dart';
 import 'package:shinjuu_league/viewmodels/user_viewmodel.dart';
@@ -217,6 +218,9 @@ void main() {
         skillTreeResetService: SkillTreeResetService(
           FirestoreService.forFirestore(firestore),
         ),
+        seasonRewardService: SeasonRewardService(
+          FirestoreService.forFirestore(firestore),
+        ),
       );
       await Future.delayed(const Duration(milliseconds: 50));
     });
@@ -241,6 +245,21 @@ void main() {
             .get();
         expect(reset.exists, isTrue);
         expect(reset.data()!['carryoverMode'], 'partial');
+      },
+    );
+
+    test(
+      'distributes season-end rewards for the completed season alongside the skill tree reset',
+      () async {
+        await viewModel.applyBattleResult(battle());
+
+        final rewards = await firestore
+            .doc('users/$uid/season_rewards/season_1')
+            .get();
+        expect(rewards.exists, isTrue);
+        expect(rewards.data()!['finalTier'], 'Gold');
+        expect(rewards.data()!['claimedAt'], isNull);
+        expect(rewards.data()!['rewards'], isNotEmpty);
       },
     );
 
