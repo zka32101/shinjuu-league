@@ -59,10 +59,13 @@ class ConfigAdminService {
         ),
     };
 
+    final oldPreset = _progressionConfig.difficultyPreset;
+    _progressionConfig.setDifficultyPresetOverride(preset);
+
     _recordChange(
       type: 'DIFFICULTY_PRESET',
       key: 'difficulty_preset',
-      oldValue: _progressionConfig.difficultyPreset,
+      oldValue: oldPreset,
       newValue: preset,
       details: {
         'levelDifficultyMultiplier':
@@ -90,6 +93,27 @@ class ConfigAdminService {
 
     // Clamp value to reasonable range
     final clampedValue = value.clamp(0.1, 3.0);
+
+    final current = _progressionConfig.getDifficultyModifiers();
+    final updated = switch (multiplierType.toLowerCase()) {
+      'level' => ProgressionDifficultyModifiers(
+          levelDifficultyMultiplier: clampedValue,
+          skillCooldownMultiplier: current.skillCooldownMultiplier,
+          skillDamageMultiplier: current.skillDamageMultiplier,
+        ),
+      'cooldown' => ProgressionDifficultyModifiers(
+          levelDifficultyMultiplier: current.levelDifficultyMultiplier,
+          skillCooldownMultiplier: clampedValue,
+          skillDamageMultiplier: current.skillDamageMultiplier,
+        ),
+      'damage' => ProgressionDifficultyModifiers(
+          levelDifficultyMultiplier: current.levelDifficultyMultiplier,
+          skillCooldownMultiplier: current.skillCooldownMultiplier,
+          skillDamageMultiplier: clampedValue,
+        ),
+      _ => current,
+    };
+    _progressionConfig.setDifficultyModifiersOverride(updated);
 
     _recordChange(
       type: 'MULTIPLIER_CHANGE',
@@ -159,10 +183,13 @@ class ConfigAdminService {
     String experimentId,
     int newPercentage,
   ) async {
+    final oldValue = _coordinator.getExperiment(experimentId)?.rolloutPercentage;
+    _coordinator.updateExperimentRollout(experimentId, newPercentage);
+
     _recordChange(
       type: 'EXPERIMENT_ROLLOUT_CHANGE',
       key: 'experiment_${experimentId}_rollout',
-      oldValue: null, // Would need to track old value
+      oldValue: oldValue,
       newValue: newPercentage,
       details: {'experimentId': experimentId},
     );

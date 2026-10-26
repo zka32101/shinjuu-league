@@ -951,6 +951,26 @@ assets/animations/
 
 **既知のTODO**: `RankingService._defaultTierThresholds()`の最上位Tier名が`'Legend'`なのに対し、`SeasonRewardService.tierRewardMap`/`SkillTreeResetService.tierProgression`は`'Diamond'`を使っており、Tier名の不一致が既存コードに潜在する（カスタムシーズンが`tierThresholds`で独自Tier名を使う限り実害は顕在化しないが、デフォルト値のまま運用すると配布がExceptionでスキップされ続ける）。今回のスコープでは手を広げず、次にTier名を触る回で要調整。
 
+### 管理ダッシュボードの難易度プリセット/実験ロールアウトが無反応だったバグ修正（2026-10-26, Sonnet実装）
+
+Exploreエージェントによる調査で、`ConfigAdminService`（管理用ダッシュボードのバックエンド）に同根の無反応バグが複数見つかった。いずれも「変更を監査ログ（`ConfigChangeRecord`）には記録するが、実際の値を一切書き換えていない」という共通パターン。ユーザーに全3件の修正範囲を確認し、影響範囲が大きい2件（難易度プリセット/倍率、実験ロールアウト%）を今回のスコープに選択（ロールバックボタンの修復は見送り）。
+
+**バグ1: 難易度プリセット/倍率スライダーが実際のバトル難易度に一切反映されない**
+- `ConfigAdminService.applyDifficultyPreset()`/`setDifficultyMultiplier()`（[lib/services/config_admin_service.dart](lib/services/config_admin_service.dart)）は新しい倍率を計算して監査ログに記録するだけで、`SkillProgressionConfig`側に書き戻す手段がそもそも存在しなかった。`SkillProgressionConfig.difficultyPreset`/`getDifficultyModifiers()`はFirebase Remote Configの値しか見ておらず、管理画面（[lib/ui/screens/admin_difficulty_tuning_screen.dart](lib/ui/screens/admin_difficulty_tuning_screen.dart)）は成功トーストを表示するのに、`BattleEngineService`/`BattleSkillProgressionCoordinator`等、実際の難易度計算を行う全箇所は常にRemote Configの既定値のまま動き続けていた。
+- [lib/config/skill_progression_config.dart](lib/config/skill_progression_config.dart): `_difficultyPresetOverride`/`_difficultyModifiersOverride`というランタイム上書き層を追加。`setDifficultyPresetOverride(preset)`/`setDifficultyModifiersOverride(modifiers)`を新設し、`difficultyPreset`ゲッター・`getDifficultyModifiers()`がRemote Configより優先してこれらを読むように変更（シングルトンなのでアプリ全体に即座に反映される）。
+- [lib/services/config_admin_service.dart](lib/services/config_admin_service.dart): `applyDifficultyPreset()`/`setDifficultyMultiplier()`が実際に`_progressionConfig.setDifficultyPresetOverride()`/`setDifficultyModifiersOverride()`を呼ぶように修正。`setDifficultyMultiplier()`は現在の倍率から該当フィールドのみ差し替えた`ProgressionDifficultyModifiers`を構築するため、他の倍率を巻き込んでリセットしない。
+
+**バグ2: 実験ロールアウト%スライダーが永久に無反応**
+- `ABTestCoordinator`（[lib/services/ab_test_coordinator.dart](lib/services/ab_test_coordinator.dart)）の`rolloutPercentage`は`ABTestExperimentConfig`の`final`フィールドで、`registerExperiment()`時に一度設定されるだけで変更手段が無かった。`ConfigAdminService.updateExperimentRollout()`は`oldValue: null, // Would need to track old value`というコメント付きで監査ログに記録するだけで、`_coordinator`に一切触れていなかった。
+- `ABTestCoordinator`に`getExperiment(experimentId)`（旧値取得用）と`updateExperimentRollout(experimentId, newPercentage)`（既存の設定を新しい`rolloutPercentage`で差し替えて再登録、0-100にクランプ）を追加。
+- `ConfigAdminService.updateExperimentRollout()`が実際に`_coordinator.updateExperimentRollout()`を呼び、`oldValue`も`_coordinator.getExperiment()`から正しく取得するように修正。
+
+- [test/config_admin_service_test.dart](test/config_admin_service_test.dart): 新規`group`「Real config/coordinator mutation (not just audit log)」（4テスト）を追加。既存の全テストはMockベースで監査ログの記録のみを検証していた（＝今回のバグを検出できない構造だった）ため、`SkillProgressionConfig()`の実シングルトンと実`ABTestCoordinator`インスタンスを使い、`getDifficultyModifiers()`/`getExperiment()`が実際に変化することを検証。`MockABTestCoordinator`に`getExperiment`/`updateExperimentRollout`の明示的スタブを追加（Mockitoの`noSuchMethod`が非nullable戻り値に`null`を返しキャストエラーになっていたのを修正）。
+
+フルスイート2284件（既存2280件+新規4件）全通過。`flutter analyze`はプロジェクト全体でエラー0件（既存の軽微なinfo/warningのみ、今回の変更由来のものなし）。
+
+**既知のTODO（今回スコープ外として見送り）**: `ConfigAdminService.rollbackToSnapshot()`も同根の無反応バグ（スナップショットを読み込むだけで実際には難易度/機能フラグを復元しない）。ユーザーの選択により今回は対象外。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

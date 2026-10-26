@@ -4,6 +4,38 @@ import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/services/ab_test_coordinator.dart';
 import 'package:shinjuu_league/services/config_admin_service.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
+import 'package:shinjuu_league/services/skill_progression_analytics_service.dart';
+
+class MockSkillProgressionAnalyticsService extends Mock
+    implements SkillProgressionAnalyticsService {
+  @override
+  Future<void> logABTestVariantAssignment(
+    String? userId,
+    String? experimentId,
+    String? variantName,
+    bool? isControl,
+  ) {
+    return super.noSuchMethod(
+      Invocation.method(#logABTestVariantAssignment,
+          [userId, experimentId, variantName, isControl]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> logCustomEvent(
+    String? userId,
+    String? eventName,
+    Map<String, dynamic>? parameters,
+  ) {
+    return super.noSuchMethod(
+      Invocation.method(#logCustomEvent, [userId, eventName, parameters]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+}
 
 class MockSkillProgressionConfig extends Mock
     implements SkillProgressionConfig {
@@ -52,7 +84,24 @@ class MockFeatureFlagsService extends Mock
   }
 }
 
-class MockABTestCoordinator extends Mock implements ABTestCoordinator {}
+class MockABTestCoordinator extends Mock implements ABTestCoordinator {
+  @override
+  ABTestExperimentConfig? getExperiment(String? experimentId) {
+    return super.noSuchMethod(
+      Invocation.method(#getExperiment, [experimentId]),
+      returnValueForMissingStub: null,
+    ) as ABTestExperimentConfig?;
+  }
+
+  @override
+  bool updateExperimentRollout(String? experimentId, int? newPercentage) {
+    return super.noSuchMethod(
+      Invocation.method(#updateExperimentRollout, [experimentId, newPercentage]),
+      returnValue: true,
+      returnValueForMissingStub: true,
+    ) as bool;
+  }
+}
 
 void main() {
   group('ConfigAdminService', () {
@@ -550,6 +599,95 @@ void main() {
         final history = adminService.getChangeHistory();
         expect(history.last.type, equals('FEATURE_TOGGLE'));
       });
+    });
+
+    // The groups above all use a MockSkillProgressionConfig/MockABTestCoordinator,
+    // so they only ever verified the audit-log entry - they never would have
+    // caught that applyDifficultyPreset()/setDifficultyMultiplier()/
+    // updateExperimentRollout() never actually wrote the new value anywhere a
+    // real battle or experiment assignment would see it. These tests use the
+    // real SkillProgressionConfig singleton and a real ABTestCoordinator to
+    // verify the change is actually observable afterward.
+    group('Real config/coordinator mutation (not just audit log)', () {
+      late SkillProgressionConfig realConfig;
+      late ABTestCoordinator realCoordinator;
+      late ConfigAdminService realAdminService;
+
+      setUp(() {
+        realConfig = SkillProgressionConfig()..resetForTesting();
+        realCoordinator = ABTestCoordinator(
+          featureFlags: mockFlags,
+          analytics: MockSkillProgressionAnalyticsService(),
+        );
+        realAdminService = ConfigAdminService(
+          progressionConfig: realConfig,
+          featureFlags: mockFlags,
+          coordinator: realCoordinator,
+        );
+      });
+
+      test(
+        'applyDifficultyPreset actually changes getDifficultyModifiers()',
+        () async {
+          expect(realConfig.getDifficultyModifiers().skillDamageMultiplier,
+              equals(1.0));
+
+          await realAdminService.applyDifficultyPreset('hard');
+
+          expect(realConfig.difficultyPreset, equals('hard'));
+          expect(
+            realConfig.getDifficultyModifiers().skillDamageMultiplier,
+            equals(1.1),
+          );
+        },
+      );
+
+      test(
+        'setDifficultyMultiplier actually changes getDifficultyModifiers() '
+        'without resetting the other multipliers',
+        () async {
+          await realAdminService.applyDifficultyPreset('hard');
+          await realAdminService.setDifficultyMultiplier('damage', 2.0);
+
+          final modifiers = realConfig.getDifficultyModifiers();
+          expect(modifiers.skillDamageMultiplier, equals(2.0));
+          // The 'hard' preset's cooldown multiplier must survive the
+          // single-field update above.
+          expect(modifiers.skillCooldownMultiplier, equals(1.2));
+        },
+      );
+
+      test(
+        'updateExperimentRollout actually changes the registered experiment',
+        () async {
+          final experiment = ABTestExperimentConfig(
+            experimentId: 'exp_real',
+            name: 'Real experiment',
+            description: 'Testing',
+            startDate: DateTime.now().subtract(const Duration(days: 1)),
+            controlVariant: 'control',
+            rolloutPercentage: 0,
+            variantDistribution: {'control': 50, 'treatment': 50},
+          );
+          realCoordinator.registerExperiment(experiment);
+
+          await realAdminService.updateExperimentRollout('exp_real', 100);
+
+          expect(
+            realCoordinator.getExperiment('exp_real')?.rolloutPercentage,
+            equals(100),
+          );
+        },
+      );
+
+      test(
+        'updateExperimentRollout on an unknown experiment id is a safe no-op',
+        () async {
+          await realAdminService.updateExperimentRollout('does_not_exist', 50);
+
+          expect(realCoordinator.getExperiment('does_not_exist'), isNull);
+        },
+      );
     });
   });
 }

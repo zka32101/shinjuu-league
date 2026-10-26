@@ -18,6 +18,16 @@ class SkillProgressionConfig {
   late FirebaseRemoteConfig _remoteConfig;
   bool _isInitialized = false;
 
+  // 管理ダッシュボード（ConfigAdminService）からのランタイム上書き。
+  // 元々 difficultyPreset/getDifficultyModifiers() は Remote Config の
+  // 値しか見ておらず、ConfigAdminService.applyDifficultyPreset()/
+  // setDifficultyMultiplier() は監査ログに記録するだけで、ここに一切
+  // 反映する手段が無かった（管理画面で変更しても実際のバトル難易度は
+  // 常にRemote Configの値のまま）。この2フィールドをプリセット/倍率
+  // より優先して読む上書き層として追加する。
+  String? _difficultyPresetOverride;
+  ProgressionDifficultyModifiers? _difficultyModifiersOverride;
+
   // ===============================
   // Level Progression Parameters
   // ===============================
@@ -205,14 +215,31 @@ class SkillProgressionConfig {
   static const _keyDifficultyPreset = 'skill_progression_difficulty_preset';
   static const String _defaultDifficultyPreset = 'normal';
 
-  String get difficultyPreset => _getString(
-    _keyDifficultyPreset,
-    _defaultDifficultyPreset,
-  );
+  String get difficultyPreset =>
+      _difficultyPresetOverride ??
+      _getString(
+        _keyDifficultyPreset,
+        _defaultDifficultyPreset,
+      );
+
+  /// 管理ダッシュボードからプリセット名で上書き（倍率は内部で再計算される）。
+  void setDifficultyPresetOverride(String preset) {
+    _difficultyPresetOverride = preset.toLowerCase();
+    _difficultyModifiersOverride = null;
+  }
+
+  /// 管理ダッシュボードから個別倍率で上書き（プリセット名は'custom'表示にする）。
+  void setDifficultyModifiersOverride(ProgressionDifficultyModifiers modifiers) {
+    _difficultyModifiersOverride = modifiers;
+    _difficultyPresetOverride = 'custom';
+  }
 
   /// Apply difficulty preset to progression parameters
   /// Used for cohort-based A/B testing (group A gets 'easy', B gets 'hard', etc.)
   ProgressionDifficultyModifiers getDifficultyModifiers() {
+    if (_difficultyModifiersOverride != null) {
+      return _difficultyModifiersOverride!;
+    }
     switch (difficultyPreset) {
       case 'easy':
         return ProgressionDifficultyModifiers(
@@ -298,6 +325,8 @@ class SkillProgressionConfig {
   @visibleForTesting
   void resetForTesting() {
     _isInitialized = false;
+    _difficultyPresetOverride = null;
+    _difficultyModifiersOverride = null;
   }
 
   // ===============================

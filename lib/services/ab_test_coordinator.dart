@@ -27,6 +27,37 @@ class ABTestCoordinator {
     _experiments[config.experimentId] = config;
   }
 
+  /// Look up a registered experiment's current config (used by the admin
+  /// dashboard to read the old rollout percentage before changing it).
+  ABTestExperimentConfig? getExperiment(String experimentId) =>
+      _experiments[experimentId];
+
+  /// Update a registered experiment's rollout percentage in place.
+  ///
+  /// `rolloutPercentage` was `final` on [ABTestExperimentConfig] and only
+  /// ever set once, at [registerExperiment] time - there was no way to
+  /// change it afterward. `ConfigAdminService.updateExperimentRollout()`
+  /// called nothing here at all (it only wrote an audit-log entry), so the
+  /// admin dashboard's rollout slider never actually changed which users
+  /// were enrolled. Returns false if no experiment with this id is
+  /// registered.
+  bool updateExperimentRollout(String experimentId, int newPercentage) {
+    final existing = _experiments[experimentId];
+    if (existing == null) return false;
+
+    _experiments[experimentId] = ABTestExperimentConfig(
+      experimentId: existing.experimentId,
+      name: existing.name,
+      description: existing.description,
+      startDate: existing.startDate,
+      endDate: existing.endDate,
+      controlVariant: existing.controlVariant,
+      rolloutPercentage: newPercentage.clamp(0, 100),
+      variantDistribution: existing.variantDistribution,
+    );
+    return true;
+  }
+
   /// Get variant for user in an experiment.
   ///
   /// If user not yet assigned, assigns based on rollout percentage.
