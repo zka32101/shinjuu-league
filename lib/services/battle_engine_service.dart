@@ -42,19 +42,29 @@ class DamageEvent {
   });
 }
 
+/// ジャングルモンスターの階層。wild は低HP・低報酬・ノーリスクで素早く刈れる
+/// ファーミング対象、mid は従来からの中型モンスター（高HP・攻撃バフ付き）。
+enum JungleMonsterTier { wild, mid }
+
 /// レーン中央に配置される中立モンスター（ジャングルモンスター）。
-/// 討伐するとゴール報酬 + 一定時間の攻撃バフを得られる（MOBAらしい寄り道の駆け引き要素）。
+/// 討伐するとゴールド/エナジー報酬を得られる（MOBAらしい寄り道の駆け引き要素）。
+/// `tier`によって報酬・HP・リスク/リターンの傾向が変わる。
 /// BattleEngineのみが状態を保持し、BattlefieldGameは描画専用（既存設計原則を踏襲）。
 class JungleMonster {
   final String id;
   final int lane;
+  final JungleMonsterTier tier;
   final double maxHp;
   double currentHp;
   bool isAlive = true;
   int respawnAtSecond = 0;
 
-  JungleMonster({required this.id, required this.lane, required this.maxHp})
-    : currentHp = maxHp;
+  JungleMonster({
+    required this.id,
+    required this.lane,
+    required this.maxHp,
+    this.tier = JungleMonsterTier.mid,
+  }) : currentHp = maxHp;
 }
 
 /// ジャングルモンスター討伐イベント（UI側の演出トリガーに使用）
@@ -251,12 +261,18 @@ class BattleEngine {
   static const _hitDamageFactor = 0.35;
   static const _skillDamageMultiplier = 2.2;
 
-  // ジャングルモンスター関連の定数
+  // ジャングルモンスター関連の定数（mid tier：従来の中型モンスター、攻撃バフ付き）
   static const _monsterMaxHp = 400.0;
   static const _monsterRespawnDelaySeconds = 30;
   static const _monsterGoldReward = 50;
   static const _monsterBuffMultiplier = 1.3;
   static const _monsterBuffDurationSeconds = 20;
+
+  // wild tier：低HP・低報酬・ノーリスクな小型モンスター（バフ無し、早期ファーミング用）
+  static const _wildMonsterMaxHp = 120.0;
+  static const _wildMonsterRespawnDelaySeconds = 15;
+  static const _wildMonsterGoldReward = 20;
+  static const _energyPerWildMonsterKill = 3;
 
   // ゴールスコアリング関連の定数（Pokémon UNITE風）
   static const maxCarriedEnergy = 30;
@@ -289,11 +305,22 @@ class BattleEngine {
     SkillProgressionConfig? progressionConfig,
   }) : _progressionConfig = progressionConfig ?? SkillProgressionConfig(),
        _random = random ?? Random() {
-    jungleMonsters = List.generate(
-      AppConfig.teamsCount,
-      (lane) =>
-          JungleMonster(id: 'jungle_$lane', lane: lane, maxHp: _monsterMaxHp),
-    );
+    jungleMonsters = [
+      for (var lane = 0; lane < AppConfig.teamsCount; lane++) ...[
+        JungleMonster(
+          id: 'jungle_wild_$lane',
+          lane: lane,
+          maxHp: _wildMonsterMaxHp,
+          tier: JungleMonsterTier.wild,
+        ),
+        JungleMonster(
+          id: 'jungle_$lane',
+          lane: lane,
+          maxHp: _monsterMaxHp,
+          tier: JungleMonsterTier.mid,
+        ),
+      ],
+    ];
     goalZones = [
       for (var team = 0; team < 2; team++)
         for (var lane = 0; lane < AppConfig.teamsCount; lane++)
@@ -494,14 +521,27 @@ class BattleEngine {
 
     if (monster.currentHp <= 0) {
       monster.isAlive = false;
-      monster.respawnAtSecond = _elapsedSeconds + _monsterRespawnDelaySeconds;
+      final isWild = monster.tier == JungleMonsterTier.wild;
+      final goldReward = isWild ? _wildMonsterGoldReward : _monsterGoldReward;
+      final energyReward = isWild
+          ? _energyPerWildMonsterKill
+          : _energyPerMonsterKill;
+      monster.respawnAtSecond =
+          _elapsedSeconds +
+          (isWild
+              ? _wildMonsterRespawnDelaySeconds
+              : _monsterRespawnDelaySeconds);
 
-      attacker.resources = attacker.resources.addGold(_monsterGoldReward);
-      attacker.totalGoldEarned += _monsterGoldReward;
-      attacker.jungleBuffMultiplier = _monsterBuffMultiplier;
-      attacker.jungleBuffExpiresAtSecond =
-          _elapsedSeconds + _monsterBuffDurationSeconds;
-      attacker.energy = (attacker.energy + _energyPerMonsterKill).clamp(
+      attacker.resources = attacker.resources.addGold(goldReward);
+      attacker.totalGoldEarned += goldReward;
+      // wild tier はノーリスク・ノーリターン寄りの設計なので攻撃バフは付与しない
+      // （攻撃バフは討伐に時間がかかるmid tierのリスクに対するリターン）。
+      if (!isWild) {
+        attacker.jungleBuffMultiplier = _monsterBuffMultiplier;
+        attacker.jungleBuffExpiresAtSecond =
+            _elapsedSeconds + _monsterBuffDurationSeconds;
+      }
+      attacker.energy = (attacker.energy + energyReward).clamp(
         0,
         maxCarriedEnergy,
       );

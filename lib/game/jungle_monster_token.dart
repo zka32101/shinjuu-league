@@ -12,10 +12,17 @@ class JungleMonsterToken extends PositionComponent {
     required this.monsterId,
     required this.lane,
     required Vector2 basePosition,
-  }) : super(position: basePosition, size: Vector2.all(56), anchor: Anchor.center);
+    this.isWild = false,
+  }) : super(
+         position: basePosition,
+         // wildは一目で「弱い・刈りやすい」と分かるようmidより小さく描く
+         size: Vector2.all(isWild ? 36 : 56),
+         anchor: Anchor.center,
+       );
 
   final String monsterId;
   final int lane;
+  final bool isWild;
 
   bool isAlive = true;
   double _hpRatio = 1.0;
@@ -67,9 +74,16 @@ class JungleMonsterToken extends PositionComponent {
       ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10);
     canvas.drawCircle(center, radius * 1.3, glowPaint);
 
-    final lightColor = const Color(0xFF6EE7A0);
-    final baseColor = const Color(0xFF16A34A);
-    final darkColor = const Color(0xFF0B4D24);
+    // wildは薄黄緑（弱い・低リスク）、midは深緑（従来通り、高リスク高リターン）
+    final lightColor = isWild
+        ? const Color(0xFFD9F99D)
+        : const Color(0xFF6EE7A0);
+    final baseColor = isWild
+        ? const Color(0xFFA3E635)
+        : const Color(0xFF16A34A);
+    final darkColor = isWild
+        ? const Color(0xFF4D7C0F)
+        : const Color(0xFF0B4D24);
     final bodyPaint = Paint()
       ..shader = Gradient.radial(
         Offset(center.dx - radius * 0.3, center.dy - radius * 0.3),

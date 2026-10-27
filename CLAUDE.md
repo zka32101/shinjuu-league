@@ -1121,6 +1121,19 @@ Exploreエージェントによる再調査で発見。[lib/ui/screens/admin_exp
 
 **既知のTODO**: バックグラウンドの`generateAndSave`が実際に失敗した場合、ユーザーへの通知は無い（サイレントフォールバック）。再試行導線は未実装。
 
+### ジャングルモンスターの階層化（2026-10-27、Sonnet実装）
+
+ユーザーから「ポケモンユナイトのようなゲーム性へ近づける実装」の依頼。AskUserQuestionで候補（①終盤の大型中立ボス②ジャングルモンスターの階層化③試合時間延長）を提示し、②を選択。従来は各レーンに中型モンスター（mid tier）1体のみで、早期のファーミング選択肢が「交戦に行くか/何もしないか」の二択に近かった。
+
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart): `JungleMonsterTier`（`wild`/`mid`）enumを新設、`JungleMonster.tier`フィールド追加（デフォルト`mid`、既存コードとの後方互換のため）。レーンごとに`wild`（HP120・respawn15秒・ゴールド20・エナジー+3・攻撃バフ無し）を`mid`（既存のHP400・respawn30秒・ゴールド50・エナジー+10・攻撃バフ1.3倍20秒）に加えて配置（計4体: 2レーン×2階層）。`attackJungleMonster()`を`monster.tier`で分岐させ、wildはノーリスク・ノーリターン（バフ無し）、midは従来通りの高リスク・高リターンという役割分担を明確化。
+- [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart): `syncMonsters()`で同じレーンに2体が同居するため、wildをレーン中央よりやや自陣寄り（gridX=-1.0）に配置してmid（gridX=0.0、変更無し）と重ならないようにした。
+- [lib/game/jungle_monster_token.dart](lib/game/jungle_monster_token.dart): `isWild`フラグを追加し、wildは一目で「弱い」と分かるようサイズを縮小（56→36）、配色を薄黄緑（弱さ・低リスクの印象）に変更。midの配色・サイズは変更なし。
+- [test/battle_engine_test.dart](test/battle_engine_test.dart): 既存のモンスター関連テストは`.first`が常にmid tierだという暗黙の前提に依存していたため、`firstWhere((m) => m.tier == JungleMonsterTier.mid)`で明示的に選択するよう修正（配列の先頭がwildに変わったため）。新規2件（wildの低HP・低報酬・ノーバフ・速い復活の検証、レーンごとにwild/midが1体ずつ配置されることの検証）を追加。
+
+フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件。
+
+**既知のTODO**: 今回提示した他2案（終盤の大型中立ボス、試合時間10分への延長）は未実装のまま。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

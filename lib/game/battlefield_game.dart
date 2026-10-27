@@ -599,11 +599,16 @@ class BattlefieldGame extends FlameGame {
     for (final m in monsters) {
       final token = _monsterTokens.putIfAbsent(m.id, () {
         final gridY = _laneCenterYs[m.lane];
-        final screenPos = _projection.toScreen(0, gridY);
+        // wild/mid の2体が同じレーンに同居するため、重ならないようgridXをずらす
+        // （wildは自陣寄り、midはレーン中央のまま）。
+        final isWild = m.tier == JungleMonsterTier.wild;
+        final gridX = isWild ? -1.0 : 0.0;
+        final screenPos = _projection.toScreen(gridX, gridY);
         final newToken = JungleMonsterToken(
           monsterId: m.id,
           lane: m.lane,
           basePosition: screenPos,
+          isWild: isWild,
         )..priority = screenPos.y.round() - 1; // プレイヤーよりわずかに奥に描画
         world.add(newToken);
         return newToken;

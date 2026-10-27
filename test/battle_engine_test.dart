@@ -710,8 +710,11 @@ void main() {
         participants: [self],
       );
 
-      expect(engine.jungleMonsters.length, 2);
-      final monster = engine.jungleMonsters.first;
+      // レーン数2 × 階層数2（wild/mid）= 4体
+      expect(engine.jungleMonsters.length, 4);
+      final monster = engine.jungleMonsters.firstWhere(
+        (m) => m.tier == JungleMonsterTier.mid,
+      );
       expect(monster.isAlive, isTrue);
 
       final baseAtk = self.effectiveAtk;
@@ -774,7 +777,9 @@ void main() {
         participants: [self],
       );
 
-      final monster = engine.jungleMonsters.first;
+      final monster = engine.jungleMonsters.firstWhere(
+        (m) => m.tier == JungleMonsterTier.mid,
+      );
       engine.attackJungleMonster('self', monster.id);
       expect(monster.isAlive, isFalse);
 
@@ -804,7 +809,10 @@ void main() {
         participants: [self],
       );
 
-      engine.attackJungleMonster('self', engine.jungleMonsters.first.id);
+      final midMonster = engine.jungleMonsters.firstWhere(
+        (m) => m.tier == JungleMonsterTier.mid,
+      );
+      engine.attackJungleMonster('self', midMonster.id);
       expect(self.jungleBuffMultiplier, closeTo(1.3, 0.001));
 
       for (var i = 0; i < 19; i++) {
@@ -832,6 +840,75 @@ void main() {
         engine.attackJungleMonster('self', engine.jungleMonsters.first.id),
         isFalse,
       );
+      engine.dispose();
+    });
+
+    test(
+      'wild tier は mid より低HP・低報酬・ノーバフで、respawnも速い',
+      () {
+        final self = _participant(
+          userId: 'self',
+          team: 0,
+          isSelf: true,
+          stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+        );
+        final engine = BattleEngine(
+          battleId: 'b1',
+          mode: BattleMode.quick,
+          mapId: 'map_test',
+          participants: [self],
+        );
+
+        final wildMonster = engine.jungleMonsters.firstWhere(
+          (m) => m.tier == JungleMonsterTier.wild,
+        );
+        expect(wildMonster.maxHp, lessThan(400.0));
+
+        final result = engine.attackJungleMonster('self', wildMonster.id);
+
+        expect(result, isTrue);
+        expect(wildMonster.isAlive, isFalse);
+        expect(self.resources.gold, 20);
+        // mid tier(50ゴールド/1.3倍バフ)より明確に控えめなリターン
+        expect(self.resources.gold, lessThan(50));
+        expect(self.jungleBuffMultiplier, 1.0);
+
+        for (var i = 0; i < 14; i++) {
+          engine.tick();
+        }
+        expect(wildMonster.isAlive, isFalse);
+
+        engine.tick(); // 15 tick目で復活（midの30 tickより速い）
+        expect(wildMonster.isAlive, isTrue);
+        expect(wildMonster.currentHp, wildMonster.maxHp);
+
+        engine.dispose();
+      },
+    );
+
+    test('各レーンに wild・mid それぞれ1体ずつ配置される', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'b1',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      for (var lane = 0; lane < 2; lane++) {
+        final monstersInLane = engine.jungleMonsters.where(
+          (m) => m.lane == lane,
+        );
+        expect(
+          monstersInLane.where((m) => m.tier == JungleMonsterTier.wild),
+          hasLength(1),
+        );
+        expect(
+          monstersInLane.where((m) => m.tier == JungleMonsterTier.mid),
+          hasLength(1),
+        );
+      }
+
       engine.dispose();
     });
   });
