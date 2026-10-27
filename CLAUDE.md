@@ -971,6 +971,25 @@ Exploreエージェントによる調査で、`ConfigAdminService`（管理用�
 
 **既知のTODO（今回スコープ外として見送り）**: `ConfigAdminService.rollbackToSnapshot()`も同根の無反応バグ（スナップショットを読み込むだけで実際には難易度/機能フラグを復元しない）。ユーザーの選択により今回は対象外。
 
+### スケジュールレポートのメール配信が決して発火しなかったバグ修正（2026-10-27, Sonnet実装）
+
+Exploreエージェントの調査で発見。`ScheduledReportsScreen`は「毎週・N人にメールで報告を送る」設定を作成でき、カードには「Next: &lt;次回実行日時&gt;」も表示されるため自動配信されているように見えるが、実際には**Execute（実行）ボタンを手動で押した時しか実行されず、かつその手動実行ですら一度もメールを送信していなかった**。
+
+**根本原因（2段構え）**:
+1. `lib/services/scheduled_report_service.dart`の`executeReport()`（手動Executeボタンの実体）は`ReportExecutionRecord`に`sentToEmails: report.recipientEmails`を書き込むだけで、これは実際の送信結果ではなく単なるラベル。
+2. 実際にメールを送る`EmailService`相当の処理は`functions/src/email-delivery.ts`の`deliverReportViaEmail`としてすでに実装済みだったが、**Pub/Subトピック`report-execution-events`へのonPublishトリガーとして実装されていた**。このトピックへ実際にpublishしていたのは`functions/src/report-executor.ts`の自動実行（1時間毎のCloud Scheduler）だけで、Flutterクライアント（手動Executeボタン）側にはPub/Subへpublishする手段（サーバー資格情報）がそもそも無い。つまり自動実行パス（1時間毎、正しく設定されていれば動く）と手動実行パス（ユーザーが実際に触れる唯一の導線）が別々のトリガー機構に依存しており、手動側は配信に一切つながっていなかった。
+
+**修正方針**: 自動実行・手動実行の両方が最初から共通して書き込んでいる`scheduled_reports/{reportId}/execution_history/{executionId}`というFirestoreドキュメント自体をトリガー対象にする（既存の`validateBattleResult`等と同じ「クライアントが書いたドキュメントをCloud Functionが監視する」設計パターンへ統一）。
+
+- [functions/src/email-delivery.ts](functions/src/email-delivery.ts): `deliverReportViaEmail`をPub/Sub `onPublish`から`functions.firestore.document('scheduled_reports/{reportId}/execution_history/{executionId}').onCreate(...)`へ変更。`success: false`（失敗実行）または受信者0件の場合はスキップ。親の`scheduled_reports/{reportId}`ドキュメントから`name`/`format`を読んでメールテンプレートに使用。モジュールトップレベルで`admin.firestore()`を呼んでいた既存の実装ミス（テストでモック注入前に評価されてしまう）も、関数内で遅延呼び出しに修正。
+- [functions/src/report-executor.ts](functions/src/report-executor.ts): 自動実行側の明示的なPub/Sub publish処理を削除（同じexecution_historyドキュメント作成がすでに新トリガーを起動するため不要）。未使用になった`@google-cloud/pubsub`のimportも削除。
+- **Flutter側のコード変更は不要**: `ScheduledReportService.executeReport()`は元々正しく`execution_history`ドキュメントを作成していたため、トリガーの発火対象を変えるだけで手動実行パスも自動的に配信対象になる。
+- [functions/tests/email-delivery.test.ts](functions/tests/email-delivery.test.ts): 既存のテストは全てリテラル値のみを検証する「フィクスチャテスト」で実関数を一度も呼んでいなかった（このバグを検出できない構造だった）ため、新規`describe`ブロックを追加し、モックFirestore経由で実際の`deliverReportViaEmail.run()`を呼び出すテスト4件を追加（SendGrid設定済み時の成功記録・SendGrid未設定時の`partial`記録・失敗実行のスキップ・受信者0件時のスキップ）。
+
+Cloud Functionsテストスイート133件（既存129件+新規4件）全通過、Flutter側フルスイート52件（該当範囲、変更なし）も全通過。`npx tsc --noEmit`エラー0件。
+
+**既知のTODO**: SendGrid APIキー（`SENDGRID_API_KEY`環境変数）は依然未設定のため、本番投入時もメール送信自体はモック実装（ログ出力のみ、実際には配送されない）のまま。実送信を有効化するには`functions/src/email-delivery.ts`内のコメントアウトされた`@sendgrid/mail`実装を有効化し、Firebase Functions環境変数を設定する必要がある（これは今回のバグ修正のスコープ外、既存の既知の制約）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

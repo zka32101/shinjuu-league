@@ -7,6 +7,10 @@ const projectId = 'shinjuu-league-test';
 const testEnv = test({ projectId });
 
 describe('Email Delivery', () => {
+  afterAll(() => {
+    testEnv.cleanup();
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
   });
@@ -507,5 +511,181 @@ File Name: september_report.csv
       expect(failed).toBe(1);
       expect(succeeded + failed).toBe(recipients.length);
     });
+  });
+});
+
+/**
+ * deliverReportViaEmail (Firestore onCreate trigger) with a mocked
+ * firebase-admin - no Firestore emulator needed.
+ *
+ * Before the fix this was tested (loosely) as a Pub/Sub onPublish handler,
+ * but nothing anywhere ever actually published to that topic except
+ * report-executor.ts's own automated hourly run - a manual "Execute" tap
+ * in the app (lib/services/scheduled_report_service.dart's
+ * executeReport()) wrote an execution_history document but had no way to
+ * reach Pub/Sub, so email delivery silently never fired for it. These
+ * tests exercise the real exported handler against the
+ * scheduled_reports/{reportId}/execution_history/{executionId} document it
+ * is now triggered by - the same document both the manual and automated
+ * paths already write.
+ */
+describe('deliverReportViaEmail (mocked Firestore, real handler)', () => {
+  function makeMockDb(reportDoc: Record<string, unknown> | undefined) {
+    const updateSpy = jest.fn().mockResolvedValue(undefined);
+
+    const db = {
+      collection: jest.fn((name: string) => {
+        if (name !== 'scheduled_reports') {
+          throw new Error(`Unexpected collection: ${name}`);
+        }
+        return {
+          doc: jest.fn((reportId: string) => ({
+            get: jest.fn().mockResolvedValue({
+              data: () => reportDoc,
+            }),
+            collection: jest.fn((subName: string) => {
+              if (subName !== 'execution_history') {
+                throw new Error(`Unexpected subcollection: ${subName}`);
+              }
+              return {
+                doc: jest.fn((executionId: string) => ({
+                  update: updateSpy,
+                })),
+              };
+            }),
+          })),
+        };
+      }),
+    };
+
+    return { db, spies: { updateSpy } };
+  }
+
+  function makeSnap(
+    data: Record<string, unknown>
+  ): FirebaseFirestore.QueryDocumentSnapshot {
+    return { data: () => data } as unknown as FirebaseFirestore.QueryDocumentSnapshot;
+  }
+
+  function makeContext(reportId: string, executionId: string): any {
+    return { params: { reportId, executionId } };
+  }
+
+  let deliverReportViaEmail: typeof import('../src/email-delivery').deliverReportViaEmail;
+
+  beforeEach(() => {
+    jest.resetModules();
+    jest.doMock('firebase-admin', () => {
+      const firestoreFn: any = jest.fn();
+      firestoreFn.Timestamp = {
+        now: jest.fn(() => ({ toDate: () => new Date('2026-01-01T00:00:00Z') })),
+      };
+      return { firestore: firestoreFn };
+    });
+    deliverReportViaEmail = require('../src/email-delivery').deliverReportViaEmail;
+  });
+
+  afterEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('attempts delivery and records success once SENDGRID_API_KEY is configured', async () => {
+    const admin = require('firebase-admin');
+    const { db, spies } = makeMockDb({ name: 'Weekly Report', format: 'csv' });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    const previousKey = process.env.SENDGRID_API_KEY;
+    process.env.SENDGRID_API_KEY = 'test-key';
+    try {
+      await deliverReportViaEmail.run(
+        makeSnap({
+          success: true,
+          recordCount: 10,
+          fileSizeBytes: 512,
+          sentToEmails: ['a@example.com', 'b@example.com'],
+          executedAt: { toDate: () => new Date('2026-01-01T00:00:00Z') },
+        }),
+        makeContext('report-1', 'exec-1')
+      );
+    } finally {
+      process.env.SENDGRID_API_KEY = previousKey;
+    }
+
+    expect(spies.updateSpy).toHaveBeenCalledTimes(1);
+    const update = spies.updateSpy.mock.calls[0][0];
+    expect(update.emailDeliveryStatus).toBe('sent');
+    expect(update.emailsSent).toBe(2);
+    expect(update.emailsFailed).toBe(0);
+  });
+
+  it(
+    'records a partial failure (not a thrown error) when SendGrid is not configured - ' +
+      'the real, current state of this app',
+    async () => {
+      const admin = require('firebase-admin');
+      const { db, spies } = makeMockDb({ name: 'Weekly Report', format: 'csv' });
+      (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+      const previousKey = process.env.SENDGRID_API_KEY;
+      delete process.env.SENDGRID_API_KEY;
+      try {
+        await deliverReportViaEmail.run(
+          makeSnap({
+            success: true,
+            recordCount: 10,
+            fileSizeBytes: 512,
+            sentToEmails: ['a@example.com'],
+            executedAt: { toDate: () => new Date('2026-01-01T00:00:00Z') },
+          }),
+          makeContext('report-1b', 'exec-1b')
+        );
+      } finally {
+        process.env.SENDGRID_API_KEY = previousKey;
+      }
+
+      expect(spies.updateSpy).toHaveBeenCalledTimes(1);
+      const update = spies.updateSpy.mock.calls[0][0];
+      expect(update.emailDeliveryStatus).toBe('partial');
+      expect(update.emailsSent).toBe(0);
+      expect(update.emailsFailed).toBe(1);
+    }
+  );
+
+  it('skips delivery entirely for a failed execution (no recipients notified)', async () => {
+    const admin = require('firebase-admin');
+    const { db, spies } = makeMockDb({ name: 'Weekly Report', format: 'csv' });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    const result = await deliverReportViaEmail.run(
+      makeSnap({
+        success: false,
+        recordCount: 0,
+        fileSizeBytes: 0,
+        sentToEmails: [],
+      }),
+      makeContext('report-2', 'exec-2')
+    );
+
+    expect(result).toBeNull();
+    expect(spies.updateSpy).not.toHaveBeenCalled();
+  });
+
+  it('skips delivery when there are no recipients configured', async () => {
+    const admin = require('firebase-admin');
+    const { db, spies } = makeMockDb({ name: 'No Recipients Report', format: 'json' });
+    (admin.firestore as unknown as jest.Mock).mockReturnValue(db);
+
+    const result = await deliverReportViaEmail.run(
+      makeSnap({
+        success: true,
+        recordCount: 5,
+        fileSizeBytes: 100,
+        sentToEmails: [],
+      }),
+      makeContext('report-3', 'exec-3')
+    );
+
+    expect(result).toBeNull();
+    expect(spies.updateSpy).not.toHaveBeenCalled();
   });
 });

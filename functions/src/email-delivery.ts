@@ -1,7 +1,6 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
 
-const db = admin.firestore();
 const logger = functions.logger;
 
 // Import SendGrid (requires npm install @sendgrid/mail)
@@ -20,19 +19,83 @@ interface ExecutionEvent {
   timestamp: string;
 }
 
+interface ExecutionRecordDoc {
+  success: boolean;
+  recordCount: number;
+  fileSizeBytes: number;
+  sentToEmails: string[];
+  executedAt: admin.firestore.Timestamp;
+}
+
+interface ScheduledReportDoc {
+  name: string;
+  format: 'csv' | 'json' | 'text';
+}
+
 /**
  * Cloud Function: Email Delivery
- * Triggers: Pub/Sub topic 'report-execution-events'
- * Sends reports to recipients via email
+ *
+ * Triggers: Firestore onCreate of scheduled_reports/{reportId}/execution_history/{executionId}.
+ *
+ * This used to be a Pub/Sub trigger on a 'report-execution-events' topic
+ * that only report-executor.ts's own automated hourly run ever published
+ * to. lib/services/scheduled_report_service.dart's executeReport() (the
+ * manual "Execute" button in scheduled_reports_screen.dart) writes exactly
+ * this same execution_history document but had no way to publish to that
+ * Pub/Sub topic itself (no server-side credentials on the client) - so a
+ * manual execution always recorded sentToEmails in the execution record as
+ * a label, but never actually attempted delivery. Switching this to a
+ * Firestore trigger on the document both paths already write makes manual
+ * and automated executions go through the identical delivery code, with no
+ * Dart-side change needed.
  */
-export const deliverReportViaEmail = functions
-  .pubsub.topic('report-execution-events')
-  .onPublish(async (message) => {
-    const executionEvent: ExecutionEvent = JSON.parse(
-      Buffer.from(message.data, 'base64').toString(),
-    );
+export const deliverReportViaEmail = functions.firestore
+  .document('scheduled_reports/{reportId}/execution_history/{executionId}')
+  .onCreate(async (snap, context) => {
+    const { reportId, executionId } = context.params;
+    const record = snap.data() as ExecutionRecordDoc;
 
-    logger.info('Received execution event for email delivery', {
+    if (!record.success) {
+      logger.info('Skipping email delivery for a failed execution', {
+        reportId,
+        executionId,
+      });
+      return null;
+    }
+
+    if (!record.sentToEmails || record.sentToEmails.length === 0) {
+      logger.info('Skipping email delivery: no recipients configured', {
+        reportId,
+        executionId,
+      });
+      return null;
+    }
+
+    const reportSnap = await admin
+      .firestore()
+      .collection('scheduled_reports')
+      .doc(reportId)
+      .get();
+    const report = reportSnap.data() as ScheduledReportDoc | undefined;
+
+    const executionEvent: ExecutionEvent = {
+      reportId,
+      executionId,
+      reportName: report?.name ?? reportId,
+      format: report?.format ?? 'text',
+      recordCount: record.recordCount,
+      fileSizeBytes: record.fileSizeBytes,
+      recipientEmails: record.sentToEmails,
+      // The actual exported file content is not persisted on the execution
+      // record (only its size/count) - the mock send below only needs
+      // metadata for its template, same as before this document-triggered
+      // rewrite. A real SendGrid attachment would need this regenerated or
+      // stored separately.
+      exportedData: '',
+      timestamp: record.executedAt?.toDate().toISOString() ?? new Date().toISOString(),
+    };
+
+    logger.info('Received execution record for email delivery', {
       reportId: executionEvent.reportId,
       recipients: executionEvent.recipientEmails.length,
     });
@@ -223,7 +286,8 @@ async function updateDeliveryStatus(
       (r) => r.status === 'rejected',
     ).length;
 
-    await db
+    await admin
+      .firestore()
       .collection('scheduled_reports')
       .doc(reportId)
       .collection('execution_history')

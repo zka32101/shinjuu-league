@@ -1,10 +1,8 @@
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import { PubSub } from '@google-cloud/pubsub';
 
 const db = admin.firestore();
 const logger = functions.logger;
-const pubsub = new PubSub();
 
 interface ScheduledReport {
   id: string;
@@ -125,25 +123,10 @@ async function executeReport(reportId: string, report: ScheduledReport): Promise
 
     logger.info(`Updated report execution times. Next: ${nextExecution.toISOString()}`);
 
-    // Publish execution event for email delivery
-    const topic = pubsub.topic('report-execution-events');
-    await topic.publishMessage({
-      data: Buffer.from(
-        JSON.stringify({
-          reportId: reportId,
-          executionId: executionId,
-          reportName: report.name,
-          format: report.format,
-          recordCount: logs.length,
-          fileSizeBytes: fileSizeBytes,
-          recipientEmails: report.recipientEmails,
-          exportedData: exportedData,
-          timestamp: new Date().toISOString(),
-        }),
-      ),
-    });
-
-    logger.info(`Published execution event for ${reportId}`);
+    // Email delivery is triggered by deliverReportViaEmail (email-delivery.ts),
+    // a Firestore onCreate trigger on this same execution_history document -
+    // no separate publish step needed here (see email-delivery.ts for why
+    // this is a Firestore trigger rather than Pub/Sub).
   } catch (error) {
     logger.error(`Error executing report ${reportId}`, error);
 
