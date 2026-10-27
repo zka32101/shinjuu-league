@@ -122,6 +122,15 @@ class MockAdminApiService extends Mock implements AdminApiService {
       returnValueForMissingStub: <Map<String, dynamic>>[],
     ) as List<Map<String, dynamic>>;
   }
+
+  @override
+  List<Map<String, dynamic>> getExperiments() {
+    return super.noSuchMethod(
+      Invocation.method(#getExperiments, []),
+      returnValue: <Map<String, dynamic>>[],
+      returnValueForMissingStub: <Map<String, dynamic>>[],
+    ) as List<Map<String, dynamic>>;
+  }
 }
 
 void main() {
@@ -334,6 +343,17 @@ void main() {
 
         expect(result, isTrue);
         verify(mockApiService.createExperiment(config)).called(1);
+      });
+
+      test('getExperiments returns list from API', () {
+        when(mockApiService.getExperiments()).thenReturn([
+          {'experimentId': 'test_exp', 'name': 'Test Experiment'},
+        ]);
+
+        final experiments = dashboardService.getExperiments();
+
+        expect(experiments, hasLength(1));
+        expect(experiments.first['experimentId'], 'test_exp');
       });
 
       test('updateExperimentRollout triggers API call', () async {

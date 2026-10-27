@@ -64,10 +64,9 @@ class _AdminExperimentsScreenState extends ConsumerState<AdminExperimentsScreen>
         _error = null;
       });
 
-      final snapshot = widget.dashboardService.getDashboardState();
-      // Get experiments from dashboard state - empty for now as not yet defined
+      final experiments = widget.dashboardService.getExperiments();
       setState(() {
-        _experiments = [];
+        _experiments = experiments;
         _isLoading = false;
       });
     } catch (e) {

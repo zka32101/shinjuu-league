@@ -702,6 +702,28 @@ void main() {
       );
 
       test(
+        'getExperiments lists experiments created via createExperiment',
+        () async {
+          final experiment = ABTestExperimentConfig(
+            experimentId: 'exp_listed',
+            name: 'Listed experiment',
+            description: 'Testing',
+            startDate: DateTime.now().subtract(const Duration(days: 1)),
+            controlVariant: 'control',
+            rolloutPercentage: 25,
+            variantDistribution: {'control': 50, 'treatment': 50},
+          );
+
+          await realAdminService.createExperiment(experiment);
+
+          expect(
+            realAdminService.getExperiments().map((e) => e.experimentId),
+            contains('exp_listed'),
+          );
+        },
+      );
+
+      test(
         'rollbackToSnapshot actually restores difficulty modifiers, not just '
         'the audit log',
         () async {

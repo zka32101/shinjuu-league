@@ -273,6 +273,22 @@ class AdminApiService {
     }
   }
 
+  /// List all registered experiments (JSON).
+  List<Map<String, dynamic>> getExperiments() {
+    return _adminService.getExperiments().map((exp) {
+      return {
+        'experimentId': exp.experimentId,
+        'name': exp.name,
+        'description': exp.description,
+        'startDate': exp.startDate.toIso8601String(),
+        'endDate': exp.endDate?.toIso8601String(),
+        'controlVariant': exp.controlVariant,
+        'rolloutPercentage': exp.rolloutPercentage,
+        'variantDistribution': exp.variantDistribution,
+      };
+    }).toList();
+  }
+
   /// Rollback to snapshot (API endpoint).
   Future<bool> rollbackToSnapshot(String name) async {
     // A snapshot ID that doesn't exist is a caller error, not success -

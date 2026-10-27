@@ -149,6 +149,15 @@ class ABTestCoordinator {
     _analytics.logCustomEvent(userId, eventName, enrichedParams);
   }
 
+  /// List every registered experiment, regardless of start/end date.
+  ///
+  /// Unlike [getActiveExperiments] (per-user, date-filtered), this is for
+  /// admin tooling that needs to see and manage all experiments that exist,
+  /// including ones that haven't started yet or have already ended.
+  List<ABTestExperimentConfig> getAllExperiments() {
+    return _experiments.values.toList();
+  }
+
   /// Get all active experiments for a user.
   List<ABTestExperimentConfig> getActiveExperiments(String userId) {
     final now = DateTime.now();

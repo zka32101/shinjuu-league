@@ -195,6 +195,11 @@ class ConfigAdminService {
     );
   }
 
+  /// List all registered A/B test experiments (for admin UI listing).
+  List<ABTestExperimentConfig> getExperiments() {
+    return _coordinator.getAllExperiments();
+  }
+
   /// Get all features with their status.
   List<FeatureFlagStatus> getAllFeatureStatus() {
     return _featureFlags.listFeatures().map((metadata) {

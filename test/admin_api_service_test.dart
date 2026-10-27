@@ -75,5 +75,26 @@ void main() {
 
       expect(result, isTrue);
     });
+
+    test('createExperiment makes the experiment retrievable via getExperiments',
+        () async {
+      final created = await apiService.createExperiment({
+        'experimentId': 'exp_api',
+        'name': 'API experiment',
+        'description': 'Testing',
+        'startDate': DateTime.now().toIso8601String(),
+        'controlVariant': 'control',
+        'rolloutPercentage': 50,
+        'variantDistribution': {'control': 50, 'treatment': 50},
+      });
+
+      final experiments = apiService.getExperiments();
+
+      expect(created, isTrue);
+      expect(
+        experiments.map((e) => e['experimentId']),
+        contains('exp_api'),
+      );
+    });
   });
 }

@@ -273,6 +273,11 @@ class WebAdminDashboardService {
     }
   }
 
+  /// List all registered experiments.
+  List<Map<String, dynamic>> getExperiments() {
+    return _apiService.getExperiments();
+  }
+
   /// Create experiment.
   Future<bool> createExperiment(Map<String, dynamic> config) async {
     try {

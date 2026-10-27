@@ -130,6 +130,41 @@ void main() {
         final activeExps = coordinator.getActiveExperiments('user_123');
         expect(activeExps.length, equals(5));
       });
+
+      test('getAllExperiments lists every registered experiment regardless of date',
+          () {
+        final now = DateTime.now();
+        coordinator.registerExperiment(
+          ABTestExperimentConfig(
+            experimentId: 'exp_future',
+            name: 'Not Started Yet',
+            description: 'Starts tomorrow',
+            startDate: now.add(Duration(days: 1)),
+            controlVariant: 'control',
+            rolloutPercentage: 50,
+            variantDistribution: {'control': 50, 'treatment': 50},
+          ),
+        );
+        coordinator.registerExperiment(
+          ABTestExperimentConfig(
+            experimentId: 'exp_ended',
+            name: 'Already Ended',
+            description: 'Ended yesterday',
+            startDate: now.subtract(Duration(days: 10)),
+            endDate: now.subtract(Duration(days: 1)),
+            controlVariant: 'control',
+            rolloutPercentage: 50,
+            variantDistribution: {'control': 50, 'treatment': 50},
+          ),
+        );
+
+        // Neither is "active" for a user right now...
+        expect(coordinator.getActiveExperiments('user_123'), isEmpty);
+        // ...but admin tooling should still be able to see both exist.
+        final all = coordinator.getAllExperiments();
+        expect(all.map((e) => e.experimentId),
+            containsAll(['exp_future', 'exp_ended']));
+      });
     });
 
     group('Variant Assignment', () {

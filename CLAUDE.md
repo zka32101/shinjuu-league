@@ -1098,6 +1098,17 @@ Exploreエージェントによる全体調査（既に修正済みの既知イ�
 
 **既知のTODO**: `admin_snapshots_screen.dart`の作成フォームにある`description`入力は依然UI収集のみで`ConfigAdminService.createSnapshot()`には渡されず永続化されない（表示側は欠損時に空文字へ安全にフォールバック済み）。
 
+### 管理ダッシュボードA/B実験一覧が常に「実験なし」表示だったバグ修正（2026-10-27、Sonnet実装）
+
+Exploreエージェントによる再調査で発見。[lib/ui/screens/admin_experiments_screen.dart](lib/ui/screens/admin_experiments_screen.dart)の`_loadExperiments()`が`// Get experiments from dashboard state - empty for now as not yet defined`というコメント付きで`_experiments = []`を無条件に設定していた。`createExperiment`/`updateExperimentRollout`自体は（2026-10-26の修正で）実際に`ABTestCoordinator`を変更する実装済みだったが、作成した実験を一覧表示・ロールアウト調整する手段がどこにも存在せず、「作成成功」のトーストが出た直後に実験が消えたように見える状態だった。
+
+- [lib/services/ab_test_coordinator.dart](lib/services/ab_test_coordinator.dart): `getAllExperiments()`を新設（`getActiveExperiments(userId)`とは異なり、日付によるフィルタをかけず登録済み全実験を返す、管理UI向けのメソッド）。
+- [lib/services/config_admin_service.dart](lib/services/config_admin_service.dart): `getExperiments()`を新設（`_coordinator.getAllExperiments()`を公開）。
+- [lib/services/admin_api_service.dart](lib/services/admin_api_service.dart)/[lib/services/web_admin_dashboard_service.dart](lib/services/web_admin_dashboard_service.dart): 同名の`getExperiments()`を追加しJSON化して配線（既存の`getSnapshots()`と同じ3層配線パターン）。
+- [lib/ui/screens/admin_experiments_screen.dart](lib/ui/screens/admin_experiments_screen.dart): `_loadExperiments()`を`widget.dashboardService.getExperiments()`の実データで置き換え。これにより一覧表示・既存の`_updateRollout()`経由のロールアウトスライダーが初めて到達可能になった。
+
+テスト: [test/ab_test_coordinator_test.dart](test/ab_test_coordinator_test.dart)（`getAllExperiments`が未来開始/終了済みの実験も含め全件返すことを検証、1件追加）、[test/config_admin_service_test.dart](test/config_admin_service_test.dart)（`getExperiments`1件追加）、[test/admin_api_service_test.dart](test/admin_api_service_test.dart)（1件追加）、[test/web_admin_dashboard_service_test.dart](test/web_admin_dashboard_service_test.dart)（1件追加）。フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件（既存の軽微なinfo/warningのみ）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定
