@@ -1075,6 +1075,29 @@ Exploreエージェントによる全体調査（既に修正済みの既知イ�
 
 **既知のTODO**: `admin_snapshots_screen.dart`の`_loadSnapshots()`が`ConfigAdminService`の実スナップショットではなくUI確認用のモック配列を表示している問題は今回未対応。次にこの画面を触る回で実データ接続（`createSnapshot`/変更履歴からのスナップショット一覧化）が必要。
 
+### 管理ダッシュボード スナップショット無反応 + cooldown未接続スタブの修復（2026-10-27、Sonnet実装）
+
+直前の「バグ一括調査」ラウンドのExplore再調査で見つかった3件（スナップショット作成の完全無反応、rollbackToSnapshotの偽成功、未使用cooldownスタブ）をユーザーが選択し修正。Tier名不一致（既知TODOとして上記に記載済み）は対象外。
+
+**1. 管理者スナップショット作成が完全無反応**
+- [lib/ui/screens/admin_snapshots_screen.dart](lib/ui/screens/admin_snapshots_screen.dart)の`_loadSnapshots()`はUI確認用のハードコード3件（`snapshot_001/002/003`）を表示するだけ、`_createSnapshot()`も実際には何も呼ばず成功トーストだけ出す実質無反応だった。前回ラウンドで`ConfigAdminService.createSnapshot()`自体は実装済みだったが、これを呼び出す経路が`ConfigAdminService`の外（`AdminApiService`/`WebAdminDashboardService`/UI画面）に一切存在しなかった。
+- [lib/services/config_admin_service.dart](lib/services/config_admin_service.dart): 新規`getSnapshots()`（`_snapshots`を`ConfigSnapshotInfo`のリストとして公開）と新規クラス`ConfigSnapshotInfo`を追加。
+- [lib/services/admin_api_service.dart](lib/services/admin_api_service.dart): `createSnapshot(name)`/`getSnapshots()`を追加（JSON形式へのキー変換を含む）。
+- [lib/services/web_admin_dashboard_service.dart](lib/services/web_admin_dashboard_service.dart): `createSnapshot(name)`（成功時に監査ログ記録+ダッシュボード再ポーリング）/`getSnapshots()`を追加。
+- [lib/ui/screens/admin_snapshots_screen.dart](lib/ui/screens/admin_snapshots_screen.dart): `_loadSnapshots()`/`_createSnapshot()`を実データ・実呼び出しに置き換え。
+
+**2. `rollbackToSnapshot`が存在しないスナップショットIDでも常に偽の成功を返す**
+- `ConfigAdminService.rollbackToSnapshot()`は未知の名前に対して例外を投げず静かにno-opする設計だったため、`AdminApiService`のtry/catchではこの失敗を検知できず、どんな入力でも`true`を返していた。
+- [lib/services/admin_api_service.dart](lib/services/admin_api_service.dart): `rollbackToSnapshot()`冒頭で`getSnapshots()`による存在チェックを追加し、未知のIDは`false`を返すよう修正。
+- [lib/ui/screens/admin_snapshots_screen.dart](lib/ui/screens/admin_snapshots_screen.dart): `_rollbackToSnapshot()`が`false`時にエラー表示するよう修正（従来は黙って何もしないように見えた）。
+
+**3. 未使用のcooldown計算スタブ**
+- [lib/viewmodels/battle_skill_progression_viewmodel.dart](lib/viewmodels/battle_skill_progression_viewmodel.dart)の`getSkillCooldownPercent()`は常に`0.0`を返すだけのダミーで、呼び出し元も皆無だった（実UIは`SkillSlotDisplay`が独自に`cooldownRemaining`/`cooldownMax`から直接計算）。削除せず、[lib/ui/widgets/skill_progression_display.dart](lib/ui/widgets/skill_progression_display.dart)の`SkillProgressionPanel._getSkillCooldownMax()`と同じスロット別最大値（q=4.0/r=8.0/e=6.0/ult=45.0）を使って正しく計算するよう実装（将来UIから呼ばれても正しい値を返せるようにするための前向き修正）。
+
+テスト: [test/admin_api_service_test.dart](test/admin_api_service_test.dart)（新規、4テスト）、[test/config_admin_service_test.dart](test/config_admin_service_test.dart)（`getSnapshots`1件追加）、[test/web_admin_dashboard_service_test.dart](test/web_admin_dashboard_service_test.dart)（`createSnapshot`/`getSnapshots`2件追加）、[test/viewmodels/battle_skill_progression_viewmodel_test.dart](test/viewmodels/battle_skill_progression_viewmodel_test.dart)（`getSkillCooldownPercent`1件追加）。フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件（既存の軽微なinfo/warningのみ）。
+
+**既知のTODO**: `admin_snapshots_screen.dart`の作成フォームにある`description`入力は依然UI収集のみで`ConfigAdminService.createSnapshot()`には渡されず永続化されない（表示側は欠損時に空文字へ安全にフォールバック済み）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

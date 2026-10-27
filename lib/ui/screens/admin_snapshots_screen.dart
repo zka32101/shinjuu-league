@@ -57,54 +57,15 @@ class _AdminSnapshotsScreenState extends ConsumerState<AdminSnapshotsScreen> {
         _error = null;
       });
 
-      final snapshot = widget.dashboardService.getDashboardState();
-      // Snapshots would be stored in dashboard state
-      // For now, create mock snapshots for UI demonstration
+      final snapshots = widget.dashboardService.getSnapshots();
       setState(() {
-        _snapshots = [
-          {
-            'id': 'snapshot_001',
-            'name': 'Initial Setup',
-            'description': 'Game launch configuration',
-            'timestamp': DateTime.now().subtract(Duration(days: 7)),
-            'featured': true,
-            'difficulty': {
-              'levelMultiplier': 1.0,
-              'cooldownMultiplier': 1.0,
-              'damageMultiplier': 1.0,
-            },
-            'featureCount': 12,
-            'enabledFeatures': 10,
-          },
-          {
-            'id': 'snapshot_002',
-            'name': 'Aha Moment ABTest',
-            'description': 'Configuration for Aha Moment threshold experiment',
-            'timestamp': DateTime.now().subtract(Duration(days: 3)),
-            'featured': false,
-            'difficulty': {
-              'levelMultiplier': 1.1,
-              'cooldownMultiplier': 0.95,
-              'damageMultiplier': 1.0,
-            },
-            'featureCount': 14,
-            'enabledFeatures': 12,
-          },
-          {
-            'id': 'snapshot_003',
-            'name': 'Event Configuration',
-            'description': 'Special event settings with bonus multipliers',
-            'timestamp': DateTime.now().subtract(Duration(hours: 12)),
-            'featured': false,
-            'difficulty': {
-              'levelMultiplier': 0.8,
-              'cooldownMultiplier': 1.2,
-              'damageMultiplier': 1.15,
-            },
-            'featureCount': 15,
-            'enabledFeatures': 14,
-          },
-        ];
+        // Most recently created first (getSnapshots returns creation order).
+        _snapshots = snapshots.reversed.map((s) {
+          return {
+            ...s,
+            'timestamp': DateTime.parse(s['timestamp'] as String),
+          };
+        }).toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -123,9 +84,16 @@ class _AdminSnapshotsScreenState extends ConsumerState<AdminSnapshotsScreen> {
       return;
     }
 
+    final name = _snapshotNameController.text;
     try {
+      final result = await widget.dashboardService.createSnapshot(name);
+      if (!result) {
+        setState(() => _error = 'Failed to create snapshot');
+        return;
+      }
+
       setState(() {
-        _successMessage = 'Snapshot "${_snapshotNameController.text}" created';
+        _successMessage = 'Snapshot "$name" created';
         _showCreateForm = false;
       });
       Future.delayed(const Duration(seconds: 2), () {
@@ -171,7 +139,9 @@ class _AdminSnapshotsScreenState extends ConsumerState<AdminSnapshotsScreen> {
         snapshotId,
       );
 
-      if (result && mounted) {
+      if (!mounted) return;
+
+      if (result) {
         setState(() {
           _successMessage = 'Configuration restored from snapshot';
         });
@@ -181,6 +151,8 @@ class _AdminSnapshotsScreenState extends ConsumerState<AdminSnapshotsScreen> {
           }
         });
         _loadSnapshots();
+      } else {
+        setState(() => _error = 'Failed to rollback: snapshot not found');
       }
     } catch (e) {
       setState(() => _error = 'Failed to rollback: $e');

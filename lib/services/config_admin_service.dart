@@ -289,6 +289,25 @@ class ConfigAdminService {
     );
   }
 
+  /// List all saved snapshots (name + metadata), most recently created last.
+  List<ConfigSnapshotInfo> getSnapshots() {
+    return _snapshots.entries.map((entry) {
+      final data = entry.value;
+      final features = data['features'] as Map<String, dynamic>;
+      final enabledCount =
+          features.values.where((f) => (f as Map)['enabled'] as bool).length;
+      return ConfigSnapshotInfo(
+        name: entry.key,
+        timestamp: DateTime.parse(data['timestamp'] as String),
+        difficulty: Map<String, dynamic>.from(
+          data['difficulty'] as Map<String, dynamic>,
+        ),
+        featureCount: features.length,
+        enabledFeatureCount: enabledCount,
+      );
+    }).toList();
+  }
+
   /// Get configuration change history (most recent [limit] entries).
   List<ConfigChangeRecord> getChangeHistory({int limit = 50}) {
     final start = (_changeHistory.length - limit).clamp(0, _changeHistory.length);
@@ -413,6 +432,23 @@ class ConfigChangeRecord {
 
   @override
   String toString() => '$type: $key ($oldValue → $newValue) at $timestamp';
+}
+
+/// Metadata for a saved config snapshot (for listing in admin UI).
+class ConfigSnapshotInfo {
+  final String name;
+  final DateTime timestamp;
+  final Map<String, dynamic> difficulty;
+  final int featureCount;
+  final int enabledFeatureCount;
+
+  ConfigSnapshotInfo({
+    required this.name,
+    required this.timestamp,
+    required this.difficulty,
+    required this.featureCount,
+    required this.enabledFeatureCount,
+  });
 }
 
 /// Admin statistics summary.

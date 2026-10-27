@@ -104,6 +104,24 @@ class MockAdminApiService extends Mock implements AdminApiService {
       returnValueForMissingStub: Future<bool>.value(true),
     ) as Future<bool>;
   }
+
+  @override
+  Future<bool> createSnapshot(String? name) {
+    return super.noSuchMethod(
+      Invocation.method(#createSnapshot, [name]),
+      returnValue: Future<bool>.value(true),
+      returnValueForMissingStub: Future<bool>.value(true),
+    ) as Future<bool>;
+  }
+
+  @override
+  List<Map<String, dynamic>> getSnapshots() {
+    return super.noSuchMethod(
+      Invocation.method(#getSnapshots, []),
+      returnValue: <Map<String, dynamic>>[],
+      returnValueForMissingStub: <Map<String, dynamic>>[],
+    ) as List<Map<String, dynamic>>;
+  }
 }
 
 void main() {
@@ -352,6 +370,34 @@ void main() {
 
         expect(result, isTrue);
         verify(mockApiService.rollbackToSnapshot('initial')).called(1);
+      });
+
+      test('createSnapshot triggers API call', () async {
+        when(mockApiService.createSnapshot('before_event'))
+            .thenAnswer((_) async => true);
+        when(mockApiService.getDashboardState()).thenReturn({
+          'statistics': {},
+          'difficulty': {},
+          'features': [],
+          'recentChanges': [],
+        });
+
+        final result =
+            await dashboardService.createSnapshot('before_event');
+
+        expect(result, isTrue);
+        verify(mockApiService.createSnapshot('before_event')).called(1);
+      });
+
+      test('getSnapshots returns list from API', () {
+        when(mockApiService.getSnapshots()).thenReturn([
+          {'id': 'initial', 'name': 'initial'},
+        ]);
+
+        final snapshots = dashboardService.getSnapshots();
+
+        expect(snapshots, hasLength(1));
+        expect(snapshots.first['id'], 'initial');
       });
     });
 

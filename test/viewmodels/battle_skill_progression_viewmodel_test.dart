@@ -114,6 +114,25 @@ void main() {
       expect(state.isSkillReady(SkillSlot.r), isFalse);
     });
 
+    test('getSkillCooldownPercent returns 0.0 when ready and a fraction '
+        'of the slot max when on cooldown', () {
+      const state = BattleSkillProgressionUIState(
+        playerId: 'player1',
+        currentLevel: 1,
+        currentEvolution: null,
+        isEvolutionLocked: false,
+        hasPendingLevelUp: false,
+        ult_available: 0,
+        ult_charging: 0,
+        // R's max cooldown is 8.0s, so 2.0s remaining is 25%.
+        skillCooldowns: {SkillSlot.q: 0.0, SkillSlot.r: 2.0},
+        evolutionBonuses: {},
+      );
+
+      expect(state.getSkillCooldownPercent(SkillSlot.q), equals(0.0));
+      expect(state.getSkillCooldownPercent(SkillSlot.r), closeTo(0.25, 0.001));
+    });
+
     test('isUltUnlocked checks ult_available flag', () {
       const state1 = BattleSkillProgressionUIState(
         playerId: 'player1',

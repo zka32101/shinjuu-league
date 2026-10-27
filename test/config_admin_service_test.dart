@@ -442,6 +442,18 @@ void main() {
         final history = adminService.getChangeHistory();
         expect(history.last.details['snapshotTimestamp'], isNotNull);
       });
+
+      test('getSnapshots lists the initial snapshot and new ones created',
+          () {
+        adminService.createSnapshot('my_snapshot');
+
+        final snapshots = adminService.getSnapshots();
+
+        expect(snapshots.map((s) => s.name), containsAll(['initial', 'my_snapshot']));
+        final created = snapshots.firstWhere((s) => s.name == 'my_snapshot');
+        expect(created.timestamp, isNotNull);
+        expect(created.difficulty, isNotEmpty);
+      });
     });
 
     group('Statistics', () {

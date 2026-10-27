@@ -275,12 +275,45 @@ class AdminApiService {
 
   /// Rollback to snapshot (API endpoint).
   Future<bool> rollbackToSnapshot(String name) async {
+    // A snapshot ID that doesn't exist is a caller error, not success -
+    // ConfigAdminService.rollbackToSnapshot() silently no-ops for an unknown
+    // name (it doesn't throw), so without this check this always returned
+    // true even when nothing was restored.
+    if (!_adminService.getSnapshots().any((s) => s.name == name)) {
+      return false;
+    }
     try {
       await _adminService.rollbackToSnapshot(name);
       return true;
     } catch (e) {
       return false;
     }
+  }
+
+  /// Create a named snapshot of the current config state (API endpoint).
+  Future<bool> createSnapshot(String name) async {
+    try {
+      _adminService.createSnapshot(name);
+      return true;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  /// List saved snapshots (JSON).
+  List<Map<String, dynamic>> getSnapshots() {
+    return _adminService.getSnapshots().map((s) => {
+          'id': s.name,
+          'name': s.name,
+          'timestamp': s.timestamp.toIso8601String(),
+          'difficulty': {
+            'levelMultiplier': s.difficulty['level'],
+            'cooldownMultiplier': s.difficulty['cooldown'],
+            'damageMultiplier': s.difficulty['damage'],
+          },
+          'featureCount': s.featureCount,
+          'enabledFeatures': s.enabledFeatureCount,
+        }).toList();
   }
 
   /// Health check (JSON).

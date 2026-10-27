@@ -352,6 +352,35 @@ class WebAdminDashboardService {
     }
   }
 
+  /// Create a named snapshot of the current config state.
+  Future<bool> createSnapshot(String name) async {
+    try {
+      final result = await _apiService.createSnapshot(name);
+      if (result) {
+        await _logOperation(
+          action: 'CREATE_SNAPSHOT',
+          resourceType: 'snapshot',
+          resourceId: name,
+          reason: 'Admin created configuration snapshot',
+        );
+        await _pollOnce(); // Refresh dashboard
+      }
+      return result;
+    } catch (e) {
+      _errorController.add(DashboardError(
+        timestamp: DateTime.now(),
+        message: 'Failed to create snapshot: $e',
+        stackTrace: e.toString(),
+      ));
+      return false;
+    }
+  }
+
+  /// List saved snapshots.
+  List<Map<String, dynamic>> getSnapshots() {
+    return _apiService.getSnapshots();
+  }
+
   /// Get health check.
   Map<String, dynamic> getHealthCheck() {
     return _apiService.getHealthCheck();

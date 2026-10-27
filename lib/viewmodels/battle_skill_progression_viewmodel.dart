@@ -67,10 +67,22 @@ class BattleSkillProgressionUIState {
     return cooldown <= 0.0;
   }
 
-  /// スキルのクールダウン率を取得（0.0～1.0）
+  /// スキルのクールダウン率を取得（0.0＝使用可能 ～ 1.0＝クールダウン開始直後）
+  ///
+  /// 最大クールダウン値は[SkillProgressionPanel._getSkillCooldownMax]
+  /// （skill_progression_display.dart）と同じ値を使用。
   double getSkillCooldownPercent(SkillSlot slot) {
-    // TODO: SkillEvolutionService から cooldown を取得して計算
-    return 0.0;
+    final remaining = skillCooldowns[slot] ?? 0.0;
+    if (remaining <= 0.0) return 0.0;
+
+    final max = switch (slot) {
+      SkillSlot.q => 4.0,
+      SkillSlot.r => 8.0,
+      SkillSlot.e => 6.0,
+      SkillSlot.ult => 45.0,
+    };
+
+    return (remaining / max).clamp(0.0, 1.0);
   }
 
   BattleSkillProgressionUIState copyWith({
