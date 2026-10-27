@@ -1050,6 +1050,31 @@ Exploreエージェントの調査で発見。`BattlePassScreen`でプレミア�
 
 **既知のTODO**: `lane_floor.dart`・`goal_zone_token.dart`は今回変更なし。さらなる立体感向上（キャラの影を地形の等角グリッドに沿わせる、カメラ距離に応じたスケール変化等）は次回以降の余地。
 
+### バグ一括調査 + 4件修正（2026-10-27、Sonnet実装）
+
+Exploreエージェントによる全体調査（既に修正済みの既知インスタンス一覧をCLAUDE.mdから読み込ませた上で、未修正の同根バグと他カテゴリの実害バグを探索）で5件を検出。ユーザーに全件提示し、4件（実績/クエストのジェム消失、rollbackToSnapshotの無反応、管理者ロール権限チェック欠落、バトル内アイテム購入—調査の結果実は既に修正済みと判明）の対応を選択。
+
+**1. 実績/クエストのジェム報酬が永久に消失（`incrementUserCurrency`）**
+- バトルパス実装時（2026-10-27）に`currency`フィールド（`User`モデルが一切読み書きしない、実質ゴーストフィールド）への書き込みバグとして発見・コメントで経緯記録済みだったが、新設の`incrementUserGems()`への移行は`achievement_reward_service.dart`/`quest_service.dart`の呼び出し元まで及んでおらず、**実績解除・クエスト達成のジェム報酬は今日まで実際には届いていなかった**。
+- [lib/services/achievement_reward_service.dart](lib/services/achievement_reward_service.dart)・[lib/services/quest_service.dart](lib/services/quest_service.dart)の`incrementUserCurrency`呼び出しを`incrementUserGems`に置換。呼び出し元が無くなったため[lib/services/firestore_service.dart](lib/services/firestore_service.dart)の`incrementUserCurrency()`自体も削除（デッドコード）。
+- テスト: 既存のモックFirestoreService実装（`test/services/quest_service_test.dart`・`achievement_reward_service_test.dart`・`achievement_integration_service_test.dart`）の`incrementUserCurrency`オーバーライドを`incrementUserGems`にリネームして追従。
+
+**2. バトル内アイテム購入 — 調査の結果「既に修正済み」と判明（false positive）**
+- 調査エージェントは`purchaseItem()`末尾の`// TODO: アイテムボーナスをステータスに反映`というコメントから「アイテム購入が無効果」と報告したが、実際には`BattleParticipantState.effectiveAtk/effectiveHp/effectiveSpd`が既に`SkillSystemService.calculateItemBonuses(ownedItemIds: resources.ownedItemIds)`を呼んでおり、`_computeDamage`もこれらの実効値を使っているため**購入は既に正しく反映されていた**（コメント内の経緯記述によれば、この`calculateItemBonuses`自体は過去に別の回で「無関係なItemCatalogを参照して常に0ボーナスだった」バグとして修正済みだったことが判明）。古い誤解を招くTODOコメントのみ削除し、実装はそのまま。
+
+**3. `ConfigAdminService.rollbackToSnapshot()`の無反応（2026-10-26から見送られていた既知バグ）**
+- [lib/services/config_admin_service.dart](lib/services/config_admin_service.dart): スナップショットを読み込んで監査ログに記録するだけで、`_progressionConfig`/`_featureFlags`への実際の復元が一切無かった（`applyDifficultyPreset`等と同根）。`difficulty`マップから`ProgressionDifficultyModifiers`を再構築して`setDifficultyModifiersOverride()`、`features`マップの各エントリに対して`enableFeature`/`disableFeature` + `setRolloutPercentage`を呼ぶことで実際に復元するよう修正。
+- 合わせて、スナップショット保存自体が`_saveSnapshot`（private、コンストラクタの`'initial'`作成時のみ呼ばれる）しか無く、新規スナップショットを作成する公開APIが存在しなかったため`createSnapshot(name)`を新設（Admin Snapshots画面側のモックデータ問題—`_loadSnapshots()`が実データではなくUI確認用のハードコードされたダミー配列を表示している—は今回のスコープ外、別途要対応として残る）。
+- テスト: [test/config_admin_service_test.dart](test/config_admin_service_test.dart)に新規2件（`createSnapshot`→`rollbackToSnapshot`で実際に難易度が復元されること、機能フラグのenable/rollout双方が復元されること）を追加。
+
+**4. 管理者ロール付与に権限チェックが無い（特権昇格の穴）**
+- [lib/services/admin_role_service.dart](lib/services/admin_role_service.dart): `assignRoleToUser`/`updateUserRole`/`revokeAdminRole`は`assignedByUserId`等を監査ログのラベル用にしか使っておらず、呼び出し元（UI）のクライアント側ガーティングのみに依存していた。各メソッド冒頭に`hasPermission(actorUserId, AdminPermission.manageAdminRoles)`チェックを追加し、権限が無い場合は書き込みをせず`false`を返すよう修正。
+- テスト: [test/admin_role_service_test.dart](test/admin_role_service_test.dart)の既存3件（assign/update/revoke）を「実行者が`manageAdminRoles`を持つ」設定に更新（従来はアクターが未登録ユーザーでも成功していた）、新規2件（権限を持たないアクターからのassign/revokeが拒否されること）を追加。
+
+フルスイート（既存+新規7件）全通過、`flutter analyze`は今回変更ファイルでエラー0件（既存の軽微なinfo/warningのみ）。
+
+**既知のTODO**: `admin_snapshots_screen.dart`の`_loadSnapshots()`が`ConfigAdminService`の実スナップショットではなくUI確認用のモック配列を表示している問題は今回未対応。次にこの画面を触る回で実データ接続（`createSnapshot`/変更履歴からのスナップショット一覧化）が必要。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

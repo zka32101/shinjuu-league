@@ -86,6 +86,10 @@ class AdminRoleService {
     required AdminRole role,
     required String assignedByUserId,
   }) async {
+    if (!hasPermission(assignedByUserId, AdminPermission.manageAdminRoles)) {
+      print('Permission denied: $assignedByUserId cannot assign admin roles');
+      return false;
+    }
     try {
       final userAdminRole = UserAdminRole(
         userId: userId,
@@ -127,6 +131,10 @@ class AdminRoleService {
     required AdminRole newRole,
     required String updatedByUserId,
   }) async {
+    if (!hasPermission(updatedByUserId, AdminPermission.manageAdminRoles)) {
+      print('Permission denied: $updatedByUserId cannot update admin roles');
+      return false;
+    }
     try {
       final currentRole = getUserRole(userId);
       if (currentRole == null) {
@@ -171,6 +179,10 @@ class AdminRoleService {
     required String userId,
     required String revokedByUserId,
   }) async {
+    if (!hasPermission(revokedByUserId, AdminPermission.manageAdminRoles)) {
+      print('Permission denied: $revokedByUserId cannot revoke admin roles');
+      return false;
+    }
     try {
       final currentRole = getUserRole(userId);
       if (currentRole == null) {

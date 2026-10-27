@@ -97,7 +97,7 @@ class AchievementRewardService {
   /// Apply currency reward to user
   Future<void> _applyCurrencyReward(String userId, int amount) async {
     try {
-      await _firestoreService.incrementUserCurrency(userId, amount);
+      await _firestoreService.incrementUserGems(userId, amount);
     } catch (e) {
       print('Error applying currency reward: $e');
     }

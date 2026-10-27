@@ -688,6 +688,53 @@ void main() {
           expect(realCoordinator.getExperiment('does_not_exist'), isNull);
         },
       );
+
+      test(
+        'rollbackToSnapshot actually restores difficulty modifiers, not just '
+        'the audit log',
+        () async {
+          await realAdminService.applyDifficultyPreset('normal');
+          realAdminService.createSnapshot('before_hard');
+
+          await realAdminService.applyDifficultyPreset('hard');
+          expect(
+            realConfig.getDifficultyModifiers().skillDamageMultiplier,
+            equals(1.1),
+          );
+
+          await realAdminService.rollbackToSnapshot('before_hard');
+
+          expect(
+            realConfig.getDifficultyModifiers().skillDamageMultiplier,
+            equals(1.0),
+          );
+        },
+      );
+
+      test(
+        'rollbackToSnapshot restores feature flag enabled/rollout state',
+        () async {
+          when(mockFlags.listFeatures()).thenReturn([
+            FeatureFlagMetadata(
+              name: 'test_feature',
+              enabled: true,
+              killSwitch: false,
+              rolloutPercentage: 20,
+              abTestVariants: const [],
+              defaultVariant: 'control',
+              description: 'test',
+            ),
+          ]);
+          realAdminService.createSnapshot('feature_snapshot');
+
+          await realAdminService.rollbackToSnapshot('feature_snapshot');
+
+          verify(mockFlags.enableFeature('test_feature')).called(1);
+          verify(
+            mockFlags.setRolloutPercentage('test_feature', 20),
+          ).called(1);
+        },
+      );
     });
   });
 }

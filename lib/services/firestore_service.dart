@@ -562,25 +562,6 @@ class FirestoreService {
     }
   }
 
-  /// Increment user currency (earned from achievements or other sources)
-  ///
-  /// KNOWN BUG (not fixed here - out of scope for the battle pass work that
-  /// discovered it, see CLAUDE.md): this writes to a Firestore field named
-  /// `currency`, but `User.fromJson`/`toJson` (user_model.dart) only ever
-  /// reads/writes `gems` - nothing in the app displays or spends `currency`,
-  /// so every achievement/quest reward that calls this silently vanishes.
-  /// New code should use [incrementUserGems] instead, which targets the
-  /// field the rest of the app actually reads.
-  Future<void> incrementUserCurrency(String userId, int amount) async {
-    try {
-      await _db.collection('users').doc(userId).update({
-        'currency': FieldValue.increment(amount),
-      });
-    } catch (e) {
-      throw 'Failed to increment currency: $e';
-    }
-  }
-
   /// Increment the user's real, displayed gem balance (`User.gems`).
   Future<void> incrementUserGems(String userId, int amount) async {
     try {

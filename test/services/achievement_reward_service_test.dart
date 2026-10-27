@@ -26,7 +26,7 @@ class MockFirestoreService implements FirestoreService {
   }
 
   @override
-  Future<void> incrementUserCurrency(String userId, int amount) async {
+  Future<void> incrementUserGems(String userId, int amount) async {
     _userData[userId] ??= <String, dynamic>{'currency': 0};
     _userData[userId]!['currency'] =
         (_userData[userId]!['currency'] ?? 0) + amount;

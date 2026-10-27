@@ -209,6 +209,20 @@ class ConfigAdminService {
     }).toList();
   }
 
+  /// Save a named config snapshot of the current difficulty/feature-flag
+  /// state, so it can later be restored via [rollbackToSnapshot].
+  void createSnapshot(String name) {
+    _saveSnapshot(name);
+
+    _recordChange(
+      type: 'SNAPSHOT_CREATED',
+      key: 'snapshot_$name',
+      oldValue: null,
+      newValue: name,
+      details: {'snapshotCount': _snapshots.length},
+    );
+  }
+
   /// Save config snapshot for rollback.
   void _saveSnapshot(String name) {
     _snapshots[name] = {
@@ -233,11 +247,38 @@ class ConfigAdminService {
   }
 
   /// Rollback to saved snapshot.
+  ///
+  /// 以前は snapshot を読み込んで監査ログに記録するだけで、実際の難易度/
+  /// 機能フラグ状態を一切復元していなかった（applyDifficultyPreset等と
+  /// 同根の「見た目は成功表示だが無反応」バグ）。難易度は
+  /// setDifficultyModifiersOverride、機能フラグは enable/disableFeature +
+  /// setRolloutPercentage を通じて実際に復元する。
   Future<void> rollbackToSnapshot(String name) async {
     final snapshot = _snapshots[name];
     if (snapshot == null) return;
 
     final difficulty = snapshot['difficulty'] as Map<String, dynamic>;
+    _progressionConfig.setDifficultyModifiersOverride(
+      ProgressionDifficultyModifiers(
+        levelDifficultyMultiplier: difficulty['level'] as double,
+        skillCooldownMultiplier: difficulty['cooldown'] as double,
+        skillDamageMultiplier: difficulty['damage'] as double,
+      ),
+    );
+
+    final features = snapshot['features'] as Map<String, dynamic>;
+    for (final entry in features.entries) {
+      final featureState = entry.value as Map<String, dynamic>;
+      if (featureState['enabled'] as bool) {
+        _featureFlags.enableFeature(entry.key);
+      } else {
+        _featureFlags.disableFeature(entry.key);
+      }
+      _featureFlags.setRolloutPercentage(
+        entry.key,
+        featureState['rollout'] as int,
+      );
+    }
 
     _recordChange(
       type: 'ROLLBACK',

@@ -131,7 +131,7 @@ class QuestService {
   ) async {
     try {
       if (reward.currency > 0) {
-        await _firestoreService.incrementUserCurrency(userId, reward.currency);
+        await _firestoreService.incrementUserGems(userId, reward.currency);
       }
 
       if (reward.achievementBadges > 0) {

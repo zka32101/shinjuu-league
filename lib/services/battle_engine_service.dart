@@ -571,13 +571,13 @@ class BattleEngine {
     if (!participant.resources.canAffordGold(item.cost)) return false;
 
     // ゴール消費・アイテム購入
+    // effectiveAtk/effectiveHp/effectiveSpd が購入直後の
+    // resources.ownedItemIds を毎回参照するため、ステータス反映はこの代入のみで完了する
+    // （SkillSystemService.calculateItemBonuses経由、別途反映処理は不要）。
     participant.resources = participant.resources.purchaseItem(
       itemId,
       item.cost,
     );
-
-    // TODO: アイテムボーナスをステータスに反映
-    // 今後：EffectiveStatの計算でアイテムボーナスを加算
 
     return true;
   }

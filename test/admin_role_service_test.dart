@@ -220,6 +220,19 @@ void main() {
 
     test('assignRoleToUser should add user to cache and Firestore', () async {
       // Arrange
+      // assignRoleToUser now requires the actor to themselves hold
+      // manageAdminRoles (regression test for the privilege-escalation gap
+      // where any caller could grant admin roles with no server-side check).
+      await mockFirestoreService.setMockRoles([
+        {
+          'userId': 'admin1',
+          'userName': 'Admin',
+          'userEmail': 'admin@test.com',
+          'role': 'admin',
+          'assignedAt': '2026-09-01T10:00:00.000Z',
+          'assignedBy': null,
+        },
+      ]);
       await roleService.loadAdminRoles();
 
       // Act
@@ -233,9 +246,37 @@ void main() {
 
       // Assert
       expect(success, true);
-      expect(roleService.cacheSize, 1);
+      expect(roleService.cacheSize, 2);
       expect(roleService.getUserRole('newuser')?.role, AdminRole.operator);
     });
+
+    test(
+      'assignRoleToUser should refuse an actor without manageAdminRoles',
+      () async {
+        await mockFirestoreService.setMockRoles([
+          {
+            'userId': 'operator1',
+            'userName': 'Operator',
+            'userEmail': 'operator@test.com',
+            'role': 'operator',
+            'assignedAt': '2026-09-01T10:00:00.000Z',
+            'assignedBy': 'admin1',
+          },
+        ]);
+        await roleService.loadAdminRoles();
+
+        final success = await roleService.assignRoleToUser(
+          userId: 'newuser',
+          userName: 'New User',
+          userEmail: 'newuser@test.com',
+          role: AdminRole.operator,
+          assignedByUserId: 'operator1',
+        );
+
+        expect(success, false);
+        expect(roleService.getUserRole('newuser'), null);
+      },
+    );
 
     test('updateUserRole should update role in cache and Firestore', () async {
       // Arrange
@@ -247,6 +288,14 @@ void main() {
           'role': 'viewer',
           'assignedAt': '2026-09-01T10:00:00.000Z',
           'assignedBy': 'admin1',
+        },
+        {
+          'userId': 'admin1',
+          'userName': 'Admin',
+          'userEmail': 'admin1@test.com',
+          'role': 'admin',
+          'assignedAt': '2026-09-01T10:00:00.000Z',
+          'assignedBy': null,
         },
       ];
       await mockFirestoreService.setMockRoles(testRoles);
@@ -290,6 +339,14 @@ void main() {
           'assignedAt': '2026-09-01T10:00:00.000Z',
           'assignedBy': null,
         },
+        {
+          'userId': 'admin2',
+          'userName': 'Admin Two',
+          'userEmail': 'admin2@test.com',
+          'role': 'admin',
+          'assignedAt': '2026-09-01T10:00:00.000Z',
+          'assignedBy': null,
+        },
       ];
       await mockFirestoreService.setMockRoles(testRoles);
       await roleService.loadAdminRoles();
@@ -302,9 +359,43 @@ void main() {
 
       // Assert
       expect(success, true);
-      expect(roleService.cacheSize, 0);
+      expect(roleService.cacheSize, 1);
       expect(roleService.getUserRole('user1'), null);
     });
+
+    test(
+      'revokeAdminRole should refuse an actor without manageAdminRoles',
+      () async {
+        final testRoles = [
+          {
+            'userId': 'user1',
+            'userName': 'User One',
+            'userEmail': 'user1@test.com',
+            'role': 'admin',
+            'assignedAt': '2026-09-01T10:00:00.000Z',
+            'assignedBy': null,
+          },
+          {
+            'userId': 'viewer1',
+            'userName': 'Viewer',
+            'userEmail': 'viewer@test.com',
+            'role': 'viewer',
+            'assignedAt': '2026-09-01T10:00:00.000Z',
+            'assignedBy': null,
+          },
+        ];
+        await mockFirestoreService.setMockRoles(testRoles);
+        await roleService.loadAdminRoles();
+
+        final success = await roleService.revokeAdminRole(
+          userId: 'user1',
+          revokedByUserId: 'viewer1',
+        );
+
+        expect(success, false);
+        expect(roleService.getUserRole('user1'), isNotNull);
+      },
+    );
 
     test('clearCache should reset cache state', () async {
       // Arrange
