@@ -159,6 +159,18 @@ class MechaToken extends PositionComponent {
       ),
       shadowPaint,
     );
+    // 接地コンタクトAO：浮遊の高さに関わらず足元に常に密着する濃い短い影。
+    // ブラー済みの上記影だけでは地面から離れすぎて見えるため（UNITE等の
+    // 2.5Dキャラが「宙に浮いている」のではなく「地面に立っている」と感じさせる
+    // 常套手法として）、ブラー無しの小さな暗いコアを別途重ねて接地点を固定する。
+    canvas.drawOval(
+      Rect.fromCenter(
+        center: Offset(center.dx, groundY + radius * 0.95),
+        width: radius * 0.9,
+        height: radius * 0.3,
+      ),
+      Paint()..color = Colors.black.withValues(alpha: 0.4 * _opacity),
+    );
 
     // 被弾フラッシュ：本体の下地を赤く光らせて衝撃を伝える
     if (_hitFlash > 0) {
@@ -188,7 +200,37 @@ class MechaToken extends PositionComponent {
         Rect.fromCircle(center: center, radius: radius),
         Paint()..color = Colors.white.withValues(alpha: _opacity),
       );
-      canvas.restore();
+      // 左上光源の立体シェーディング：フォールバック球体と同じ光の方向で
+      // 右下を暗く落とすことで、実イラスト使用時も平坦な切り絵に見えず
+      // 球体トークンと統一された「立体感」を保つ。
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..shader = Gradient.radial(
+            Offset(center.dx + radius * 0.4, center.dy + radius * 0.4),
+            radius * 1.4,
+            [
+              Colors.black.withValues(alpha: 0.0),
+              Colors.black.withValues(alpha: 0.32 * _opacity),
+            ],
+            [0.35, 1.0],
+          ),
+      );
+      // 右上の柔らかいハイライト（上記AOと対をなす光源側の反射）
+      canvas.drawCircle(
+        Offset(center.dx - radius * 0.3, center.dy - radius * 0.3),
+        radius * 0.5,
+        Paint()
+          ..shader = Gradient.radial(
+            Offset(center.dx - radius * 0.3, center.dy - radius * 0.3),
+            radius * 0.5,
+            [
+              Colors.white.withValues(alpha: 0.18 * _opacity),
+              Colors.white.withValues(alpha: 0.0),
+            ],
+          ),
+      );
 
       final teamRingPaint = Paint()
         ..color = _teamColor.withValues(alpha: _opacity)
