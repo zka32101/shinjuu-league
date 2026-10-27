@@ -170,6 +170,21 @@ class SeasonRewardService {
       throw Exception('Claim window has expired');
     }
 
+    // 実際にユーザーへ付与する（以前はこの関数は claimedAt を記録するだけで、
+    // ジェム/スキンがユーザーへ一切渡っていなかった — 見た目は「受け取り済み」
+    // になるのに中身が空のボタンだった）
+    for (final reward in distribution.rewards) {
+      switch (reward.rewardType) {
+        case RewardType.currency:
+          await _firestoreService.incrementUserGems(userId, reward.quantity);
+          break;
+        case RewardType.cosmetic_skin:
+        case RewardType.battle_pass_item:
+          await _firestoreService.addUserCosmetic(userId, reward.rewardId);
+          break;
+      }
+    }
+
     // Update with claim timestamp
     final updated = distribution.copyWith(claimedAt: DateTime.now());
 

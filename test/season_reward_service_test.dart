@@ -42,6 +42,24 @@ class MockFirestoreService extends Mock implements FirestoreService {
       returnValueForMissingStub: Future<void>.value(),
     ) as Future<void>;
   }
+
+  @override
+  Future<void> incrementUserGems(String? userId, int? amount) {
+    return super.noSuchMethod(
+      Invocation.method(#incrementUserGems, [userId, amount]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
+
+  @override
+  Future<void> addUserCosmetic(String? userId, String? cosmeticId) {
+    return super.noSuchMethod(
+      Invocation.method(#addUserCosmetic, [userId, cosmeticId]),
+      returnValue: Future<void>.value(),
+      returnValueForMissingStub: Future<void>.value(),
+    ) as Future<void>;
+  }
 }
 
 void main() {
@@ -163,6 +181,11 @@ void main() {
           'users/user_123/season_rewards/season_1',
           any,
         )).called(1);
+        // 実際にユーザーへ付与されることを検証（以前はclaimedAtを記録するだけで
+        // ジェム/スキンが一切渡っていなかったバグの再発防止）
+        verify(mockFirestore.incrementUserGems('user_123', 500)).called(1);
+        verify(mockFirestore.addUserCosmetic('user_123', 'gold_skin_1'))
+            .called(1);
       });
 
       test('prevents double claiming', () async {

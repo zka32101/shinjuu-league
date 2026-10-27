@@ -8,6 +8,7 @@ import 'package:shinjuu_league/data/models/user_model.dart';
 import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/data/models/skill_tree_reset.dart';
+import 'package:shinjuu_league/services/battle_pass_service.dart';
 import 'package:shinjuu_league/services/ranking_service.dart';
 import 'package:shinjuu_league/services/season_reward_service.dart';
 import 'package:shinjuu_league/services/season_service.dart';
@@ -21,6 +22,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
     SeasonService? seasonService,
     SkillTreeResetService? skillTreeResetService,
     SeasonRewardService? seasonRewardService,
+    BattlePassService? battlePassService,
   }) : _firestoreService = firestoreService ?? FirestoreService(),
        _authService = authService ?? AuthService(),
        _rankingService = rankingService ?? RankingService(),
@@ -29,6 +31,8 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
            skillTreeResetService ?? SkillTreeResetService(firestoreService ?? FirestoreService()),
        _seasonRewardService =
            seasonRewardService ?? SeasonRewardService(firestoreService ?? FirestoreService()),
+       _battlePassService =
+           battlePassService ?? BattlePassService(firestoreService ?? FirestoreService()),
        super(const AsyncValue.loading()) {
     _init();
   }
@@ -39,6 +43,7 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
   final SeasonService _seasonService;
   final SkillTreeResetService _skillTreeResetService;
   final SeasonRewardService _seasonRewardService;
+  final BattlePassService _battlePassService;
   StreamSubscription<User?>? _userSub;
 
   /// Get current user ID for seasonal tracking
@@ -86,6 +91,21 @@ class UserViewModel extends StateNotifier<AsyncValue<User?>> {
         'timestamp': FieldValue.serverTimestamp(),
       },
     );
+
+    // バトルパスの進捗加算。以前はプレミアムパス購入時に`progress: 0`の
+    // ドキュメントを作るだけで、その後は何試合してもprogressが一切増えない
+    // バグだった（全タイアが永久にロック表示のまま）。ランクシーズンの
+    // 有無（下の季節進行ブロック）とは無関係に常に加算したいので、
+    // 季節進行チェック（アクティブシーズンが無いと早期returnする）より
+    // 先に独立した失敗ドメインとして実行する。
+    try {
+      final userId = _currentUserId;
+      if (userId != null) {
+        await _battlePassService.addProgressForBattle(userId);
+      }
+    } catch (e) {
+      print('[UserViewModel] Error updating battle pass progress: $e');
+    }
 
     // 【CRITICAL INTEGRATION】 季節進行を更新
     // season_data はまだサーバー権威化されていない設計のため、クライアント側の

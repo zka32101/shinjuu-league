@@ -1014,6 +1014,30 @@ Cloud Functionsテストスイート133件（既存129件+新規4件）全通過
 
 **既知のTODO**: ゴールゾーンの視覚的な迫力（投入時の演出：UNITE本家のような弾道アニメーション・派手なバースト等）は未着手、現状は地味なリング表示+ハプティクス+SEのみ。エナジー上限30・1キル+5・モンスター+10という数値バランスは初期値で、実プレイ感に応じた調整余地あり。
 
+### バトルパス進捗が永久に0のままだったバグ修正 + シーズン報酬claimの未付与も合わせて修正（2026-10-27, Sonnet実装）
+
+Exploreエージェントの調査で発見。`BattlePassScreen`でプレミアムパスを実際に購入しても、**進捗（progress）が永久に0のまま**だった。購入した瞬間に`progress: 0`の`BattlePass`ドキュメントを保存するだけで、その後何試合しても進捗を増やす処理がどこにも存在せず、全タイアが永久にロック表示のままだった。さらに各タイアには報酬を実際に受け取る「claim」導線自体が無く（タイモ到達しても「解除済み表示」になるだけ）、ユーザーに確認の上、進捗加算+claim機能を一括実装することを選択。
+
+**実装中に発見した副次バグ（同じセッション内で既に対応していたはずの箇所に実は同根の不具合が残っていた）**:
+1. `SeasonRewardService.claimRewards()`（直前の「シーズン報酬配布の修復」で配布処理は直したが、claim自体は未調査だった）も同じパターンのバグを抱えていた：`claimedAt`タイムスタンプを記録するだけで、実際にジェム/スキンをユーザーへ一切付与していなかった。
+2. `FirestoreService.incrementUserCurrency()`（achievement/quest報酬で使われている既存メソッド）がFirestoreの`currency`フィールドへ書き込んでいるが、`User`モデル（`user_model.dart`）は`currency`フィールドを一切読み書きしておらず、実際にアプリ全体で表示・使用されるのは`gems`フィールドのみ。つまり**実績/クエスト報酬のジェムは実は一度もユーザーへ届いていなかった**可能性が高い。今回のスコープでは新規コードが同じ穴に落ちないよう`incrementUserGems()`（`gems`フィールドへ正しく書き込む新メソッド）を追加して使用するに留め、`incrementUserCurrency()`自体の呼び出し元（achievement_reward_service.dart/quest_service.dart）の修正は別スコープとして見送った（`FirestoreService`内にコメントで経緯を明記）。
+
+**実装内容**:
+- [lib/services/firestore_service.dart](lib/services/firestore_service.dart): `incrementUserGems(userId, amount)`を新設（`gems`フィールドへ正しく加算）。`incrementUserCurrency()`には上記バグの説明コメントを追加。
+- [lib/services/season_reward_service.dart](lib/services/season_reward_service.dart): `claimRewards()`で実際に`incrementUserGems()`/`addUserCosmetic()`を呼ぶように修正。
+- [lib/services/battle_pass_service.dart](lib/services/battle_pass_service.dart)（新規）: `addProgressForBattle(userId)`（1試合ごとに+10、F2Pユーザーでも無課金トラックのドキュメントを遅延作成、進捗は100でクランプ）と`claimTier(userId, tier)`（進捗閾値・重複受取・プレミアム限定タイアの検証後、無課金タイアはジェム、3の倍数のプレミアムタイアはスキンを実際に付与し`claimedRewards`へ記録）を実装。
+- [lib/viewmodels/user_viewmodel.dart](lib/viewmodels/user_viewmodel.dart): `applyBattleResult()`冒頭（既存のランクシーズン進行チェックより前）で`_battlePassService.addProgressForBattle()`を呼び出し。ランクシーズン進行ブロックは「アクティブシーズンが無ければ早期return」するため、その後に置くとランク未実施時にバトルパス進捗まで巻き込まれてスキップされてしまう実装ミスをテストで検出・修正。
+- [lib/data/providers/service_providers.dart](lib/data/providers/service_providers.dart): `battlePassServiceProvider`を追加。
+- [lib/ui/screens/battlepass_screen.dart](lib/ui/screens/battlepass_screen.dart): 各タイアの行に「受け取る」ボタンを追加（解除済み・未受取・条件を満たす場合のみ表示）。受取済みは「受取済み」ラベルに変化。
+
+- [test/services/battle_pass_service_test.dart](test/services/battle_pass_service_test.dart)（新規、10テスト、`FakeFirebaseFirestore`）: F2P新規作成・進捗加算・100クランプ・プレミアム状態保持、claimTierの各検証パス（未存在/閾値未満/無課金ジェム付与/プレミアム未加入拒否/プレミアムスキン付与/二重受取拒否）
+- [test/season_reward_service_test.dart](test/season_reward_service_test.dart): `claimRewards`テストに実付与の検証（`incrementUserGems`/`addUserCosmetic`が正しい引数で呼ばれること）を追加
+- [test/viewmodels/user_viewmodel_test.dart](test/viewmodels/user_viewmodel_test.dart): ランクシーズン未実施でもバトルパス進捗が加算されることを検証するテスト1件を追加（上記の早期return実装ミスの再発防止）
+
+フルスイート2306件（既存2295件+新規11件）全通過。`flutter analyze`はプロジェクト全体でエラー0件（既存の軽微なinfo/warningのみ）。
+
+**既知のTODO**: `FirestoreService.incrementUserCurrency()`（`User.currency`フィールド自体が存在せず、achievement/quest報酬のジェムが実際には届いていない疑いが強い）は今回未修正。次にachievement/questのジェム報酬まわりを触る回で要調査・要修正。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

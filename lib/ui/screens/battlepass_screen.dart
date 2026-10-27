@@ -22,6 +22,20 @@ class BattlePassScreen extends ConsumerStatefulWidget {
 
 class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
   bool _isPurchasing = false;
+  int? _claimingTier;
+
+  Future<void> _claimTier(String userId, int tier) async {
+    setState(() => _claimingTier = tier);
+    final success = await ref
+        .read(battlePassServiceProvider)
+        .claimTier(userId, tier);
+    if (!mounted) return;
+    setState(() => _claimingTier = null);
+    ref.invalidate(battlePassProvider);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(success ? '報酬を受け取りました！' : '受け取りに失敗しました')),
+    );
+  }
 
   Future<void> _purchase(User user) async {
     final userId = user.uid;
@@ -182,26 +196,63 @@ class _BattlePassScreenState extends ConsumerState<BattlePassScreen> {
                       separatorBuilder: (_, _) => const SizedBox(height: 8),
                       itemBuilder: (context, i) {
                         final tier = _rewardTiers[i];
+                        final isPremiumTier = tier % 3 == 0;
                         final unlocked = progress >= tier * 10;
+                        final claimed = battlePass?.claimedRewards.any(
+                              (r) => r.tier == tier,
+                            ) ??
+                            false;
+                        final needsPremium = isPremiumTier && !isPremium;
+                        final canClaim =
+                            unlocked && !claimed && !needsPremium;
+
                         return Card(
                           child: ListTile(
                             leading: Icon(
-                              unlocked
+                              claimed
                                   ? Icons.check_circle
-                                  : Icons.lock_outline,
-                              color: unlocked ? AppColors.win : Colors.grey,
+                                  : (unlocked
+                                      ? Icons.card_giftcard
+                                      : Icons.lock_outline),
+                              color: claimed
+                                  ? AppColors.win
+                                  : (unlocked ? AppColors.gold : Colors.grey),
                             ),
                             title: Text('Tier $tier 報酬'),
                             subtitle: Text(
-                              tier % 3 == 0 ? 'スキン（プレミアム限定）' : 'ジェム・コスメティック',
+                              isPremiumTier ? 'スキン（プレミアム限定）' : 'ジェム・コスメティック',
                             ),
-                            trailing: tier % 3 == 0 && !isPremium
+                            trailing: needsPremium
                                 ? const Icon(
                                     Icons.workspace_premium,
                                     color: AppColors.gold,
                                     size: 18,
                                   )
-                                : null,
+                                : canClaim
+                                    ? TextButton(
+                                        onPressed: _claimingTier == tier
+                                            ? null
+                                            : () => _claimTier(user.uid, tier),
+                                        child: _claimingTier == tier
+                                            ? const SizedBox(
+                                                width: 16,
+                                                height: 16,
+                                                child:
+                                                    CircularProgressIndicator(
+                                                  strokeWidth: 2,
+                                                ),
+                                              )
+                                            : const Text('受け取る'),
+                                      )
+                                    : (claimed
+                                        ? const Text(
+                                            '受取済み',
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                              fontSize: 12,
+                                            ),
+                                          )
+                                        : null),
                           ),
                         );
                       },

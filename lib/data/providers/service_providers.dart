@@ -17,6 +17,7 @@ import 'package:shinjuu_league/services/auth_service.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
 import 'package:shinjuu_league/services/config_admin_service.dart';
 import 'package:shinjuu_league/services/feature_flags_service.dart';
+import 'package:shinjuu_league/services/battle_pass_service.dart';
 import 'package:shinjuu_league/services/firestore_service.dart';
 import 'package:shinjuu_league/services/item_service.dart';
 import 'package:shinjuu_league/services/performance_service.dart';
@@ -93,6 +94,10 @@ final battleViewModelProvider =
 
 final leaderboardProvider = FutureProvider.autoDispose<List<User>>((ref) {
   return ref.watch(firestoreServiceProvider).getTopRankedUsers();
+});
+
+final battlePassServiceProvider = Provider<BattlePassService>((ref) {
+  return BattlePassService(ref.watch(firestoreServiceProvider));
 });
 
 /// 現シーズンのBattlePass進捗（未購読ユーザーは null → 画面側で初期値を組み立てる）

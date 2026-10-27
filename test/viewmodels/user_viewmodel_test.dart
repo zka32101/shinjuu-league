@@ -132,6 +132,25 @@ void main() {
       expect(data['opponentUserIds'], isEmpty);
       expect(data['result'], 'loss');
     });
+
+    test(
+      'advances battle pass progress even when no ranked season is active',
+      () async {
+        // No `seasons` collection seeded in this group's setUp, so the
+        // season-transition block below this hits its early return - battle
+        // pass progress must not be skipped as a result.
+        await viewModel.applyBattleResult(
+          battle(result: BattleResult.win, opponentIds: []),
+        );
+
+        final passDoc = await firestore
+            .collection('battlepasses')
+            .doc('${uid}_season_1')
+            .get();
+        expect(passDoc.exists, isTrue);
+        expect(passDoc.data()!['progress'], 10);
+      },
+    );
   });
 
   group('UserViewModel season-transition skill tree reset', () {
