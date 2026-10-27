@@ -10,6 +10,7 @@ import 'package:shinjuu_league/services/performance_service.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/models/stage_model.dart';
 import 'package:shinjuu_league/data/stage_catalog.dart';
+import 'package:shinjuu_league/game/goal_zone_token.dart';
 import 'package:shinjuu_league/game/impact_line.dart';
 import 'package:shinjuu_league/game/isometric_projection.dart';
 import 'package:shinjuu_league/game/jungle_monster_token.dart';
@@ -54,13 +55,18 @@ class BattlefieldGame extends FlameGame {
   // 真の距離で行い、画面上で歪んだ楕円形の間合いにならないようにする。
   static const _attackRangeGrid = 1.0;
   static const _skillRadiusGrid = 2.0;
+  static const _scoreRangeGrid = 1.2; // ゴールゾーン投入の射程（攻撃よりわずかに広め）
   static const _attackRange = 46.0; // Bot徘徊の見た目上の距離判定にのみ使用
   static const _skillRadius = 90.0; // SkillBurstの描画半径（画面ピクセル）
   static const _playfieldHalfWidth = 900.0;
   static const _playfieldHalfHeight = 560.0;
+  // ゴールゾーンは各チームの自陣寄り（レーンタイルの外縁付近）に配置する
+  static const _goalGridXByTeam = {0: -2.1, 1: 2.1};
+  static const _goalColorByTeam = {0: Color(0xFF4FC3F7), 1: Color(0xFFFF7043)};
 
   final Map<String, MechaToken> _tokens = {};
   final Map<String, JungleMonsterToken> _monsterTokens = {};
+  final Map<String, GoalZoneToken> _goalTokens = {};
   // mechaId -> デコード済みイラスト。キャラ選択画面と同じAI生成PNGを事前ロードし、
   // MechaToken には既にデコード済みのImageだけを渡す（トークン生成のたびに
   // 非同期ロードを待つとキャラ出現が遅延するため、onLoad()で先読みしておく）。
@@ -86,6 +92,16 @@ class BattlefieldGame extends FlameGame {
 
   /// 攻撃可能な射程内に敵/モンスターがいる場合、その対象を保持する。UIの攻撃ボタン有効化に使う。
   final ValueNotifier<AttackTarget?> attackTargetId = ValueNotifier(null);
+
+  /// 射程内に「投入可能な（敵チームが守る、自レーンの）ゴールゾーン」があり、
+  /// かつ自キャラがエナジーを所持している場合、そのゴールゾーンIDを保持する。
+  /// UIのスコア投入ボタン有効化に使う。
+  final ValueNotifier<String?> scoreTargetId = ValueNotifier(null);
+
+  /// 自キャラの現在所持エナジー（HUD表示用）。sync() で毎tick更新される。
+  final ValueNotifier<int> selfEnergy = ValueNotifier(0);
+  int? _selfTeam;
+  int? _selfLane;
 
   /// ミニマップ表示用のエントリ一覧（自分・味方・敵・モンスター）。
   final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(
@@ -250,6 +266,7 @@ class BattlefieldGame extends FlameGame {
     if (_targetScanTimer >= 0.15) {
       _targetScanTimer = 0.0;
       _updateAttackTarget();
+      _updateScoreTarget();
     }
   }
 
@@ -385,6 +402,49 @@ class BattlefieldGame extends FlameGame {
     attackTargetId.value = null;
   }
 
+  /// 自キャラの射程内に「投入可能なゴールゾーン」（敵チームが守る・自レーンの
+  /// ゾーン）があり、かつエナジーを所持している場合にそのIDを公開する。
+  /// レーン判定はBattleEngine.scoreEnergy側の検証と一致させる。
+  void _updateScoreTarget() {
+    final self = _selfToken;
+    final team = _selfTeam;
+    final lane = _selfLane;
+    if (self == null || !self.isAlive || team == null || lane == null) {
+      scoreTargetId.value = null;
+      _refreshGoalTokenHighlights(null);
+      return;
+    }
+
+    if (selfEnergy.value <= 0) {
+      scoreTargetId.value = null;
+      _refreshGoalTokenHighlights(null);
+      return;
+    }
+
+    final enemyGoalId = GoalZone(team: team == 0 ? 1 : 0, lane: lane).id;
+    final goalToken = _goalTokens[enemyGoalId];
+    if (goalToken == null) {
+      scoreTargetId.value = null;
+      _refreshGoalTokenHighlights(null);
+      return;
+    }
+
+    final dist = _gridDistance(goalToken.position, self.position);
+    if (dist <= _scoreRangeGrid) {
+      scoreTargetId.value = enemyGoalId;
+      _refreshGoalTokenHighlights(enemyGoalId);
+    } else {
+      scoreTargetId.value = null;
+      _refreshGoalTokenHighlights(null);
+    }
+  }
+
+  void _refreshGoalTokenHighlights(String? scorableId) {
+    for (final entry in _goalTokens.entries) {
+      entry.value.isScorable = entry.key == scorableId;
+    }
+  }
+
   /// ミニマップ表示用のエントリ一覧を再構築する。プレイヤー・モンスター双方の
   /// 同期処理の後に呼び出し、常に最新の位置を反映する。
   void _rebuildMinimap() {
@@ -431,9 +491,36 @@ class BattlefieldGame extends FlameGame {
     }
   }
 
+  /// ゴールゾーン（Pokémon UNITE風のスコア投入先）を遅延生成する。位置は固定で
+  /// BattleEngineのエンジン状態とは独立しているため、他のトークンと同様
+  /// （MechaToken/JungleMonsterTokenのputIfAbsentパターン）初回sync()時に一度だけ
+  /// 生成すればよい。onLoad()内で生成すると、onLoad()を呼ばない単体テスト環境
+  /// （BattlefieldGame()を直接newして使うテスト）でゴールゾーンが一切存在しない
+  /// ことになるため、他のトークン生成と同じタイミング（sync呼び出し時）に揃える。
+  void _ensureGoalZones() {
+    if (_goalTokens.isNotEmpty) return;
+    for (var team = 0; team < 2; team++) {
+      for (var lane = 0; lane < AppConfig.teamsCount; lane++) {
+        final gridX = _goalGridXByTeam[team]!;
+        final gridY = _laneCenterYs[lane];
+        final screenPos = _projection.toScreen(gridX, gridY);
+        final id = GoalZone(team: team, lane: lane).id;
+        final token = GoalZoneToken(
+          team: team,
+          lane: lane,
+          basePosition: screenPos,
+          color: _goalColorByTeam[team]!,
+        )..priority = -850; // レーン地面より手前・キャラより奥
+        _goalTokens[id] = token;
+        world.add(token);
+      }
+    }
+  }
+
   /// バトルエンジンの参加者一覧を反映する。tick 毎に呼んでよい（位置は初回のみ確定）。
   void sync(List<BattleParticipantState> participants) {
     _renderingStats.reset(); // フレーム開始時に統計をリセット
+    _ensureGoalZones();
     final slotIndexByLaneTeam = <String, int>{};
     int visibleCount = 0;
 
@@ -466,9 +553,17 @@ class BattlefieldGame extends FlameGame {
               // 奥（画面上=Y小）ほど先に描き、手前（Y大）を上に重ねる正しい前後関係
               ..priority = screenPos.y.round();
         world.add(newToken);
-        if (p.isSelf) _selfToken = newToken;
+        if (p.isSelf) {
+          _selfToken = newToken;
+          _selfTeam = p.team;
+          _selfLane = p.lane;
+        }
         return newToken;
       });
+
+      if (p.isSelf) {
+        selfEnergy.value = p.energy;
+      }
 
       final wasAlive = token.isAlive;
       token.setAlive(p.isAlive);

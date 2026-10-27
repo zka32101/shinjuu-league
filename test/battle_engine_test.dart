@@ -118,6 +118,152 @@ void main() {
     });
   });
 
+  group('BattleEngine ゴールスコアリング（Pokémon UNITE風）', () {
+    test('撃破でエナジーを獲得し、上限でクランプされる', () {
+      // hp は極端に高くしておく（撃破されるとエナジーを失う仕様があるため、
+      // 7キル分のエナジーが貯まりきる前に自分が死んでしまうと検証が不安定になる）
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 999999, atk: 9999, spd: 40),
+      );
+      final enemies = List.generate(
+        8,
+        (i) => _participant(userId: 'enemy_$i', team: 1),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_energy_cap',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, ...enemies],
+        random: Random(1),
+      );
+
+      for (var i = 0; i < 500 && self.kills < 7; i++) {
+        engine.tick();
+      }
+      engine.dispose();
+
+      expect(self.kills, greaterThanOrEqualTo(7));
+      expect(self.energy, BattleEngine.maxCarriedEnergy);
+    });
+
+    test('ゴールゾーンへ投入するとチームスコアに変換され、所持エナジーはリセットされる', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final enemy = _participant(userId: 'enemy_1', team: 1);
+      final engine = BattleEngine(
+        battleId: 'test_score',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      self.energy = 15;
+
+      ScoreEvent? received;
+      engine.scoreEvents.listen((event) => received = event);
+
+      final scored = engine.scoreEnergy('self', 'goal_team1_lane0');
+
+      expect(scored, isTrue);
+      expect(self.energy, 0);
+      expect(engine.teamScores[0], 15);
+      expect(received, isNotNull);
+      expect(received!.pointsScored, 15);
+      engine.dispose();
+    });
+
+    test('エナジーが0の場合は投入できない', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'test_score_empty',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      expect(engine.scoreEnergy('self', 'goal_team1_lane0'), isFalse);
+      engine.dispose();
+    });
+
+    test('自陣のゴールには投入できない', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'test_score_own_goal',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+      self.energy = 10;
+
+      expect(engine.scoreEnergy('self', 'goal_team0_lane0'), isFalse);
+      expect(self.energy, 10);
+      engine.dispose();
+    });
+
+    test('レーンが異なるゴールには投入できない（2レーン制の設計を守る）', () {
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      final engine = BattleEngine(
+        battleId: 'test_score_wrong_lane',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+      self.energy = 10;
+
+      expect(engine.scoreEnergy('self', 'goal_team1_lane1'), isFalse);
+      expect(self.energy, 10);
+      engine.dispose();
+    });
+
+    test('撃破されると未投入のエナジーは失われる', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 1, atk: 0, spd: 40),
+      );
+      final enemy = _participant(
+        userId: 'enemy_1',
+        team: 1,
+        stats: BaseStats(hp: 100, atk: 9999, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_energy_loss_on_death',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+      self.energy = 20;
+
+      engine.manualDuel('enemy_1', 'self');
+
+      expect(self.isAlive, isFalse);
+      expect(self.energy, 0);
+      engine.dispose();
+    });
+
+    test('チームスコアが同点でなければ撃破数ではなくゴールスコアで勝敗が決まる', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      final enemy = _participant(userId: 'enemy_1', team: 1);
+      // 撃破数では self チームが優勢だが、ゴールスコアは enemy チームが優勢
+      self.kills = 10;
+      final engine = BattleEngine(
+        battleId: 'test_score_overrides_kills',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+      enemy.energy = 5;
+      engine.scoreEnergy('enemy_1', 'goal_team0_lane0');
+
+      expect(engine.resultForUser('self'), BattleResult.loss);
+      expect(engine.resultForUser('enemy_1'), BattleResult.win);
+      engine.dispose();
+    });
+  });
+
   group('BattleEngine.manualDuel（プレイヤー手動攻撃）', () {
     test('敵チームへの手動攻撃は成功しCombatEventが発火する', () {
       final self = _participant(

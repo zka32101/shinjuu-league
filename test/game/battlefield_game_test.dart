@@ -74,6 +74,56 @@ void main() {
     });
   });
 
+  group('BattlefieldGame ゴールゾーンのスコア投入対象検出', () {
+    test('エナジーを所持していても敵ゴールゾーンから離れていればnull', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      self.energy = 10;
+
+      game.sync([self]);
+      game.update(0.2);
+
+      expect(game.scoreTargetId.value, isNull);
+    });
+
+    test('敵ゴールゾーンの射程内でもエナジーが0ならnull', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+
+      game.sync([self]);
+      // team0のレーン0敵ゴール（team1が守る）はgridX=2.1付近
+      game.debugSetSelfGridPosition(2.1, -1.8);
+      game.update(0.2);
+
+      expect(game.scoreTargetId.value, isNull);
+    });
+
+    test('敵ゴールゾーンの射程内でエナジーを所持していれば検出する', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      self.energy = 10;
+
+      game.sync([self]);
+      game.debugSetSelfGridPosition(2.1, -1.8);
+      game.update(0.2);
+
+      expect(game.scoreTargetId.value, 'goal_team1_lane0');
+    });
+
+    test('自陣ゴールゾーンの近くでは検出しない（投入先は常に敵ゴール）', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      self.energy = 10;
+
+      game.sync([self]);
+      // team0自身のゴール（gridX=-2.1）の真横まで移動
+      game.debugSetSelfGridPosition(-2.1, -1.8);
+      game.update(0.2);
+
+      expect(game.scoreTargetId.value, isNull);
+    });
+  });
+
   group('BattlefieldGame ステージテーマ', () {
     test('mapId未指定時はデフォルトステージの配色になる', () {
       final game = BattlefieldGame();

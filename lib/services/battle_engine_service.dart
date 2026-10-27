@@ -70,6 +70,34 @@ class MonsterEvent {
   });
 }
 
+/// ゴールゾーン（Pokémon UNITE風のスコア投入ギミック）。
+/// `team` はこのゾーンを「守る」側のチーム — 相手チームの選手がここへ
+/// エナジーを投入してスコアを稼ぐ（自陣のゴールには投入できない）。
+/// レーンごとに自陣寄りへ1つずつ配置する（既存の2レーン制設計を踏襲）。
+class GoalZone {
+  final int team;
+  final int lane;
+
+  const GoalZone({required this.team, required this.lane});
+
+  String get id => 'goal_team${team}_lane$lane';
+}
+
+/// プレイヤーがゴールゾーンへエナジーを投入した際のイベント（UI演出・SE用）。
+class ScoreEvent {
+  final String scorerId;
+  final int team;
+  final int pointsScored;
+  final int tickSecond;
+
+  ScoreEvent({
+    required this.scorerId,
+    required this.team,
+    required this.pointsScored,
+    required this.tickSecond,
+  });
+}
+
 class BattleParticipantState {
   final String userId;
   final String mechaId;
@@ -109,6 +137,11 @@ class BattleParticipantState {
   // ジャングルモンスター討伐で得られる一時的な攻撃バフ
   double jungleBuffMultiplier = 1.0;
   int jungleBuffExpiresAtSecond = 0;
+
+  // Pokémon UNITE風のスコアリング：撃破/モンスター討伐で貯まり、
+  // ゴールゾーンへ投入するとチームスコアに変換されてリセットされる
+  // （道中で撃破されるとエナジーは失われる — UNITE本家と同じ緊張感）。
+  int energy = 0;
 
   BattleParticipantState({
     required this.userId,
@@ -225,6 +258,11 @@ class BattleEngine {
   static const _monsterBuffMultiplier = 1.3;
   static const _monsterBuffDurationSeconds = 20;
 
+  // ゴールスコアリング関連の定数（Pokémon UNITE風）
+  static const maxCarriedEnergy = 30;
+  static const _energyPerKill = 5;
+  static const _energyPerMonsterKill = 10;
+
   final String battleId;
   final BattleMode mode;
   final String mapId;
@@ -234,6 +272,12 @@ class BattleEngine {
 
   /// レーンごとに1体配置される中立モンスター（討伐でゴール+一時攻撃バフ）
   late final List<JungleMonster> jungleMonsters;
+
+  /// チームごとに1つずつ、レーン分のゴールゾーン（守備側チーム×レーン数）
+  late final List<GoalZone> goalZones;
+
+  /// チーム合計スコア（ゴール投入で加算される、Pokémon UNITE風の本当の勝敗基準）。
+  final Map<int, int> teamScores = {0: 0, 1: 0};
 
   BattleEngine({
     required this.battleId,
@@ -250,6 +294,11 @@ class BattleEngine {
       (lane) =>
           JungleMonster(id: 'jungle_$lane', lane: lane, maxHp: _monsterMaxHp),
     );
+    goalZones = [
+      for (var team = 0; team < 2; team++)
+        for (var lane = 0; lane < AppConfig.teamsCount; lane++)
+          GoalZone(team: team, lane: lane),
+    ];
   }
 
   final Random _random;
@@ -268,12 +317,15 @@ class BattleEngine {
   final _monsterController = StreamController<MonsterEvent>.broadcast(
     sync: true,
   );
+  // ゴールゾーンへのスコア投入イベント
+  final _scoreController = StreamController<ScoreEvent>.broadcast(sync: true);
 
   Stream<CombatEvent> get combatEvents => _combatController.stream;
   Stream<int> get onTick => _tickController.stream;
   Stream<CombatEvent> get hitEvents => _hitController.stream;
   Stream<DamageEvent> get damageEvents => _damageController.stream;
   Stream<MonsterEvent> get monsterEvents => _monsterController.stream;
+  Stream<ScoreEvent> get scoreEvents => _scoreController.stream;
 
   bool get isRunning => _isRunning;
   int get elapsedSeconds => _elapsedSeconds;
@@ -353,6 +405,7 @@ class BattleEngine {
     _hitController.close();
     _damageController.close();
     _monsterController.close();
+    _scoreController.close();
   }
 
   /// 1秒分のシミュレーションを進める。Timer.periodic から呼ばれる他、
@@ -448,6 +501,10 @@ class BattleEngine {
       attacker.jungleBuffMultiplier = _monsterBuffMultiplier;
       attacker.jungleBuffExpiresAtSecond =
           _elapsedSeconds + _monsterBuffDurationSeconds;
+      attacker.energy = (attacker.energy + _energyPerMonsterKill).clamp(
+        0,
+        maxCarriedEnergy,
+      );
 
       _monsterController.add(
         MonsterEvent(
@@ -656,6 +713,13 @@ class BattleEngine {
       defender.deaths++;
       defender.isAlive = false;
       defender.respawnAtSecond = _elapsedSeconds + _respawnDelaySeconds;
+      attacker.energy = (attacker.energy + _energyPerKill).clamp(
+        0,
+        maxCarriedEnergy,
+      );
+      // 撃破されると未投入のエナジーは失われる（UNITE本家と同じ緊張感：
+      // ゴールへ投入せず歩き回るほどリスクが積み上がる）
+      defender.energy = 0;
 
       _combatController.add(
         CombatEvent(
@@ -734,9 +798,54 @@ class BattleEngine {
     return hitAny;
   }
 
-  /// チーム合計スコアで勝敗判定。同点は引き分けなしのランダム決着（MOBAは必ず勝敗をつける）。
+  /// プレイヤーが自陣寄りの射程内にいる「敵チームが守るゴールゾーン」へ
+  /// 所持エナジーを投入する（Pokémon UNITE風の得点ギミック）。範囲判定は
+  /// BattlefieldGame側が担当し、ここではチーム・レーン・生死・所持エナジーの
+  /// 検証と実際のスコア加算のみを行う（manualDuel/manualSkillと同じ分担）。
+  /// 自陣のゴール（`zone.team == attacker.team`）には投入できない。
+  bool scoreEnergy(String attackerId, String goalZoneId) {
+    final attacker = participants
+        .where((p) => p.userId == attackerId)
+        .firstOrNull;
+    if (attacker == null || !attacker.isAlive) return false;
+    if (attacker.energy <= 0) return false;
+
+    final zone = goalZones.where((z) => z.id == goalZoneId).firstOrNull;
+    if (zone == null) return false;
+    if (zone.team == attacker.team) return false; // 自陣ゴールには投入不可
+    if (zone.lane != attacker.lane) return false;
+
+    final pointsScored = attacker.energy;
+    teamScores[attacker.team] = (teamScores[attacker.team] ?? 0) + pointsScored;
+    attacker.energy = 0;
+
+    _scoreController.add(
+      ScoreEvent(
+        scorerId: attackerId,
+        team: attacker.team,
+        pointsScored: pointsScored,
+        tickSecond: _elapsedSeconds,
+      ),
+    );
+    return true;
+  }
+
+  /// 勝敗判定はチームスコア（ゴール投入で獲得したポイント）が基準
+  /// （Pokémon UNITE本家と同じ「撃破数そのものではなく得点」の設計）。
+  /// スコアが同点の場合のみ、従来の撃破数ベースのスコア（kills*3+assists-deaths）を
+  /// タイブレークとして使用し、それでも同点なら引き分けなしのランダム決着とする。
   BattleResult resultForUser(String userId) {
     final participant = participants.firstWhere((p) => p.userId == userId);
+    final opponentTeam = participant.team == 0 ? 1 : 0;
+    final ownTeamScore = teamScores[participant.team] ?? 0;
+    final enemyTeamScore = teamScores[opponentTeam] ?? 0;
+
+    if (ownTeamScore != enemyTeamScore) {
+      return ownTeamScore > enemyTeamScore
+          ? BattleResult.win
+          : BattleResult.loss;
+    }
+
     final ownScore = participants
         .where((p) => p.team == participant.team)
         .fold<int>(0, (s, p) => s + p.score);

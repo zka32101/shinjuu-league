@@ -990,6 +990,30 @@ Cloud Functionsテストスイート133件（既存129件+新規4件）全通過
 
 **既知のTODO**: SendGrid APIキー（`SENDGRID_API_KEY`環境変数）は依然未設定のため、本番投入時もメール送信自体はモック実装（ログ出力のみ、実際には配送されない）のまま。実送信を有効化するには`functions/src/email-delivery.ts`内のコメントアウトされた`@sendgrid/mail`実装を有効化し、Firebase Functions環境変数を設定する必要がある（これは今回のバグ修正のスコープ外、既存の既知の制約）。
 
+### ゴールゾーン+エナジー投入システムの実装（2026-10-27, Sonnet実装）
+
+ユーザーから「目標はポケモンユナイト」と念押しされ、現状とのギャップを棚卸し。ジョイスティック移動・スキル発動・ジャングルモンスター・HP削り合い・マップ徘徊は既に実装済みだったが、**UNITE最大の核心ギミックである「ゴールゾーンへのスコア投入」が存在せず、勝敗判定も撃破数ベースのスコア（kills*3+assists-deaths）のまま**という、見た目はUNITE風でも仕組みの根幹は普通のMOBAという状態だった。ユーザーに確認の上、このギャップを最優先で埋めることを選択。
+
+**設計**: 撃破/モンスター討伐で「エナジー」を獲得→上限まで貯める→自陣から離れた敵チームの守るゴールゾーンへ接近して投入するとチームスコアに変換される、というUNITE本家の循環を実装。道中で撃破されると未投入のエナジーは失われる（UNITE本家と同じ「リスクを背負って運ぶ」緊張感）。勝敗判定もチームスコア基準に変更（同点時のみ従来の撃破数ベースをタイブレークとして使用）。
+
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart) — シミュレーションの正（既存の「BattlefieldGameは描画専用」原則を踏襲）
+  - `GoalZone`（守備側team×lane、4ゾーン）・`ScoreEvent`（投入イベント）を新設
+  - `BattleParticipantState.energy`（所持エナジー、上限30）を追加。撃破で+5、モンスター討伐で+10、撃破されると0にリセット
+  - `scoreEnergy(attackerId, goalZoneId)`: 生存中・エナジー所持・自陣ゴールでない・同レーンの検証後、`teamScores[team]`に加算してエナジーをリセット。`manualDuel`/`manualSkill`と同じ「UI側が範囲判定、エンジン側がチーム/レーン/生死を検証」という責務分担を踏襲
+  - `resultForUser()`: チームスコア比較を勝敗の主基準に変更、同点時のみ従来の撃破数ベーススコアでタイブレーク
+
+- [lib/game/goal_zone_token.dart](lib/game/goal_zone_token.dart)（新規）: ゴールゾーンの描画（チームカラーの二重リング、投入可能時は強調表示+脈動）。位置は固定でBattleEngineの状態を持たない
+- [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart): `scoreTargetId`/`selfEnergy`の`ValueNotifier`を追加。`_updateScoreTarget()`で自キャラの射程内・自レーンの敵ゴールゾーンを検出（既存の`_gridDistance`グリッド空間判定を再利用、等角投影の歪みを除去）。ゴールゾーンは他のトークンと同じ`putIfAbsent`パターンで`sync()`時に遅延生成（**実装中に発見**: 当初`onLoad()`内で生成していたが、`onLoad()`を呼ばない単体テスト環境ではゴールゾーンが一切存在しないことになり、スコア投入対象検出テストが常に失敗する実装ミスだった）
+- [lib/viewmodels/battle_viewmodel.dart](lib/viewmodels/battle_viewmodel.dart): `BattleState.scoreFeed`追加、`attemptScoreEnergy(goalZoneId)`を新設（`attemptManualAttack`と異なりクールダウン管理不要 — 成功すると即座にエナジーが0になり連投が自然に無意味になるため）
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart): 画面上部中央にチームスコア表示（`自軍スコア - 敵軍スコア`）、左上スタッツに「エナジー」チップ追加、投入可能時のみ浮かび上がる専用のスコア投入ボタン（金色、攻撃/スキルクラスタとは別配置）を追加。自分が投入した瞬間はAha Momentと同じハプティクス+SEを再生
+
+- [test/battle_engine_test.dart](test/battle_engine_test.dart): 新規`group`「ゴールスコアリング」（7テスト）: エナジー獲得と上限クランプ、投入による変換とリセット、所持0/自陣ゴール/異レーンでの投入拒否、撃破によるエナジー喪失、チームスコアが撃破数より優先される勝敗判定
+- [test/game/battlefield_game_test.dart](test/game/battlefield_game_test.dart): 新規`group`「ゴールゾーンのスコア投入対象検出」（4テスト）
+
+フルスイート2295件（既存2284件+新規11件）全通過。`flutter analyze`はプロジェクト全体でエラー0件（既存の軽微なinfo/warningのみ）。
+
+**既知のTODO**: ゴールゾーンの視覚的な迫力（投入時の演出：UNITE本家のような弾道アニメーション・派手なバースト等）は未着手、現状は地味なリング表示+ハプティクス+SEのみ。エナジー上限30・1キル+5・モンスター+10という数値バランスは初期値で、実プレイ感に応じた調整余地あり。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

@@ -43,6 +43,8 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
   void dispose() {
     _game.attackTargetId.dispose();
     _game.minimapEntries.dispose();
+    _game.scoreTargetId.dispose();
+    _game.selfEnergy.dispose();
     // バトル画面を離れるときはBGMを停止
     AudioService().stopBgm();
     super.dispose();
@@ -251,6 +253,17 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
         }
       }
 
+      // ゴールゾーンへのスコア投入：自分の投入時はハプティクス+SEを鳴らす
+      // （視覚フィードバックはチームスコア表示自体が即座に更新されることで賄う）
+      final prevScoreCount = previous?.scoreFeed.length ?? 0;
+      if (next.scoreFeed.length > prevScoreCount) {
+        final newScores = next.scoreFeed.sublist(prevScoreCount);
+        if (selfId != null && newScores.any((e) => e.scorerId == selfId)) {
+          HapticService.onAhaMoment();
+          AudioService().playAhaMomentSe();
+        }
+      }
+
       // ダメージ数値表示＋音響フィードバック
       final prevDamageCount = previous?.damageEvents.length ?? 0;
       if (next.damageEvents.length > prevDamageCount) {
@@ -398,7 +411,42 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                         ),
                         const SizedBox(width: 10),
                         _StatChip(label: 'スコア', value: '${selfParticipant.score}'),
+                        const SizedBox(width: 10),
+                        _StatChip(
+                          label: 'エナジー',
+                          value:
+                              '${selfParticipant.energy}/${BattleEngine.maxCarriedEnergy}',
+                        ),
                       ],
+                    ),
+                  ),
+                ),
+                // チーム合計スコア（Pokémon UNITE本家と同じ、本当の勝敗基準となる
+                // ゴール投入ポイント）を画面上部中央に常時表示する
+                Positioned(
+                  top: 12,
+                  left: 0,
+                  right: 0,
+                  child: Center(
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 6,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.45),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        '${engine.teamScores[selfParticipant.team] ?? 0}'
+                        '  -  '
+                        '${engine.teamScores[selfParticipant.team == 0 ? 1 : 0] ?? 0}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -493,6 +541,58 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                         skillCooldownRemaining: state.skillCooldownRemaining,
                         skillCooldownMax: BattleViewModel.manualSkillCooldownSeconds,
                         onSkillTap: () => _onSkillTap(state.skillBuild!.skillId1),
+                      );
+                    },
+                  ),
+                ),
+                // スコア投入ボタン：自陣寄りの敵ゴールゾーン射程内＋エナジー所持中のみ
+                // 出現する（Pokémon UNITE風、撃破だけでなくゴール投入が本当の目的）
+                Positioned(
+                  right: 100,
+                  bottom: 100,
+                  child: ValueListenableBuilder<String?>(
+                    valueListenable: _game.scoreTargetId,
+                    builder: (context, goalZoneId, _) {
+                      final canScore = goalZoneId != null;
+                      return GestureDetector(
+                        onTap: canScore
+                            ? () {
+                                HapticService.onButtonTap();
+                                final scored = ref
+                                    .read(battleViewModelProvider.notifier)
+                                    .attemptScoreEnergy(goalZoneId);
+                                if (scored) {
+                                  HapticService.onKill();
+                                  AudioService().playKillSe();
+                                }
+                              }
+                            : null,
+                        child: AnimatedOpacity(
+                          opacity: canScore ? 1.0 : 0.0,
+                          duration: const Duration(milliseconds: 150),
+                          child: Container(
+                            width: 56,
+                            height: 56,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFFFFD700),
+                              boxShadow: canScore
+                                  ? const [
+                                      BoxShadow(
+                                        color: Color(0x99FFD700),
+                                        blurRadius: 14,
+                                        spreadRadius: 2,
+                                      ),
+                                    ]
+                                  : null,
+                            ),
+                            child: const Icon(
+                              Icons.sports_score,
+                              color: Colors.black87,
+                              size: 28,
+                            ),
+                          ),
+                        ),
                       );
                     },
                   ),
