@@ -1,3 +1,24 @@
+/// Pokémon UNITE的なロール区分。単なるフレーバーではなく、
+/// BattleEngine.manualSkill()がこの値で分岐し実際に異なる挙動を取る
+/// （defender=自己シールド、supporter=自己+味方回復、その他=従来通りの範囲攻撃）。
+enum MechaRole { attacker, defender, speedster, supporter, allRounder }
+
+MechaRole mechaRoleFromString(String? value) {
+  switch (value) {
+    case 'defender':
+      return MechaRole.defender;
+    case 'speedster':
+      return MechaRole.speedster;
+    case 'supporter':
+      return MechaRole.supporter;
+    case 'allRounder':
+      return MechaRole.allRounder;
+    case 'attacker':
+    default:
+      return MechaRole.attacker;
+  }
+}
+
 class BaseStats {
   final int hp;
   final int atk;
@@ -51,6 +72,7 @@ class Mecha {
   final String name;
   final String rarity; // COMMON, RARE, EPIC, LEGEND
   final String origin; // EAST or WEST
+  final MechaRole role;
   final BaseStats baseStats;
   final String iconUrl;
   final List<Skin> skins;
@@ -61,6 +83,7 @@ class Mecha {
     required this.name,
     required this.rarity,
     required this.origin,
+    this.role = MechaRole.attacker,
     required this.baseStats,
     required this.iconUrl,
     required this.skins,
@@ -72,6 +95,7 @@ class Mecha {
     String? name,
     String? rarity,
     String? origin,
+    MechaRole? role,
     BaseStats? baseStats,
     String? iconUrl,
     List<Skin>? skins,
@@ -82,6 +106,7 @@ class Mecha {
       name: name ?? this.name,
       rarity: rarity ?? this.rarity,
       origin: origin ?? this.origin,
+      role: role ?? this.role,
       baseStats: baseStats ?? this.baseStats,
       iconUrl: iconUrl ?? this.iconUrl,
       skins: skins ?? this.skins,
@@ -95,6 +120,7 @@ class Mecha {
       name: json['name'] as String,
       rarity: json['rarity'] as String? ?? 'COMMON',
       origin: json['origin'] as String? ?? 'EAST',
+      role: mechaRoleFromString(json['role'] as String?),
       baseStats: json['baseStats'] != null
           ? BaseStats.fromJson(json['baseStats'] as Map<String, dynamic>)
           : BaseStats(hp: 100, atk: 50, spd: 40),
@@ -113,6 +139,7 @@ class Mecha {
     'name': name,
     'rarity': rarity,
     'origin': origin,
+    'role': role.name,
     'baseStats': baseStats.toJson(),
     'iconUrl': iconUrl,
     'skins': skins.map((s) => s.toJson()).toList(),

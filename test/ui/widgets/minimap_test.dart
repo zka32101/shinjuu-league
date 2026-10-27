@@ -46,6 +46,31 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets('activePingが設定されていると絵文字+ラベルの吹き出しを表示する', (
+      tester,
+    ) async {
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: Minimap(
+              entries: [],
+              activePing: MinimapPing(type: PingType.help, x: 0.0, y: 0.0),
+            ),
+          ),
+        ),
+      );
+
+      expect(find.textContaining(PingType.help.label), findsOneWidget);
+    });
+
+    testWidgets('activePingがnullなら吹き出しを表示しない', (tester) async {
+      await tester.pumpWidget(
+        const MaterialApp(home: Scaffold(body: Minimap(entries: []))),
+      );
+
+      expect(find.textContaining('助けて'), findsNothing);
+    });
+
     testWidgets('sizeパラメータで表示サイズを変更できる', (tester) async {
       await tester.pumpWidget(
         const MaterialApp(

@@ -280,6 +280,8 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
                         ),
                       ),
                       const SizedBox(height: 16),
+                      _DetailedStatsCard(stats: selfStats),
+                      const SizedBox(height: 16),
                       // Newly unlocked achievements
                       Consumer(
                         builder: (context, ref, child) {
@@ -360,6 +362,100 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
           ),
         ),
       ),
+    );
+  }
+}
+
+/// 試合後の詳細スタッツ（ダメージ量/被ダメ量/ゴール投入量/モンスター討伐数）。
+/// 従来のK/D/スコアだけでは見えない「何に貢献したか」を見せる
+/// （UNITE本家の試合後詳細画面に近づける）。
+class _DetailedStatsCard extends StatelessWidget {
+  const _DetailedStatsCard({required this.stats});
+  final PlayerStats stats;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              '試合の詳細',
+              style: Theme.of(
+                context,
+              ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _DetailedStatRow(
+                    icon: Icons.local_fire_department,
+                    label: '与ダメージ',
+                    value: '${stats.damageDealt}',
+                  ),
+                ),
+                Expanded(
+                  child: _DetailedStatRow(
+                    icon: Icons.shield_outlined,
+                    label: '被ダメージ',
+                    value: '${stats.damageTaken}',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _DetailedStatRow(
+                    icon: Icons.flag,
+                    label: 'ゴール投入量',
+                    value: '${stats.energyScored}',
+                  ),
+                ),
+                Expanded(
+                  child: _DetailedStatRow(
+                    icon: Icons.pets,
+                    label: 'モンスター討伐',
+                    value: '${stats.monsterKills}',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailedStatRow extends StatelessWidget {
+  const _DetailedStatRow({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+  final IconData icon;
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Icon(icon, size: 18, color: Colors.grey),
+        const SizedBox(width: 6),
+        Expanded(
+          child: Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
+        ),
+        Text(
+          value,
+          style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold),
+        ),
+      ],
     );
   }
 }

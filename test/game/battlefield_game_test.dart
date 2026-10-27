@@ -3,6 +3,7 @@ import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/data/stage_catalog.dart';
 import 'package:shinjuu_league/game/battlefield_game.dart';
 import 'package:shinjuu_league/services/battle_engine_service.dart';
+import 'package:shinjuu_league/ui/widgets/minimap.dart';
 
 BattleParticipantState _participant({
   required String userId,
@@ -249,6 +250,57 @@ void main() {
       // 出撃地点は自陣/敵陣で離れているため、復活直後は射程外に戻るはず
       expect(approachedNearby, isTrue, reason: '徘徊によって近づいたことの前提が崩れている');
       expect(game.enemiesWithinSkillRadius(), isEmpty);
+    });
+  });
+
+  group('BattlefieldGame チームピング', () {
+    test('sendPing() は自キャラの現在位置にactivePingを設定する', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      game.sync([self]);
+
+      expect(game.activePing.value, isNull);
+
+      game.sendPing(PingType.help);
+
+      expect(game.activePing.value, isNotNull);
+      expect(game.activePing.value!.type, PingType.help);
+    });
+
+    test('sendPing() は自キャラが存在しない場合は安全にno-op', () {
+      final game = BattlefieldGame();
+
+      expect(() => game.sendPing(PingType.attacking), returnsNormally);
+      expect(game.activePing.value, isNull);
+    });
+
+    test('ピングは表示時間（3秒）を超えたフレームでactivePingから消える', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      game.sync([self]);
+
+      game.sendPing(PingType.retreat);
+      expect(game.activePing.value, isNotNull);
+
+      game.update(2.9);
+      expect(game.activePing.value, isNotNull);
+
+      game.update(0.2); // 合計3.1秒で失効
+      expect(game.activePing.value, isNull);
+    });
+
+    test('新しいピングを送ると表示時間がリセットされる', () {
+      final game = BattlefieldGame();
+      final self = _participant(userId: 'self', team: 0, lane: 0, isSelf: true);
+      game.sync([self]);
+
+      game.sendPing(PingType.help);
+      game.update(2.9);
+      game.sendPing(PingType.attacking); // ここで残り時間がリセットされる
+
+      game.update(2.9);
+      expect(game.activePing.value, isNotNull);
+      expect(game.activePing.value!.type, PingType.attacking);
     });
   });
 }

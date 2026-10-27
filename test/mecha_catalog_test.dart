@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:shinjuu_league/data/mecha_catalog.dart';
+import 'package:shinjuu_league/data/models/mecha_model.dart';
 
 const _validRarities = {'COMMON', 'RARE', 'EPIC', 'LEGEND'};
 const _validOrigins = {'EAST', 'WEST'};
@@ -54,5 +55,15 @@ void main() {
       final mecha = mechaById(mechaCatalog.last.mechaId);
       expect(mecha.mechaId, mechaCatalog.last.mechaId);
     });
+
+    test(
+      'defender/supporterロールが少なくとも1体ずつ実在する'
+      '（manualSkillの分岐が実際に使われることの前提）',
+      () {
+        final roles = mechaCatalog.map((m) => m.role).toSet();
+        expect(roles, contains(MechaRole.defender));
+        expect(roles, contains(MechaRole.supporter));
+      },
+    );
   });
 }

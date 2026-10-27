@@ -9,6 +9,22 @@ import 'package:shinjuu_league/data/models/mecha_model.dart';
 import 'package:shinjuu_league/data/providers/service_providers.dart';
 import 'package:shinjuu_league/game/mecha_glyph.dart';
 
+/// ロールの日本語表示名（UNITE風のロール区分をユーザーに伝える）。
+String mechaRoleLabel(MechaRole role) {
+  switch (role) {
+    case MechaRole.attacker:
+      return 'アタッカー';
+    case MechaRole.defender:
+      return 'ディフェンダー';
+    case MechaRole.speedster:
+      return 'スピードスター';
+    case MechaRole.supporter:
+      return 'サポーター';
+    case MechaRole.allRounder:
+      return 'オールラウンダー';
+  }
+}
+
 class MechaSelectScreen extends ConsumerWidget {
   const MechaSelectScreen({super.key});
 
@@ -125,6 +141,15 @@ class _MechaCard extends StatelessWidget {
                 style: const TextStyle(
                   fontWeight: FontWeight.bold,
                   fontSize: 16,
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                mechaRoleLabel(mecha.role),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w600,
+                  color: Theme.of(context).colorScheme.primary,
                 ),
               ),
               const SizedBox(height: 4),

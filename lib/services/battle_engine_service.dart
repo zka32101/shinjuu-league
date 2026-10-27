@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:shinjuu_league/config/app_config.dart';
+import 'package:shinjuu_league/data/mecha_catalog.dart';
 import 'package:shinjuu_league/config/skill_progression_config.dart';
 import 'package:shinjuu_league/data/models/battle_model.dart';
 import 'package:shinjuu_league/data/models/evolution_model.dart';
@@ -144,9 +145,20 @@ class BattleParticipantState {
   late double currentHp;
   int totalGoldEarned = 0; // 試合中のゴール累計
 
+  // 詳細な試合後スタッツ画面用の累計値（result_screen.dartで表示）
+  int totalDamageDealt = 0;
+  int totalDamageTaken = 0;
+  int monsterKillCount = 0;
+  int totalEnergyScored = 0;
+
   // ジャングルモンスター討伐で得られる一時的な攻撃バフ
   double jungleBuffMultiplier = 1.0;
   int jungleBuffExpiresAtSecond = 0;
+
+  // defenderロールのmanualSkillが自身に付与する被ダメ軽減シールド
+  // （_computeDamageのeffectiveDamageに乗算）
+  double shieldMultiplier = 1.0;
+  int shieldExpiresAtSecond = 0;
 
   // Pokémon UNITE風のスコアリング：撃破/モンスター討伐で貯まり、
   // ゴールゾーンへ投入するとチームスコアに変換されてリセットされる
@@ -252,6 +264,10 @@ class BattleParticipantState {
     deaths: deaths,
     assists: assists,
     score: score,
+    damageDealt: totalDamageDealt,
+    damageTaken: totalDamageTaken,
+    monsterKills: monsterKillCount,
+    energyScored: totalEnergyScored,
   );
 }
 
@@ -273,6 +289,11 @@ class BattleEngine {
   static const _wildMonsterRespawnDelaySeconds = 15;
   static const _wildMonsterGoldReward = 20;
   static const _energyPerWildMonsterKill = 3;
+
+  // ロール別スキル（manualSkill）関連の定数
+  static const _skillShieldMultiplier = 0.5; // defender: 被ダメを半減
+  static const _skillShieldDurationSeconds = 5;
+  static const _skillHealAmount = 60.0; // supporter: 自身+同レーン味方を回復
 
   // ゴールスコアリング関連の定数（Pokémon UNITE風）
   static const maxCarriedEnergy = 30;
@@ -479,6 +500,12 @@ class BattleEngine {
           _elapsedSeconds >= p.jungleBuffExpiresAtSecond) {
         p.jungleBuffMultiplier = 1.0;
       }
+
+      // defenderロールのスキルシールドの失効判定
+      if (p.shieldMultiplier != 1.0 &&
+          _elapsedSeconds >= p.shieldExpiresAtSecond) {
+        p.shieldMultiplier = 1.0;
+      }
     }
   }
 
@@ -509,6 +536,7 @@ class BattleEngine {
       0.0,
       double.infinity,
     );
+    attacker.totalDamageDealt += damage.round();
 
     _damageController.add(
       DamageEvent(
@@ -521,6 +549,7 @@ class BattleEngine {
 
     if (monster.currentHp <= 0) {
       monster.isAlive = false;
+      attacker.monsterKillCount++;
       final isWild = monster.tier == JungleMonsterTier.wild;
       final goldReward = isWild ? _wildMonsterGoldReward : _monsterGoldReward;
       final energyReward = isWild
@@ -710,7 +739,9 @@ class BattleEngine {
     // Remote Config の難易度プリセット倍率を適用
     final difficultyModifiers = _progressionConfig.getDifficultyModifiers();
     final effectiveDamage =
-        baseDamage * difficultyModifiers.skillDamageMultiplier;
+        baseDamage *
+        difficultyModifiers.skillDamageMultiplier *
+        defender.shieldMultiplier;
 
     // クリティカル判定：攻撃力 / 600 が基本確率（最大25%）
     final critChance = (attacker.effectiveAtk / 600).clamp(0, 0.25);
@@ -736,6 +767,8 @@ class BattleEngine {
       0.0,
       double.infinity,
     );
+    attacker.totalDamageDealt += damage.round();
+    defender.totalDamageTaken += damage.round();
 
     // ダメージイベント（ダメージ数値表示用、常に emit）
     _damageController.add(
@@ -806,14 +839,45 @@ class BattleEngine {
     return true;
   }
 
-  /// プレイヤーのスキル発動（クールタイム付き範囲攻撃）。指定半径内の敵全員に
-  /// 通常攻撃よりも高い倍率でダメージを与える。範囲判定はBattlefieldGame側が担当。
-  /// manualDuelと同様、レーンをまたいだ対象は除外する。
+  /// プレイヤーのスキル発動。神獣のロールによって挙動が変わる
+  /// （Pokémon UNITE風のロール差別化— 単なるステータス差ではなく実際の
+  /// アクションの質が異なる）：
+  /// - defender: 自身に被ダメ軽減シールドを付与（敵への攻撃は行わない）
+  /// - supporter: 自身+同レーンの生存中の味方を回復（敵への攻撃は行わない）
+  /// - その他（attacker/speedster/allRounder）: 従来通り指定半径内の敵全員に
+  ///   通常攻撃より高い倍率でダメージを与える。範囲判定はBattlefieldGame側が担当。
   bool manualSkill(String attackerId, List<String> targetIdsInRange) {
     final attacker = participants
         .where((p) => p.userId == attackerId)
         .firstOrNull;
     if (attacker == null || !attacker.isAlive) return false;
+
+    final role = mechaById(attacker.mechaId).role;
+
+    if (role == MechaRole.defender) {
+      attacker.shieldMultiplier = _skillShieldMultiplier;
+      attacker.shieldExpiresAtSecond =
+          _elapsedSeconds + _skillShieldDurationSeconds;
+      return true;
+    }
+
+    if (role == MechaRole.supporter) {
+      var healedAny = false;
+      for (final ally in participants) {
+        if (!ally.isAlive ||
+            ally.team != attacker.team ||
+            ally.lane != attacker.lane) {
+          continue;
+        }
+        if (ally.currentHp >= ally.effectiveHp) continue;
+        ally.currentHp = (ally.currentHp + _skillHealAmount).clamp(
+          0.0,
+          ally.effectiveHp,
+        );
+        healedAny = true;
+      }
+      return healedAny;
+    }
 
     var hitAny = false;
     for (final targetId in targetIdsInRange) {
@@ -858,6 +922,7 @@ class BattleEngine {
     final pointsScored = attacker.energy;
     teamScores[attacker.team] = (teamScores[attacker.team] ?? 0) + pointsScored;
     attacker.energy = 0;
+    attacker.totalEnergyScored += pointsScored;
 
     _scoreController.add(
       ScoreEvent(

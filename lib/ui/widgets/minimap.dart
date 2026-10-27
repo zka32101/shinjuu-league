@@ -3,6 +3,47 @@ import 'package:flutter/material.dart';
 /// ミニマップ上の1エントリの種別
 enum MinimapEntryType { self, ally, enemy, monster }
 
+/// チームピング（UNITE風のプリセット合図）の種類。
+/// このゲームは専用マルチプレイサーバーが未構築で、他デバイスへのリアルタイム
+/// 配信は行わない（BattleEngineの設計コメント参照）。そのためピングは
+/// 現状「自分の操作に対する即時フィードバック（視覚+ハプティクス）」としてのみ
+/// 機能し、実際の味方（ボット）には配信されない。将来マルチプレイ化した際に
+/// 配信経路を追加する拡張ポイントとして型だけ先に用意している。
+enum PingType { help, attacking, retreat }
+
+extension PingTypeInfo on PingType {
+  String get emoji {
+    switch (this) {
+      case PingType.help:
+        return '🆘';
+      case PingType.attacking:
+        return '⚔️';
+      case PingType.retreat:
+        return '🏃';
+    }
+  }
+
+  String get label {
+    switch (this) {
+      case PingType.help:
+        return '助けて！';
+      case PingType.attacking:
+        return '攻撃中！';
+      case PingType.retreat:
+        return '撤退！';
+    }
+  }
+}
+
+/// ミニマップ上に一時的に表示するピングマーカー（-1.0〜1.0正規化座標）。
+class MinimapPing {
+  final PingType type;
+  final double x;
+  final double y;
+
+  const MinimapPing({required this.type, required this.x, required this.y});
+}
+
 /// ミニマップに表示する1エントリ（-1.0〜1.0に正規化した座標）
 class MinimapEntry {
   final String id;
@@ -23,10 +64,18 @@ class MinimapEntry {
 /// 戦場全体を俯瞰するミニマップ。自分・味方・敵・中立モンスターの位置を
 /// リアルタイムに表示し、マップ全体を歩き回れるようになった戦況把握を助ける。
 class Minimap extends StatelessWidget {
-  const Minimap({super.key, required this.entries, this.size = 120});
+  const Minimap({
+    super.key,
+    required this.entries,
+    this.size = 120,
+    this.activePing,
+  });
 
   final List<MinimapEntry> entries;
   final double size;
+
+  /// 現在表示中のピングマーカー（期限切れ/未送信ならnull）。
+  final MinimapPing? activePing;
 
   Color _colorFor(MinimapEntryType type, bool isAlive) {
     if (!isAlive) return Colors.grey.withValues(alpha: 0.4);
@@ -70,9 +119,51 @@ class Minimap extends StatelessWidget {
         ],
       ),
       clipBehavior: Clip.antiAlias,
-      child: CustomPaint(
-        size: Size(size, size),
-        painter: _MinimapPainter(entries: entries, colorFor: _colorFor, radiusFor: _radiusFor),
+      child: Stack(
+        children: [
+          CustomPaint(
+            size: Size(size, size),
+            painter: _MinimapPainter(
+              entries: entries,
+              colorFor: _colorFor,
+              radiusFor: _radiusFor,
+            ),
+          ),
+          if (activePing != null) _PingBadge(ping: activePing!, mapSize: size),
+        ],
+      ),
+    );
+  }
+}
+
+/// ピングの絵文字+ラベルを吹き出しとして一時表示する。
+class _PingBadge extends StatelessWidget {
+  const _PingBadge({required this.ping, required this.mapSize});
+
+  final MinimapPing ping;
+  final double mapSize;
+
+  @override
+  Widget build(BuildContext context) {
+    final dx = (ping.x.clamp(-1.0, 1.0) + 1) / 2 * mapSize;
+    final dy = (ping.y.clamp(-1.0, 1.0) + 1) / 2 * mapSize;
+
+    return Positioned(
+      left: (dx - 28).clamp(0.0, mapSize - 56),
+      top: (dy - 34).clamp(0.0, mapSize - 20),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+        decoration: BoxDecoration(
+          color: Colors.black.withValues(alpha: 0.75),
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.amberAccent, width: 1),
+        ),
+        child: Text(
+          '${ping.type.emoji} ${ping.type.label}',
+          style: const TextStyle(fontSize: 9, color: Colors.white),
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+        ),
       ),
     );
   }

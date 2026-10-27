@@ -423,6 +423,122 @@ void main() {
       expect(hitAny, isFalse);
       engine.dispose();
     });
+
+    test(
+      'defenderロール（岩嶽亀）は敵を攻撃せず、自身に被ダメ軽減シールドを付与する',
+      () {
+        final self = _participant(
+          userId: 'self',
+          team: 0,
+          isSelf: true,
+          mechaId: 'mecha_east_stone',
+        );
+        final enemy = _participant(
+          userId: 'enemy_1',
+          team: 1,
+          stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        );
+        final engine = BattleEngine(
+          battleId: 'test_skill_defender',
+          mode: BattleMode.quick,
+          mapId: 'map_test',
+          participants: [self, enemy],
+        );
+
+        final result = engine.manualSkill('self', ['enemy_1']);
+
+        expect(result, isTrue);
+        // 敵へは一切ダメージを与えない（defenderのスキルは攻撃ではない）
+        expect(enemy.isAlive, isTrue);
+        expect(enemy.currentHp, enemy.effectiveHp);
+        expect(self.shieldMultiplier, closeTo(0.5, 0.001));
+
+        // シールド中に受けたダメージは軽減される
+        final noShieldDamage = enemy.effectiveAtk * 0.35;
+        engine.manualDuel('enemy_1', 'self');
+        expect(self.currentHp, greaterThan(self.effectiveHp - noShieldDamage));
+
+        engine.dispose();
+      },
+    );
+
+    test('defenderのシールドは一定時間後に失効する', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        mechaId: 'mecha_east_stone',
+      );
+      final engine = BattleEngine(
+        battleId: 'test_skill_defender_expiry',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      engine.manualSkill('self', []);
+      expect(self.shieldMultiplier, closeTo(0.5, 0.001));
+
+      for (var i = 0; i < 4; i++) {
+        engine.tick();
+      }
+      expect(self.shieldMultiplier, closeTo(0.5, 0.001));
+
+      engine.tick(); // 5 tick目で失効
+      expect(self.shieldMultiplier, 1.0);
+
+      engine.dispose();
+    });
+
+    test(
+      'supporterロール（蒼麟）は敵を攻撃せず、自身+同レーン味方のHPを回復する',
+      () {
+        final self = _participant(
+          userId: 'self',
+          team: 0,
+          lane: 0,
+          isSelf: true,
+          mechaId: 'mecha_west_crystal',
+        );
+        final ally = _participant(
+          userId: 'ally_1',
+          team: 0,
+          lane: 0,
+          stats: BaseStats(hp: 200, atk: 50, spd: 40),
+        )..currentHp = 50;
+        final otherLaneAlly = _participant(
+          userId: 'ally_2',
+          team: 0,
+          lane: 1,
+          stats: BaseStats(hp: 200, atk: 50, spd: 40),
+        )..currentHp = 50;
+        final enemy = _participant(
+          userId: 'enemy_1',
+          team: 1,
+          lane: 0,
+          stats: BaseStats(hp: 100, atk: 50, spd: 40),
+        );
+        final engine = BattleEngine(
+          battleId: 'test_skill_supporter',
+          mode: BattleMode.quick,
+          mapId: 'map_test',
+          participants: [self, ally, otherLaneAlly, enemy],
+        );
+
+        final result = engine.manualSkill('self', ['enemy_1']);
+
+        expect(result, isTrue);
+        // 敵へは一切ダメージを与えない（supporterのスキルは攻撃ではない）
+        expect(enemy.isAlive, isTrue);
+        expect(enemy.currentHp, enemy.effectiveHp);
+        // 同レーンの味方は回復する
+        expect(ally.currentHp, 110.0);
+        // 異なるレーンの味方は回復しない
+        expect(otherLaneAlly.currentHp, 50.0);
+
+        engine.dispose();
+      },
+    );
   });
 
   group('BattleEngine HPダメージ蓄積（削り合い）', () {
@@ -691,6 +807,86 @@ void main() {
       expect(result, isTrue);
       expect(self.resources.gold, initialGold - 300);
       expect(self.resources.ownedItemIds.contains('item_sword_01'), true);
+      engine.dispose();
+    });
+  });
+
+  group('BattleEngine 詳細スタッツ（試合後スタッツ画面用）', () {
+    test('manualDuelの与ダメージ・被ダメージがtoPlayerStats()に反映される', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 200, atk: 9999, spd: 40),
+      );
+      final enemy = _participant(
+        userId: 'enemy_1',
+        team: 1,
+        stats: BaseStats(hp: 1000, atk: 50, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_stats_damage',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self, enemy],
+      );
+
+      engine.manualDuel('enemy_1', 'self');
+      engine.manualDuel('self', 'enemy_1');
+
+      final selfStats = self.toPlayerStats();
+      final enemyStats = enemy.toPlayerStats();
+
+      expect(selfStats.damageDealt, greaterThan(0));
+      expect(enemyStats.damageTaken, selfStats.damageDealt);
+      expect(enemyStats.damageDealt, greaterThan(0));
+      expect(selfStats.damageTaken, enemyStats.damageDealt);
+
+      engine.dispose();
+    });
+
+    test('モンスター討伐数がtoPlayerStats()に反映される', () {
+      final self = _participant(
+        userId: 'self',
+        team: 0,
+        isSelf: true,
+        stats: BaseStats(hp: 100, atk: 2000, spd: 40),
+      );
+      final engine = BattleEngine(
+        battleId: 'test_stats_monster',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final wildMonster = engine.jungleMonsters.firstWhere(
+        (m) => m.tier == JungleMonsterTier.wild,
+      );
+      engine.attackJungleMonster('self', wildMonster.id);
+
+      expect(self.toPlayerStats().monsterKills, 1);
+      expect(self.toPlayerStats().damageDealt, greaterThan(0));
+
+      engine.dispose();
+    });
+
+    test('ゴールゾーンへの投入量がtoPlayerStats()に反映される', () {
+      final self = _participant(userId: 'self', team: 0, isSelf: true);
+      self.energy = 10;
+      final engine = BattleEngine(
+        battleId: 'test_stats_score',
+        mode: BattleMode.quick,
+        mapId: 'map_test',
+        participants: [self],
+      );
+
+      final enemyGoal = engine.goalZones.firstWhere(
+        (z) => z.team != self.team && z.lane == self.lane,
+      );
+      engine.scoreEnergy('self', enemyGoal.id);
+
+      expect(self.toPlayerStats().energyScored, 10);
+
       engine.dispose();
     });
   });

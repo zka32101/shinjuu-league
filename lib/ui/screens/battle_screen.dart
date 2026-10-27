@@ -500,14 +500,32 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
                     ),
                   ),
                 // ミニマップ：マップ全体を歩き回れるため、戦況把握を助ける俯瞰表示
+                // + その下にチームピング（UNITE風のプリセット合図）ボタン
                 Positioned(
                   top: 12,
                   right: 12,
-                  child: ValueListenableBuilder<List<MinimapEntry>>(
-                    valueListenable: _game.minimapEntries,
-                    builder: (context, entries, _) {
-                      return Minimap(entries: entries);
-                    },
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      ValueListenableBuilder<List<MinimapEntry>>(
+                        valueListenable: _game.minimapEntries,
+                        builder: (context, entries, _) {
+                          return ValueListenableBuilder<MinimapPing?>(
+                            valueListenable: _game.activePing,
+                            builder: (context, ping, _) {
+                              return Minimap(entries: entries, activePing: ping);
+                            },
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      _PingButtonRow(
+                        onPing: (type) {
+                          HapticService.onButtonTap();
+                          _game.sendPing(type);
+                        },
+                      ),
+                    ],
                   ),
                 ),
                 // 操作クラスタ：通常攻撃(大)+スキル(小)をUNITE風に1つにまとめて配置
@@ -603,6 +621,35 @@ class _BattleScreenState extends ConsumerState<BattleScreen> {
           // スキル進行パネル＆キルフィードを表示
           _buildSkillProgressionAndKillFeed(context, state, selfId),
         ],
+      ),
+    );
+  }
+}
+
+/// ミニマップ下に並ぶ3つのプリセットピングボタン（UNITE風のチーム合図）。
+class _PingButtonRow extends StatelessWidget {
+  const _PingButtonRow({required this.onPing});
+  final void Function(PingType type) onPing;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+      decoration: BoxDecoration(
+        color: Colors.black.withValues(alpha: 0.45),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: PingType.values.map((type) {
+          return GestureDetector(
+            onTap: () => onPing(type),
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Text(type.emoji, style: const TextStyle(fontSize: 18)),
+            ),
+          );
+        }).toList(),
       ),
     );
   }

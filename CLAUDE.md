@@ -1134,6 +1134,39 @@ Exploreエージェントによる再調査で発見。[lib/ui/screens/admin_exp
 
 **既知のTODO**: 今回提示した他2案（終盤の大型中立ボス、試合時間10分への延長）は未実装のまま。
 
+### 次の機能案 3件一括実装：神獣ロール分化 + 詳細試合後スタッツ + チームピング（2026-10-27、Sonnet実装）
+
+ユーザーから「次の機能案」の依頼。Exploreエージェントによる調査で、既存8体の神獣が実質「ステータス数値が違うだけ」で、UNITE本家のような支援/防御型の実際のプレイスタイル差が無いこと、さらに**`SkillSystemService._mechaSkills`に定義された神獣別スキルキット（緋凰の術者型3種・蒼麟の支援型3種を含む）が、実際のバトル画面からは一切呼び出されていない**（UI側の唯一のスキルボタンは`BattleViewModel.attemptManualSkill` → `BattleEngine.manualSkill`という全神獣共通の固定2.2倍AoE攻撃のみを呼んでおり、`attemptSkill`/`useSkill`経路には呼び出し元がゼロ）ことが判明。ユーザーに3案（ロール分化/詳細スタッツ画面/チームピング）を提示し全て選択。
+
+**1. 神獣のロール/アーキタイプ分化**
+- [lib/data/models/mecha_model.dart](lib/data/models/mecha_model.dart): `MechaRole`（attacker/defender/speedster/supporter/allRounder）enumと`Mecha.role`フィールドを追加。
+- [lib/data/mecha_catalog.dart](lib/data/mecha_catalog.dart): 既存フレーバーテキストに基づき8体全てにroleを割当（岩嶽亀=defender、蒼麟=supporter、緋凰/雷鳴鷲=attacker、嵐翼隼=speedster、残り3体=allRounder）。
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart): 唯一実際に使われているスキルボタン`manualSkill()`を、攻撃者の`mechaById(mechaId).role`で分岐させる実装に変更（スキルキット自体を丸ごと入れ替える大改修は避け、UIから実際に到達可能な1つのアクションの「質」をロールで変える現実的なスコープに絞った）：
+  - `defender`：敵を攻撃せず自身に被ダメ軽減シールド（`shieldMultiplier=0.5`、5秒、`_computeDamage`のeffectiveDamageに乗算）を付与。ジャングルバフと同じ失効判定パターン（`shieldExpiresAtSecond`）を踏襲。
+  - `supporter`：敵を攻撃せず、自身+同レーンの生存中の味方のHPを回復（`_skillHealAmount=60`）。
+  - 上記以外（attacker/speedster/allRounder）：従来通りの範囲ダメージ（無変更、既存プレイに影響なし）。
+- [lib/ui/screens/mecha_select_screen.dart](lib/ui/screens/mecha_select_screen.dart): ロール名（日本語ラベル）をカードに表示。
+- テスト: [test/battle_engine_test.dart](test/battle_engine_test.dart)にdefender/supporterのmanualSkill挙動4件、シールド失効1件を追加。[test/mecha_catalog_test.dart](test/mecha_catalog_test.dart)にdefender/supporterロールが実在することの検証1件を追加。
+
+**2. 詳細な試合後スタッツ画面**
+- 従来の`PlayerStats`はkills/deaths/assists/scoreのみで、何にどう貢献したかが見えなかった。
+- [lib/services/battle_engine_service.dart](lib/services/battle_engine_service.dart): `BattleParticipantState`に`totalDamageDealt`/`totalDamageTaken`/`monsterKillCount`/`totalEnergyScored`を追加し、`_applyDamage()`（通常/スキル共通）・`attackJungleMonster()`・`scoreEnergy()`それぞれで加算、`toPlayerStats()`で公開。
+- [lib/data/models/battle_model.dart](lib/data/models/battle_model.dart): `PlayerStats`に同名4フィールド追加（デフォルト0、JSON互換を維持）。
+- [lib/ui/screens/result_screen.dart](lib/ui/screens/result_screen.dart): 既存のキル/デス/スコアカードの下に新規`_DetailedStatsCard`（与ダメージ/被ダメージ/ゴール投入量/モンスター討伐数の2×2グリッド）を追加。
+- テスト: [test/battle_engine_test.dart](test/battle_engine_test.dart)に新規グループ「詳細スタッツ」3件、[test/ui/screens/result_screen_achievement_display_test.dart](test/ui/screens/result_screen_achievement_display_test.dart)に表示検証1件を追加。
+
+**3. チームピング機能**
+- 既存のミニマップは表示のみで、UNITE的な「助けて！」等のプリセット合図が存在しなかった。
+- **設計上の制約（CLAUDE.md既存記載通り）**: このゲームは専用マルチプレイサーバーが未構築で、`BattleEngine`はクライアント側ローカルシミュレーション。そのため本機能は**他デバイスへの実配信は行わず**、自分の操作に対する視覚（ミニマップ上の吹き出し）+ハプティクスの即時フィードバックとしてのみ機能する（将来マルチプレイ化時の拡張ポイントとして型だけ先に用意）。誇張せず、この制約を[lib/ui/widgets/minimap.dart](lib/ui/widgets/minimap.dart)内のdocコメントに明記。
+- [lib/ui/widgets/minimap.dart](lib/ui/widgets/minimap.dart): `PingType`（help/attacking/retreat）enumと`MinimapPing`モデルを追加。`Minimap`に`activePing`パラメータを追加し、該当位置に絵文字+ラベルの吹き出しを表示。
+- [lib/game/battlefield_game.dart](lib/game/battlefield_game.dart): `activePing`（`ValueNotifier<MinimapPing?>`）と`sendPing(PingType)`を追加。表示時間の失効は実時間`Timer`ではなく既存の`_targetScanTimer`等と同じdt積算パターン（`_updatePing(dt)`、`update()`から呼び出し）で実装し、ゲーム終了後にTimerが生きたまま発火する事故を回避。
+- [lib/ui/screens/battle_screen.dart](lib/ui/screens/battle_screen.dart): ミニマップ下に3つの絵文字ピングボタン（`_PingButtonRow`）を追加、タップでハプティクス+`sendPing()`を発火。
+- テスト: [test/game/battlefield_game_test.dart](test/game/battlefield_game_test.dart)に新規グループ「チームピング」4件（設定/自キャラ無しno-op/失効/リセット）、[test/ui/widgets/minimap_test.dart](test/ui/widgets/minimap_test.dart)に吹き出し表示/非表示の検証2件を追加。
+
+フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件（既存の軽微なinfo/warningのみ、プロジェクト全体の件数は従来通り）。
+
+**既知のTODO**: 残り6体（緋焔虎/雷鳴鷲/蒼氷狼/嵐翼隼/黄金獅子）は依然origin別の汎用デフォルトスキルキット（`mecha_east_flame`/`mecha_west_frost`）にフォールバックしており、ロールに応じた専用スキル内容までは今回のスコープ外（`manualSkill`のロール分岐のみで差別化、個別スキルキットの拡充は次回以降）。チームピングは真の配信機能ではなく自己フィードバックのみ（上記の制約通り）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

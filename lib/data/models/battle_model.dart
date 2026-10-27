@@ -36,6 +36,10 @@ class PlayerStats {
   final int deaths;
   final int assists;
   final int score;
+  final int damageDealt;
+  final int damageTaken;
+  final int monsterKills;
+  final int energyScored;
 
   PlayerStats({
     required this.userId,
@@ -44,12 +48,20 @@ class PlayerStats {
     required this.deaths,
     required this.assists,
     required this.score,
+    this.damageDealt = 0,
+    this.damageTaken = 0,
+    this.monsterKills = 0,
+    this.energyScored = 0,
   });
 
   factory PlayerStats.fromJson(Map<String, dynamic> json) {
     return PlayerStats(
       userId: json['userId'] as String,
       mechaId: json['mechaId'] as String,
+      damageDealt: json['damageDealt'] as int? ?? 0,
+      damageTaken: json['damageTaken'] as int? ?? 0,
+      monsterKills: json['monsterKills'] as int? ?? 0,
+      energyScored: json['energyScored'] as int? ?? 0,
       kills: json['kills'] as int? ?? 0,
       deaths: json['deaths'] as int? ?? 0,
       assists: json['assists'] as int? ?? 0,
@@ -64,6 +76,10 @@ class PlayerStats {
     'deaths': deaths,
     'assists': assists,
     'score': score,
+    'damageDealt': damageDealt,
+    'damageTaken': damageTaken,
+    'monsterKills': monsterKills,
+    'energyScored': energyScored,
   };
 }
 

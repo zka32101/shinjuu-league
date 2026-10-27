@@ -465,6 +465,56 @@ void main() {
       expect(find.text('スコア'), findsOneWidget);
     });
 
+    testWidgets('shows detailed stats breakdown (damage/goal/monster kills)', (
+      WidgetTester tester,
+    ) async {
+      final battle = Battle(
+        battleId: battleId,
+        userId: userId,
+        opponentIds: const ['bot_001'],
+        mapId: 'map_default',
+        mode: BattleMode.quick,
+        durationSeconds: 300,
+        playerStats: [
+          PlayerStats(
+            userId: userId,
+            mechaId: 'test_mecha',
+            kills: 5,
+            deaths: 2,
+            assists: 3,
+            score: 500,
+            damageDealt: 1234,
+            damageTaken: 567,
+            monsterKills: 3,
+            energyScored: 42,
+          ),
+        ],
+        result: BattleResult.win,
+        eloChange: 24,
+        startedAt: DateTime.now(),
+        endedAt: DateTime.now(),
+      );
+
+      await tester.pumpWidget(
+        UncontrolledProviderScope(
+          container: _fakeFirestoreContainer(),
+          child: MaterialApp(home: ResultScreen(battle: battle)),
+        ),
+      );
+
+      await tester.pumpAndSettle();
+
+      expect(find.text('試合の詳細'), findsOneWidget);
+      expect(find.text('与ダメージ'), findsOneWidget);
+      expect(find.text('1234'), findsOneWidget);
+      expect(find.text('被ダメージ'), findsOneWidget);
+      expect(find.text('567'), findsOneWidget);
+      expect(find.text('ゴール投入量'), findsOneWidget);
+      expect(find.text('42'), findsOneWidget);
+      expect(find.text('モンスター討伐'), findsOneWidget);
+      expect(find.text('3'), findsOneWidget);
+    });
+
     testWidgets('displays MVP badge when player is MVP', (
       WidgetTester tester,
     ) async {

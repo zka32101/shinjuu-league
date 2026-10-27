@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math';
 import 'dart:ui';
 
@@ -107,6 +108,38 @@ class BattlefieldGame extends FlameGame {
   final ValueNotifier<List<MinimapEntry>> minimapEntries = ValueNotifier(
     const [],
   );
+
+  /// 現在表示中のチームピング（一定時間で自動的にnullへ戻る）。
+  final ValueNotifier<MinimapPing?> activePing = ValueNotifier(null);
+  double _pingElapsed = 0.0;
+  static const _pingDisplaySeconds = 3.0;
+
+  /// チームピングを送信する（自キャラの現在位置にプリセット合図を表示）。
+  /// 専用マルチプレイサーバーが無いため、実際の配信先は無く自分への視覚
+  /// フィードバックのみ（[PingType]のdocを参照）。
+  void sendPing(PingType type) {
+    final self = _selfToken;
+    if (self == null) return;
+
+    activePing.value = MinimapPing(
+      type: type,
+      x: self.position.x / _playfieldHalfWidth,
+      y: self.position.y / _playfieldHalfHeight,
+    );
+    _pingElapsed = 0.0;
+  }
+
+  /// update()から毎フレーム呼び出し、表示時間を超えたピングを消す。
+  /// 実時間のTimerではなくdt積算にするのは、他の一時効果
+  /// （_targetScanTimer等）と同じくFlameコンポーネントのライフサイクルに
+  /// 従わせ、ゲーム終了後にTimerが生きたまま発火する事故を避けるため。
+  void _updatePing(double dt) {
+    if (activePing.value == null) return;
+    _pingElapsed += dt;
+    if (_pingElapsed >= _pingDisplaySeconds) {
+      activePing.value = null;
+    }
+  }
 
   /// テスト専用：ジョイスティック入力を経由せず自キャラをグリッド座標へ直接移動する。
   /// ユニットテストでは実タッチ入力によるジョイスティック操作を再現できないため、
@@ -231,6 +264,8 @@ class BattlefieldGame extends FlameGame {
 
     // フレームレート計測
     _performanceService.recordFrame();
+
+    _updatePing(dt);
 
     // カメラは自キャラの位置へ滑らかに追従する
     final followTarget = _selfToken?.position ?? Vector2.zero();
