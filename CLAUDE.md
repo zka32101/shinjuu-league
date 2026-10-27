@@ -1167,6 +1167,16 @@ Exploreエージェントによる再調査で発見。[lib/ui/screens/admin_exp
 
 **既知のTODO**: 残り6体（緋焔虎/雷鳴鷲/蒼氷狼/嵐翼隼/黄金獅子）は依然origin別の汎用デフォルトスキルキット（`mecha_east_flame`/`mecha_west_frost`）にフォールバックしており、ロールに応じた専用スキル内容までは今回のスコープ外（`manualSkill`のロール分岐のみで差別化、個別スキルキットの拡充は次回以降）。チームピングは真の配信機能ではなく自己フィードバックのみ（上記の制約通り）。
 
+### 完全に到達不可能な進化選択画面2件を削除（2026-10-27、Sonnet実装）
+
+Exploreエージェントの再調査で、これまでの「ボタンが無反応」パターンとは異なる種類の問題を発見：[lib/ui/screens/evolution_second_selection_screen.dart](lib/ui/screens/evolution_second_selection_screen.dart)（`EvolutionSecondSelectionScreen`）と[lib/ui/screens/evolution_selection_v2_screen.dart](lib/ui/screens/evolution_selection_v2_screen.dart)（`EvolutionSelectionV2Screen`）の2画面が、実際の進化選択フロー（`AppRoutes`経由でルーティングされる本物の`EvolutionSelectScreen`）とは完全に無関係で、アプリ内のどこからも生成・参照されていなかった。特に`EvolutionSecondSelectionScreen`は`onEvolutionConfirmed`コールバックを受け取り`evolutionSelectionProvider.notifier.selectEvolution()`まで呼ぶ、見た目上は完成した実装だったが、誰も呼び出さないため一切実行されない死んだコードだった（過去の実装の置き換え漏れと推測）。
+
+ユーザーに削除を確認し、削除を選択。
+
+- [lib/ui/screens/evolution_second_selection_screen.dart](lib/ui/screens/evolution_second_selection_screen.dart)・[lib/ui/screens/evolution_selection_v2_screen.dart](lib/ui/screens/evolution_selection_v2_screen.dart)・[test/ui/screens/evolution_selection_v2_test.dart](test/ui/screens/evolution_selection_v2_test.dart)（v2のみ存在した専用テスト）を削除。
+
+フルスイート全通過、`flutter analyze`はプロジェクト全体で366件（削除前比で減少、新規エラーなし）。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定
