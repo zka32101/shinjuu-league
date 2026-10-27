@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -86,15 +88,25 @@ class _ResultScreenState extends ConsumerState<ResultScreen>
         AudioService().playLossSe();
       }
 
-      // リプレイ自動生成 → SNSシェアまでノーストレスにするため試合終了直後に生成
-      final replay = await ref
-          .read(replayServiceProvider)
-          .generateAndSave(widget.battle);
+      // リプレイ自動生成 → SNSシェアまでノーストレスにするため試合終了直後に生成。
+      // buildReplay() は Firestore に触れない純粋関数なので、シェアボタンの有効化は
+      // ここで即座に行う。Firestoreへの永続化（generateAndSave内のcreateReplay）は
+      // 失敗や遅延（オフライン等）がシェア可否をブロックしないよう、UIを待たせずに
+      // バックグラウンドで試行する（失敗してもshareUrlはbattleIdから決定的に組み立て
+      // 済みのためシェア自体は成立する）。
+      final replayService = ref.read(replayServiceProvider);
+      final replay = replayService.buildReplay(widget.battle);
       if (!mounted) return;
       setState(() {
         _replay = replay;
         _isGeneratingReplay = false;
       });
+
+      unawaited(
+        replayService
+            .generateAndSave(widget.battle)
+            .catchError((e) => replay),
+      );
     });
   }
 

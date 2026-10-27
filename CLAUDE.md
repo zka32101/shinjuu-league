@@ -1109,6 +1109,18 @@ Exploreエージェントによる再調査で発見。[lib/ui/screens/admin_exp
 
 テスト: [test/ab_test_coordinator_test.dart](test/ab_test_coordinator_test.dart)（`getAllExperiments`が未来開始/終了済みの実験も含め全件返すことを検証、1件追加）、[test/config_admin_service_test.dart](test/config_admin_service_test.dart)（`getExperiments`1件追加）、[test/admin_api_service_test.dart](test/admin_api_service_test.dart)（1件追加）、[test/web_admin_dashboard_service_test.dart](test/web_admin_dashboard_service_test.dart)（1件追加）。フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件（既存の軽微なinfo/warningのみ）。
 
+### リザルト画面「リプレイ生成中…」が無限に回り続けるバグ修正（2026-10-27、Sonnet実装）
+
+ユーザーからの実機プレイ報告で発覚（7キル3デス・スコア18・Elo+30.9で勝利、リザルト画面自体は正常表示だが「戦績をシェア / リプレイ生成中…」が1分以上回りっぱなし）。
+
+- [lib/ui/screens/result_screen.dart](lib/ui/screens/result_screen.dart): `initState()`内、`await ref.read(replayServiceProvider).generateAndSave(widget.battle)`の結果が返るまで`_isGeneratingReplay`を`true`のままにしていたが、この`await`に`try/catch`が一切無かった。`generateAndSave()`は内部で`FirestoreService.createReplay()`（Firestoreへの書き込み）を呼んでおり、オフライン/不安定な接続下でこれが失敗（例外）または極端に遅延すると、`setState`に到達できず**シェアボタンが永久に無効化されたまま**になっていた。
+- `ReplayService.buildReplay()`はFirestoreに一切触れない純粋関数（shareUrlもbattleIdから決定的に組み立てるだけ）であることを確認。これをawaitせず同期的に呼んでシェアボタンを即座に有効化するよう変更し、Firestoreへの永続化（`generateAndSave`）は`unawaited()`でバックグラウンドに回す（失敗してもシェア自体は成立する設計、CLAUDE.md記載の「ノーストレス」という元々の設計意図にも合致）。
+- [test/ui/screens/result_screen_achievement_display_test.dart](test/ui/screens/result_screen_achievement_display_test.dart): Firestore永続化が失敗するケースを再現する`_AlwaysFailingPersistReplayService`を追加し、それでもシェアボタンが即座に有効化されることを検証するテストを1件追加。
+
+フルスイート全通過、`flutter analyze`は変更ファイルでエラー0件（既存の軽微なinfo/warningのみ）。
+
+**既知のTODO**: バックグラウンドの`generateAndSave`が実際に失敗した場合、ユーザーへの通知は無い（サイレントフォールバック）。再試行導線は未実装。
+
 ## 参考リンク
 
 - [Design Document](https://...) ← 別途リンク予定

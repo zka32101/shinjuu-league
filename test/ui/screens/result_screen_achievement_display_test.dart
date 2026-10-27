@@ -143,6 +143,19 @@ class MockReplayService extends Mock implements ReplayService {
 
 class MockSkillTreeService extends Mock implements SkillTreeService {}
 
+/// A ReplayService whose Firestore persistence always fails, to reproduce
+/// the "リプレイ生成中…" spinner getting stuck forever when
+/// generateAndSave()'s await never resolves successfully (e.g. offline /
+/// flaky connectivity during a real match). buildReplay() stays real
+/// (it is a pure function, no Firestore access) so the share button should
+/// still become enabled immediately regardless of persistence failing.
+class _AlwaysFailingPersistReplayService extends ReplayService {
+  @override
+  Future<Replay> generateAndSave(Battle battle) {
+    return Future<Replay>.error('Firestore unreachable');
+  }
+}
+
 void main() {
   group('ResultScreen Achievement Display', () {
     late MockFirestoreService mockFirestore;
@@ -354,6 +367,62 @@ void main() {
       // Should display share section
       expect(find.text('戦績をシェア'), findsOneWidget);
     });
+
+    testWidgets(
+      'share button becomes enabled immediately even if replay '
+      'persistence to Firestore never resolves (does not get stuck on '
+      "'リプレイ生成中…' forever)",
+      (WidgetTester tester) async {
+        final battle = Battle(
+          battleId: battleId,
+          userId: userId,
+          opponentIds: const ['bot_001'],
+          mapId: 'map_default',
+          mode: BattleMode.quick,
+          durationSeconds: 300,
+          playerStats: [
+            PlayerStats(
+              userId: userId,
+              mechaId: 'test_mecha',
+              kills: 7,
+              deaths: 3,
+              assists: 0,
+              score: 18,
+            ),
+          ],
+          result: BattleResult.win,
+          eloChange: 30.9,
+          startedAt: DateTime.now(),
+          endedAt: DateTime.now(),
+        );
+
+        await tester.pumpWidget(
+          UncontrolledProviderScope(
+            container: _fakeFirestoreContainer(
+              extraOverrides: [
+                replayServiceProvider.overrideWithValue(
+                  _AlwaysFailingPersistReplayService(),
+                ),
+              ],
+            ),
+            child: MaterialApp(home: ResultScreen(battle: battle)),
+          ),
+        );
+
+        await tester.pumpAndSettle();
+
+        // The share action must already be enabled - not stuck on the
+        // "generating" label - even though Firestore persistence is still
+        // pending (and will eventually fail) in the background.
+        expect(find.text('リプレイ生成中…'), findsNothing);
+        expect(find.text('SNSでシェアする'), findsOneWidget);
+
+        final listTile = tester.widget<ListTile>(
+          find.widgetWithText(ListTile, 'SNSでシェアする'),
+        );
+        expect(listTile.enabled, isTrue);
+      },
+    );
 
     testWidgets('shows player stats on result screen', (
       WidgetTester tester,
